@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Alert,
   Platform,
+  Linking,
 } from 'react-native';
 import { Repository } from '../../types/repository';
 import { Button } from '../common/Button';
@@ -24,6 +25,8 @@ export const ProjectDetailSheet: React.FC<ProjectDetailSheetProps> = ({
   visible,
   onClose,
 }) => {
+  const [isLaunching, setIsLaunching] = useState<boolean>(false);
+
   if (!repository) return null;
 
   const studentDisplayName =
@@ -36,12 +39,55 @@ export const ProjectDetailSheet: React.FC<ProjectDetailSheetProps> = ({
       ? repository.university
       : 'University not specified';
 
-  const handleLaunchAgent = () => {
-    Alert.alert(
-      'Launch Agent',
-      `Target Runtime: ${repository.agent_execution_url}\n\nExternal runtime opening will be activated in the next milestone.`,
-      [{ text: 'OK' }]
-    );
+  const isValidHttpUrl = (urlStr: string): boolean => {
+    const trimmed = urlStr.trim();
+    if (!trimmed) return false;
+    try {
+      const parsed = new URL(trimmed);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
+
+  const handleLaunchAgent = async () => {
+    if (isLaunching) return;
+
+    const rawUrl = repository.agent_execution_url?.trim();
+
+    if (!rawUrl || !isValidHttpUrl(rawUrl)) {
+      Alert.alert(
+        'Invalid Deployment URL',
+        'This agent does not have a valid HTTP or HTTPS deployment URL configured.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    try {
+      setIsLaunching(true);
+
+      const supported = await Linking.canOpenURL(rawUrl);
+      if (!supported) {
+        Alert.alert(
+          'Cannot Open URL',
+          `Your device cannot open this URL:\n${rawUrl}\n\nPlease check the URL format or ensure a web browser is installed.`,
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      await Linking.openURL(rawUrl);
+    } catch (err: any) {
+      console.error('[LaunchAgent] Error opening runtime URL:', err);
+      Alert.alert(
+        'Launch Error',
+        `Failed to open the external runtime URL:\n${err?.message || 'Unknown error'}`,
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsLaunching(false);
+    }
   };
 
   return (
@@ -163,8 +209,10 @@ export const ProjectDetailSheet: React.FC<ProjectDetailSheetProps> = ({
           {/* Launch Agent Action */}
           <View style={styles.actionContainer}>
             <Button
-              title="Launch Agent 🚀"
+              title={isLaunching ? 'Opening Runtime...' : 'Launch Agent 🚀'}
               onPress={handleLaunchAgent}
+              loading={isLaunching}
+              disabled={isLaunching}
               style={styles.launchButton}
               testID="launch-agent-button"
             />
@@ -380,4 +428,3 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
 });
-
