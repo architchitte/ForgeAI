@@ -10,7 +10,13 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/common/Button';
 
-export const AuthenticatedPlaceholderScreen: React.FC = () => {
+interface AuthenticatedPlaceholderScreenProps {
+  onNavigateToSubmitBlueprint?: () => void;
+}
+
+export const AuthenticatedPlaceholderScreen: React.FC<
+  AuthenticatedPlaceholderScreenProps
+> = ({ onNavigateToSubmitBlueprint }) => {
   const { user, signOut, authActionLoading } = useAuth();
 
   const provider =
@@ -79,6 +85,14 @@ export const AuthenticatedPlaceholderScreen: React.FC = () => {
         </View>
 
         <View style={styles.actionContainer}>
+          {onNavigateToSubmitBlueprint ? (
+            <Button
+              title="Submit Blueprint"
+              onPress={onNavigateToSubmitBlueprint}
+              style={{ marginBottom: 10 }}
+              testID="go-to-blueprint-button"
+            />
+          ) : null}
           <Button
             title="Log Out"
             variant="outline"

@@ -6,6 +6,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   KeyboardTypeOptions,
+  StyleProp,
+  ViewStyle,
 } from 'react-native';
 
 interface InputProps {
@@ -19,6 +21,12 @@ interface InputProps {
   error?: string | null;
   isPassword?: boolean;
   testID?: string;
+  multiline?: boolean;
+  numberOfLines?: number;
+  maxLength?: number;
+  rightLabel?: string;
+  helperText?: string;
+  containerStyle?: StyleProp<ViewStyle>;
 }
 
 export const Input: React.FC<InputProps> = ({
@@ -32,15 +40,32 @@ export const Input: React.FC<InputProps> = ({
   error,
   isPassword = false,
   testID,
+  multiline = false,
+  numberOfLines,
+  maxLength,
+  rightLabel,
+  helperText,
+  containerStyle,
 }) => {
   const [hidePassword, setHidePassword] = useState<boolean>(isPassword);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={[styles.inputWrapper, error ? styles.inputError : null]}>
+    <View style={[styles.container, containerStyle]}>
+      <View style={styles.labelRow}>
+        <Text style={styles.label}>{label}</Text>
+        {rightLabel ? (
+          <Text style={styles.rightLabel}>{rightLabel}</Text>
+        ) : null}
+      </View>
+      <View
+        style={[
+          styles.inputWrapper,
+          multiline && styles.multilineWrapper,
+          error ? styles.inputError : null,
+        ]}
+      >
         <TextInput
-          style={styles.input}
+          style={[styles.input, multiline && styles.multilineInput]}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -50,6 +75,10 @@ export const Input: React.FC<InputProps> = ({
           autoCapitalize={autoCapitalize}
           autoCorrect={false}
           testID={testID}
+          multiline={multiline}
+          numberOfLines={numberOfLines}
+          maxLength={maxLength}
+          textAlignVertical={multiline ? 'top' : 'center'}
         />
         {isPassword && (
           <TouchableOpacity
@@ -63,7 +92,11 @@ export const Input: React.FC<InputProps> = ({
           </TouchableOpacity>
         )}
       </View>
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? (
+        <Text style={styles.errorText}>{error}</Text>
+      ) : helperText ? (
+        <Text style={styles.helperText}>{helperText}</Text>
+      ) : null}
     </View>
   );
 };
@@ -73,11 +106,21 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     width: '100%',
   },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
   label: {
     fontSize: 14,
     fontWeight: '600',
     color: '#334155',
-    marginBottom: 6,
+  },
+  rightLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -89,14 +132,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     minHeight: 50,
   },
+  multilineWrapper: {
+    alignItems: 'flex-start',
+    minHeight: 120,
+    paddingVertical: 10,
+  },
   inputError: {
     borderColor: '#EF4444',
   },
   input: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
     color: '#0F172A',
     paddingVertical: 12,
+  },
+  multilineInput: {
+    height: '100%',
+    paddingVertical: 4,
+    lineHeight: 22,
   },
   toggleButton: {
     paddingVertical: 6,
@@ -113,5 +166,9 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     fontWeight: '500',
   },
+  helperText: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#64748B',
+  },
 });
-
