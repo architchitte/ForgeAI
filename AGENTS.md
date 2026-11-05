@@ -1,41 +1,75 @@
-This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
 
-## Expo has changed — do not trust your training data
+# ForgeAI — Project Instructions
 
-Expo ships breaking changes every SDK release. APIs you remember are likely renamed, moved, or removed. Before writing any code that touches an Expo, EAS, or React Native API:
+## Project Overview
+ForgeAI is an Android application for discovering and sharing
+student-built AI applications.
 
-1. Read the major version of the `expo` package in `package.json`.
-2. Fetch the matching versioned docs: `https://docs.expo.dev/versions/v<major>.0.0/`
-3. For anything else, fetch https://docs.expo.dev/llms.txt — an index of all Expo docs with corrections to common LLM misconceptions. Follow its links to the specific page you need; never answer from memory.
+The implementation must strictly follow the approved
+2-Week MVP Technical Specification.
 
-## Commands
+## Technology Stack
+- React Native
+- Expo
+- TypeScript
+- Supabase
+- PostgreSQL
+- Supabase Authentication
 
-Use `bunx` instead of `npx` if the project uses bun (`bun.lock` present).
+## Required MVP Features
+1. Google OAuth and Email authentication.
+2. Application Blueprint submission form.
+3. Repository feed to browse submitted applications.
+4. Project detail sheet displaying project information
+   and the complete system prompt.
+5. Launch Agent button that opens the external deployment URL.
+6. Supabase database integration.
+7. Android application build.
 
-```bash
-npx expo install <package>  # ALWAYS use instead of npm/yarn/pnpm/bun add — resolves SDK-compatible versions
-npx expo start              # start the dev server
-npx expo lint               # lint
-npx tsc --noEmit            # typecheck
-npx expo-doctor             # diagnose dependency and config issues
-npx expo install --fix      # fix incompatible package versions
-```
+## Blueprint Form Fields
+- App Name
+- One-Liner (maximum 140 characters)
+- Orchestration Framework
+- Complete System Prompt
+- Active Deployment Runtime URL
 
-Run lint and typecheck before declaring any task done.
+## Database
+Use the repositories table specified in the
+technical specification.
 
-## Navigation & Routing
+Do not introduce additional tables or features
+without first explaining why they are necessary.
 
-- Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
-- Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
-- Docs: https://docs.expo.dev/router/introduction.md
+## Strictly Excluded from MVP
+- Native Chat Sandbox
+- Vector Store Integrations
+- Semantic Search
+- Automated Change Tracking
+- GitHub Integration
+- Automated AI Project Validation
+- SheerID Integration
+- API Marketplace
 
-## Building with EAS
+## Development Rules
+1. Follow the supplied technical specification.
+2. Do not independently introduce new product features.
+3. Do not replace the approved technology stack.
+4. Use TypeScript.
+5. Write modular, reusable components.
+6. Keep authentication and database operations organized.
+7. Validate forms and handle errors.
+8. Never expose secret keys in frontend code.
+9. Use Supabase Row Level Security for database access.
+10. Explain important changes before implementing them.
 
-Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submit`) and to ship over-the-air updates (`eas update`) — no local Xcode or Android Studio required. Run EAS CLI as `bunx eas-cli <command>` in Bun projects, or `npx eas-cli@latest <command>` otherwise; substitute that for bare `eas` in docs examples.
-Docs: https://docs.expo.dev/eas/index.md
+## Coding Workflow
+Before changing files:
+- Explain what will be implemented.
+- Identify the files that need modification.
+- Keep changes limited to the requested task.
 
-## Rules
-
-- If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
-- Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
-- Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+After implementation:
+- Explain the code.
+- List modified files.
+- Provide commands to test the implementation.
+- Report any unfinished work.
