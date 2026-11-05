@@ -6,9 +6,11 @@ import {
   SafeAreaView,
   ScrollView,
   Platform,
+  Image,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/common/Button';
+import { STITCH_COLORS, STITCH_ASSETS } from '../../constants/theme';
 
 interface AuthenticatedPlaceholderScreenProps {
   onNavigateToSubmitBlueprint?: () => void;
@@ -25,80 +27,85 @@ export const AuthenticatedPlaceholderScreen: React.FC<
       ? user.identities[0].provider
       : 'email');
 
+  const fullName =
+    (user?.user_metadata?.full_name ||
+      user?.user_metadata?.name ||
+      'Student Builder') as string;
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
+        {/* Header Horizon */}
         <View style={styles.header}>
           <View style={styles.badgeContainer}>
-            <Text style={styles.badgeText}>MVP Step 3 Complete</Text>
+            <View style={styles.pingBeacon} />
+            <Text style={styles.badgeText}>OPERATOR PROFILE</Text>
           </View>
-          <Text style={styles.title}>ForgeAI Authenticated</Text>
+          <Text style={styles.title}>Account Settings</Text>
           <Text style={styles.subtitle}>
-            Your Supabase authentication session is active and persisted.
+            Your Supabase authentication session is active and verified.
           </Text>
         </View>
 
+        {/* Identity Cosmic Glass Card */}
         <View style={styles.card}>
-          <Text style={styles.cardHeader}>Session Profile</Text>
+          <View style={styles.photonLine} />
 
-          <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Email Address</Text>
-            <Text style={styles.fieldValue} testID="authenticated-user-email">
-              {user?.email || 'No email available'}
-            </Text>
+          <View style={styles.profileHeader}>
+            <View style={styles.avatarWrap}>
+              <Image
+                source={{ uri: STITCH_ASSETS.defaultAvatar }}
+                style={styles.avatarImg}
+              />
+              <View style={styles.avatarRing} />
+            </View>
+            <View style={styles.profileDetails}>
+              <Text style={styles.profileName}>{fullName}</Text>
+              <Text style={styles.profileEmail} testID="authenticated-user-email">
+                {user?.email || 'No email available'}
+              </Text>
+              <View style={styles.providerBadge}>
+                <Text style={styles.providerBadgeText}>
+                  AUTH: {provider.toUpperCase()}
+                </Text>
+              </View>
+            </View>
           </View>
 
-          <View style={styles.divider} />
+          <View style={styles.telemetryDivider} />
 
           <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>User ID</Text>
-            <Text style={styles.fieldSubValue} numberOfLines={1} ellipsizeMode="middle">
+            <Text style={styles.fieldLabel}>USER UUID</Text>
+            <Text style={styles.fieldValueMono} numberOfLines={1} ellipsizeMode="middle">
               {user?.id || 'Unknown ID'}
             </Text>
           </View>
 
-          <View style={styles.divider} />
+          <View style={styles.telemetryDivider} />
 
           <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Auth Provider</Text>
-            <View style={styles.providerBadge}>
-              <Text style={styles.providerBadgeText}>
-                {provider.toUpperCase()}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Session Storage</Text>
-            <Text style={styles.storageValue}>expo-sqlite (Persistent)</Text>
+            <Text style={styles.fieldLabel}>SESSION CACHE</Text>
+            <Text style={styles.fieldValueHighlight}>expo-sqlite (Persistent)</Text>
           </View>
         </View>
 
-        <View style={styles.nextStepBox}>
-          <Text style={styles.nextStepTitle}>Ready for Step 4</Text>
-          <Text style={styles.nextStepText}>
-            User session verified. The application is ready for the Repository
-            Feed and Blueprint Submission modules.
-          </Text>
-        </View>
-
+        {/* Actions */}
         <View style={styles.actionContainer}>
           {onNavigateToSubmitBlueprint ? (
             <Button
               title="Submit Blueprint"
               onPress={onNavigateToSubmitBlueprint}
-              style={{ marginBottom: 10 }}
+              style={{ marginBottom: 12 }}
               testID="go-to-blueprint-button"
             />
           ) : null}
+
           <Button
             title="Log Out"
             variant="outline"
             onPress={signOut}
             loading={authActionLoading}
-            testID="authenticated-logout-button"
+            testID="logout-button"
           />
         </View>
       </ScrollView>
@@ -109,130 +116,151 @@ export const AuthenticatedPlaceholderScreen: React.FC<
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: STITCH_COLORS.background,
   },
   container: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 40,
   },
   header: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  badgeContainer: {
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#C7D2FE',
-    marginBottom: 12,
-  },
-  badgeText: {
-    color: '#4338CA',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#0F172A',
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#64748B',
-    textAlign: 'center',
-    marginTop: 6,
-    maxWidth: 320,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
     marginBottom: 20,
   },
-  cardHeader: {
-    fontSize: 16,
+  badgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: STITCH_COLORS.surfaceContainerHigh,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    marginBottom: 6,
+  },
+  pingBeacon: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: STITCH_COLORS.primaryContainer,
+    marginRight: 6,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: STITCH_COLORS.primary,
+    letterSpacing: 1.2,
+  },
+  title: {
+    fontSize: 24,
     fontWeight: '700',
-    color: '#0F172A',
+    color: STITCH_COLORS.onSurface,
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: STITCH_COLORS.onSurfaceVariant,
+    marginTop: 4,
+  },
+  card: {
+    backgroundColor: STITCH_COLORS.surfaceContainerLow,
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: STITCH_COLORS.surfaceContainerHighest + '60',
+    overflow: 'hidden',
+    marginBottom: 24,
+  },
+  photonLine: {
+    position: 'absolute',
+    top: 0,
+    left: 20,
+    right: 20,
+    height: 2,
+    backgroundColor: STITCH_COLORS.primaryContainer,
+    opacity: 0.7,
+  },
+  profileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 16,
   },
-  fieldRow: {
-    marginVertical: 4,
+  avatarWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    marginRight: 14,
+    position: 'relative',
   },
-  fieldLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#64748B',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
+  avatarImg: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
   },
-  fieldValue: {
-    fontSize: 16,
+  avatarRing: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: STITCH_COLORS.primary + '60',
+  },
+  profileDetails: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: 17,
     fontWeight: '700',
-    color: '#0F172A',
+    color: STITCH_COLORS.onSurface,
   },
-  fieldSubValue: {
-    fontSize: 13,
-    color: '#475569',
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  profileEmail: {
+    fontSize: 12,
+    color: STITCH_COLORS.onSurfaceVariant,
+    marginTop: 2,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   providerBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
+    backgroundColor: STITCH_COLORS.surfaceContainerHighest,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginTop: 6,
   },
   providerBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
+    fontSize: 9,
+    fontWeight: '800',
+    color: STITCH_COLORS.secondary,
+    letterSpacing: 0.8,
   },
-  storageValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#16A34A',
-  },
-  divider: {
+  telemetryDivider: {
     height: 1,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: STITCH_COLORS.surfaceContainerHighest + '40',
     marginVertical: 12,
   },
-  nextStepBox: {
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
+  fieldRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  nextStepTitle: {
-    fontSize: 14,
+  fieldLabel: {
+    fontSize: 10,
     fontWeight: '700',
-    color: '#1E40AF',
-    marginBottom: 4,
+    color: STITCH_COLORS.outline,
+    letterSpacing: 0.8,
   },
-  nextStepText: {
-    fontSize: 13,
-    color: '#1E3A8A',
-    lineHeight: 18,
+  fieldValueMono: {
+    fontSize: 11,
+    color: STITCH_COLORS.onSurfaceVariant,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    maxWidth: '60%',
+  },
+  fieldValueHighlight: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: STITCH_COLORS.primary,
   },
   actionContainer: {
-    width: '100%',
+    marginTop: 8,
   },
 });

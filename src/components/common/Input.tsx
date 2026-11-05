@@ -9,9 +9,10 @@ import {
   StyleProp,
   ViewStyle,
 } from 'react-native';
+import { STITCH_COLORS } from '../../constants/theme';
 
 interface InputProps {
-  label: string;
+  label?: string;
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
@@ -26,6 +27,7 @@ interface InputProps {
   maxLength?: number;
   rightLabel?: string;
   helperText?: string;
+  leftIcon?: React.ReactNode;
   containerStyle?: StyleProp<ViewStyle>;
 }
 
@@ -45,31 +47,37 @@ export const Input: React.FC<InputProps> = ({
   maxLength,
   rightLabel,
   helperText,
+  leftIcon,
   containerStyle,
 }) => {
   const [hidePassword, setHidePassword] = useState<boolean>(isPassword);
+  const [isFocused, setIsFocused] = useState<boolean>(false);
 
   return (
     <View style={[styles.container, containerStyle]}>
-      <View style={styles.labelRow}>
-        <Text style={styles.label}>{label}</Text>
-        {rightLabel ? (
-          <Text style={styles.rightLabel}>{rightLabel}</Text>
-        ) : null}
-      </View>
+      {label || rightLabel ? (
+        <View style={styles.labelRow}>
+          {label ? <Text style={styles.label}>{label}</Text> : <View />}
+          {rightLabel ? (
+            <Text style={styles.rightLabel}>{rightLabel}</Text>
+          ) : null}
+        </View>
+      ) : null}
       <View
         style={[
           styles.inputWrapper,
           multiline && styles.multilineWrapper,
+          isFocused && styles.inputFocused,
           error ? styles.inputError : null,
         ]}
       >
+        {leftIcon ? <View style={styles.leftIconContainer}>{leftIcon}</View> : null}
         <TextInput
           style={[styles.input, multiline && styles.multilineInput]}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor={STITCH_COLORS.outline + '80'}
           secureTextEntry={isPassword ? hidePassword : secureTextEntry}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
@@ -79,6 +87,8 @@ export const Input: React.FC<InputProps> = ({
           numberOfLines={numberOfLines}
           maxLength={maxLength}
           textAlignVertical={multiline ? 'top' : 'center'}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
         />
         {isPassword && (
           <TouchableOpacity
@@ -87,7 +97,7 @@ export const Input: React.FC<InputProps> = ({
             activeOpacity={0.7}
           >
             <Text style={styles.toggleText}>
-              {hidePassword ? 'Show' : 'Hide'}
+              {hidePassword ? 'SHOW' : 'HIDE'}
             </Text>
           </TouchableOpacity>
         )}
@@ -103,7 +113,7 @@ export const Input: React.FC<InputProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
+    marginVertical: 6,
     width: '100%',
   },
   labelRow: {
@@ -113,62 +123,69 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#334155',
+    fontSize: 11,
+    fontWeight: '700',
+    color: STITCH_COLORS.onSurfaceVariant,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   rightLabel: {
-    fontSize: 12,
+    fontSize: 11,
+    color: STITCH_COLORS.secondary,
     fontWeight: '600',
-    color: '#64748B',
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#CBD5E1',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    minHeight: 50,
+    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
+    borderWidth: 1,
+    borderColor: STITCH_COLORS.outlineVariant + '70',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    minHeight: 46,
   },
   multilineWrapper: {
+    minHeight: 110,
     alignItems: 'flex-start',
-    minHeight: 120,
     paddingVertical: 10,
   },
+  inputFocused: {
+    borderColor: STITCH_COLORS.primaryContainer,
+  },
   inputError: {
-    borderColor: '#EF4444',
+    borderColor: STITCH_COLORS.error,
+  },
+  leftIconContainer: {
+    marginRight: 8,
   },
   input: {
     flex: 1,
-    fontSize: 15,
-    color: '#0F172A',
-    paddingVertical: 12,
+    color: STITCH_COLORS.onSurface,
+    fontSize: 14,
+    paddingVertical: 10,
   },
   multilineInput: {
-    height: '100%',
-    paddingVertical: 4,
-    lineHeight: 22,
+    minHeight: 90,
   },
   toggleButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    paddingLeft: 8,
+    paddingVertical: 4,
   },
   toggleText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#2563EB',
+    fontSize: 10,
+    fontWeight: '800',
+    color: STITCH_COLORS.secondary,
+    letterSpacing: 0.5,
   },
   errorText: {
     marginTop: 4,
     fontSize: 12,
-    color: '#EF4444',
+    color: STITCH_COLORS.error,
     fontWeight: '500',
   },
   helperText: {
     marginTop: 4,
-    fontSize: 12,
-    color: '#64748B',
+    fontSize: 11,
+    color: STITCH_COLORS.outline,
   },
 });

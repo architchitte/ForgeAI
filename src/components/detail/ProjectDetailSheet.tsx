@@ -12,32 +12,51 @@ import {
   Linking,
 } from 'react-native';
 import { Repository } from '../../types/repository';
-import { Button } from '../common/Button';
+import { STITCH_COLORS } from '../../constants/theme';
 
-interface ProjectDetailSheetProps {
-  repository: Repository | null;
-  visible: boolean;
-  onClose: () => void;
+interface ProjectDetailViewProps {
+  repository: Repository;
+  onBack: () => void;
 }
 
-export const ProjectDetailSheet: React.FC<ProjectDetailSheetProps> = ({
+export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   repository,
-  visible,
-  onClose,
+  onBack,
 }) => {
   const [isLaunching, setIsLaunching] = useState<boolean>(false);
-
-  if (!repository) return null;
+  const [copied, setCopied] = useState<boolean>(false);
 
   const studentDisplayName =
     repository.student_name && repository.student_name.trim().length > 0
-      ? repository.student_name
+      ? repository.student_name.trim()
       : repository.student_email;
 
   const universityText =
     repository.university && repository.university.trim().length > 0
-      ? repository.university
-      : 'University not specified';
+      ? repository.university.trim()
+      : 'Student Builder';
+
+  // Dynamic formatted creation date
+  const formattedDate = (() => {
+    try {
+      if (repository.created_at) {
+        return new Date(repository.created_at).toLocaleDateString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        });
+      }
+    } catch {
+      // Fallback
+    }
+    return 'Active';
+  })();
+
+  // Dynamic file name for the prompt terminal
+  const promptFileName = `${repository.app_name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '') || 'agent_system'}.prompt`;
 
   const isValidHttpUrl = (urlStr: string): boolean => {
     const trimmed = urlStr.trim();
@@ -48,6 +67,11 @@ export const ProjectDetailSheet: React.FC<ProjectDetailSheetProps> = ({
     } catch {
       return false;
     }
+  };
+
+  const handleCopyEndpoint = () => {
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleLaunchAgent = async () => {
@@ -90,6 +114,190 @@ export const ProjectDetailSheet: React.FC<ProjectDetailSheetProps> = ({
     }
   };
 
+  // Split prompt lines for the terminal window
+  const promptLines = (repository.system_prompt || '')
+    .trim()
+    .split('\n')
+    .filter((line) => line.length > 0);
+
+  // Student Initials
+  const initials = studentDisplayName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('');
+
+  return (
+    <View style={styles.container}>
+      {/* Back Navigation Bar */}
+      <View style={styles.backRow}>
+        <TouchableOpacity
+          onPress={onBack}
+          style={styles.backButton}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.backIcon}>←</Text>
+          <Text style={styles.backText}>Back to Projects</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* 1. PROJECT INFORMATION (ABOVE ALONG WITH LAUNCH BUTTON) */}
+        <View style={styles.projectInfoCard}>
+          <View style={styles.cardAccentLine} />
+
+          {/* Title Header with Framework */}
+          <View style={styles.titleRow}>
+            <View style={styles.titleCol}>
+              <View style={styles.frameworkBadge}>
+                <Text style={styles.frameworkBadgeText}>
+                  {repository.framework.toUpperCase()}
+                </Text>
+              </View>
+              <Text style={styles.appName}>{repository.app_name}</Text>
+            </View>
+
+            {/* Orbiting Black Hole Motif */}
+            <View style={styles.blackHoleMotif}>
+              <View style={styles.blackHoleAura} />
+              <View style={styles.blackHoleRing} />
+              <View style={styles.blackHoleCore} />
+            </View>
+          </View>
+
+          {/* One-Liner Description */}
+          <Text style={styles.oneLinerText}>{repository.one_liner}</Text>
+
+          {/* Active Deployment Runtime URL Tile */}
+          <View style={styles.endpointTile}>
+            <View style={styles.endpointLeft}>
+              <Text style={styles.endpointIcon}>🔒</Text>
+              <View style={styles.endpointTextCol}>
+                <Text style={styles.endpointTitle}>ENDPOINT URL</Text>
+                <Text style={styles.endpointUrl} numberOfLines={1}>
+                  {repository.agent_execution_url}
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.copyBtn}
+              onPress={handleCopyEndpoint}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.copyBtnText}>
+                {copied ? 'COPIED' : 'COPY'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Prominent Launch App Button Right with Project Information */}
+          <TouchableOpacity
+            style={styles.launchBtn}
+            onPress={handleLaunchAgent}
+            disabled={isLaunching}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.launchBtnIcon}>🚀</Text>
+            <Text style={styles.launchBtnText}>
+              {isLaunching ? 'Opening Runtime...' : 'Launch App'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 2. COMPLETE SYSTEM PROMPT MONOSPACE HORIZON (MIDDLE) */}
+        <View style={styles.terminalSection}>
+          <View style={styles.terminalHeaderRow}>
+            <Text style={styles.sectionHeader}>System Prompt</Text>
+            <View style={styles.lockedPromptBadge}>
+              <Text style={styles.lockedIcon}>🔒</Text>
+              <Text style={styles.lockedText}>LOCKED PROMPT</Text>
+            </View>
+          </View>
+
+          <View style={styles.terminalWindow}>
+            {/* Window Header */}
+            <View style={styles.terminalHeader}>
+              <View style={styles.terminalDots}>
+                <View style={[styles.terminalDot, { backgroundColor: STITCH_COLORS.primaryContainer }]} />
+                <View style={[styles.terminalDot, { backgroundColor: STITCH_COLORS.secondary }]} />
+                <View style={[styles.terminalDot, { backgroundColor: STITCH_COLORS.surfaceContainerHighest }]} />
+                <Text style={styles.terminalFileName}>{promptFileName}</Text>
+              </View>
+              <Text style={styles.terminalEncoding}>UTF-8</Text>
+            </View>
+
+            {/* Terminal Monospace Content */}
+            <View style={styles.terminalBody}>
+              {promptLines.length === 0 ? (
+                <Text style={styles.terminalEmptyText}>[Empty System Prompt]</Text>
+              ) : (
+                promptLines.map((line, index) => {
+                  const lineNum = String(index + 1).padStart(2, '0');
+                  return (
+                    <View key={index} style={styles.promptLineRow}>
+                      <Text style={styles.promptLineNumber}>{lineNum}</Text>
+                      <Text style={styles.promptLineCode}>{line}</Text>
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          </View>
+        </View>
+
+        {/* 3. PROJECT OWNER DETAILS (BOTTOM) */}
+        <View style={styles.ownerCard}>
+          <Text style={styles.sectionHeader}>Project Owner</Text>
+
+          <View style={styles.ownerHeader}>
+            <View style={styles.initialsAvatar}>
+              <Text style={styles.initialsText}>{initials || '👤'}</Text>
+            </View>
+            <View style={styles.ownerDetails}>
+              <View style={styles.ownerNameRow}>
+                <Text style={styles.ownerName}>{studentDisplayName}</Text>
+                <Text style={styles.verifiedBadge}>✓</Text>
+              </View>
+              <Text style={styles.ownerSub}>{universityText}</Text>
+              <Text style={styles.ownerEmail}>{repository.student_email}</Text>
+            </View>
+          </View>
+
+          <View style={styles.ownerFooterRow}>
+            <View style={styles.ownerMetaTag}>
+              <Text style={styles.ownerMetaLabel}>PUBLISHED</Text>
+              <Text style={styles.ownerMetaValue}>{formattedDate}</Text>
+            </View>
+            <View style={styles.ownerMetaTag}>
+              <Text style={styles.ownerMetaLabel}>FRAMEWORK</Text>
+              <Text style={styles.ownerMetaValue}>{repository.framework}</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={{ height: 32 }} />
+      </ScrollView>
+    </View>
+  );
+};
+
+interface ProjectDetailSheetProps {
+  repository: Repository | null;
+  visible: boolean;
+  onClose: () => void;
+}
+
+export const ProjectDetailSheet: React.FC<ProjectDetailSheetProps> = ({
+  repository,
+  visible,
+  onClose,
+}) => {
+  if (!repository) return null;
+
   return (
     <Modal
       animationType="slide"
@@ -97,334 +305,388 @@ export const ProjectDetailSheet: React.FC<ProjectDetailSheetProps> = ({
       visible={visible}
       onRequestClose={onClose}
     >
-      <SafeAreaView style={styles.safeArea}>
-        {/* Top Bar */}
-        <View style={styles.topBar}>
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={onClose}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.closeButtonText}>← Back to Feed</Text>
-          </TouchableOpacity>
-          <View style={styles.topBarBadge}>
-            <Text style={styles.topBarBadgeText}>Blueprint Detail</Text>
-          </View>
-        </View>
-
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={true}
-        >
-          {/* Header Section */}
-          <View style={styles.headerSection}>
-            <View style={styles.titleRow}>
-              <Text style={styles.appName}>{repository.app_name}</Text>
-            </View>
-
-            <View style={styles.badgeRow}>
-              <View style={styles.frameworkBadge}>
-                <Text style={styles.frameworkBadgeText}>
-                  {repository.framework}
-                </Text>
-              </View>
-              {repository.created_at ? (
-                <Text style={styles.dateText}>
-                  Added {new Date(repository.created_at).toLocaleDateString()}
-                </Text>
-              ) : null}
-            </View>
-
-            {/* One-Liner */}
-            <View style={styles.oneLinerCard}>
-              <Text style={styles.oneLinerText}>{repository.one_liner}</Text>
-            </View>
-          </View>
-
-          {/* Student & University Metadata */}
-          <View style={styles.sectionCard}>
-            <Text style={styles.sectionHeader}>Builder Information</Text>
-
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Student Name</Text>
-              <Text style={styles.metaValue}>{studentDisplayName}</Text>
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>University</Text>
-              <Text style={styles.metaValue}>{universityText}</Text>
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Student Email</Text>
-              <Text style={styles.metaSubValue}>{repository.student_email}</Text>
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Orchestration Framework</Text>
-              <Text style={styles.metaValue}>{repository.framework}</Text>
-            </View>
-          </View>
-
-          {/* System Prompt Section */}
-          <View style={styles.sectionCard}>
-            <View style={styles.promptHeaderRow}>
-              <Text style={styles.sectionHeader}>Complete System Prompt</Text>
-              <View style={styles.promptTag}>
-                <Text style={styles.promptTagText}>Raw Prompt</Text>
-              </View>
-            </View>
-            <Text style={styles.promptSubtitle}>
-              Full operational instructions guiding this agent's reasoning
-            </Text>
-
-            {/* Scrollable readable prompt container */}
-            <View style={styles.promptContainer}>
-              <ScrollView
-                style={styles.promptScrollView}
-                nestedScrollEnabled={true}
-                showsVerticalScrollIndicator={true}
-              >
-                <Text style={styles.promptText}>
-                  {repository.system_prompt}
-                </Text>
-              </ScrollView>
-            </View>
-          </View>
-
-          {/* Deployment Runtime Target */}
-          <View style={styles.deploymentCard}>
-            <Text style={styles.deploymentLabel}>Active Deployment Runtime</Text>
-            <Text style={styles.deploymentUrl} numberOfLines={1}>
-              {repository.agent_execution_url}
-            </Text>
-          </View>
-
-          {/* Launch Agent Action */}
-          <View style={styles.actionContainer}>
-            <Button
-              title={isLaunching ? 'Opening Runtime...' : 'Launch Agent 🚀'}
-              onPress={handleLaunchAgent}
-              loading={isLaunching}
-              disabled={isLaunching}
-              style={styles.launchButton}
-              testID="launch-agent-button"
-            />
-          </View>
-        </ScrollView>
+      <SafeAreaView style={styles.safeAreaModal}>
+        <ProjectDetailView repository={repository} onBack={onClose} />
       </SafeAreaView>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: STITCH_COLORS.background,
   },
-  topBar: {
+  safeAreaModal: {
+    flex: 1,
+    backgroundColor: STITCH_COLORS.background,
+  },
+  backRow: {
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: STITCH_COLORS.surfaceContainerHighest + '40',
   },
-  closeButton: {
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 6,
-    paddingRight: 12,
   },
-  closeButtonText: {
-    color: '#2563EB',
-    fontSize: 15,
+  backIcon: {
+    fontSize: 18,
+    color: STITCH_COLORS.primary,
     fontWeight: '700',
+    marginRight: 6,
   },
-  topBarBadge: {
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#C7D2FE',
-  },
-  topBarBadgeText: {
-    color: '#4338CA',
-    fontSize: 12,
-    fontWeight: '700',
+  backText: {
+    fontSize: 13,
+    color: STITCH_COLORS.onSurface,
+    fontWeight: '600',
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    paddingBottom: 40,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 24,
   },
-  headerSection: {
-    marginBottom: 20,
+  projectInfoCard: {
+    backgroundColor: STITCH_COLORS.surfaceContainerLow,
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: STITCH_COLORS.surfaceContainerHighest + '60',
+    overflow: 'hidden',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 4,
+  },
+  cardAccentLine: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 2,
+    backgroundColor: STITCH_COLORS.primaryContainer,
   },
   titleRow: {
-    marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  titleCol: {
+    flex: 1,
+    marginRight: 12,
+  },
+  frameworkBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: STITCH_COLORS.surfaceContainerHighest,
+    marginBottom: 6,
+  },
+  frameworkBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: STITCH_COLORS.primary,
+    letterSpacing: 0.8,
   },
   appName: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#0F172A',
-    letterSpacing: -0.5,
+    fontSize: 22,
+    fontWeight: '700',
+    color: STITCH_COLORS.onSurface,
+    letterSpacing: -0.4,
   },
-  badgeRow: {
+  blackHoleMotif: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  blackHoleAura: {
+    position: 'absolute',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: STITCH_COLORS.primaryContainer,
+    opacity: 0.25,
+  },
+  blackHoleRing: {
+    position: 'absolute',
+    width: 32,
+    height: 14,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: STITCH_COLORS.primaryContainer,
+    transform: [{ rotate: '-25deg' }],
+  },
+  blackHoleCore: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
+    borderWidth: 1,
+    borderColor: STITCH_COLORS.secondary + '80',
+  },
+  oneLinerText: {
+    fontSize: 14,
+    color: STITCH_COLORS.onSurfaceVariant,
+    lineHeight: 20,
+    marginBottom: 14,
+  },
+  endpointTile: {
+    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
+    padding: 10,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: STITCH_COLORS.outlineVariant + '40',
+    marginBottom: 14,
+  },
+  endpointLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 10,
+  },
+  endpointIcon: {
+    fontSize: 14,
+    marginRight: 8,
+  },
+  endpointTextCol: {
+    flex: 1,
+  },
+  endpointTitle: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: STITCH_COLORS.secondary,
+    letterSpacing: 0.8,
+  },
+  endpointUrl: {
+    fontSize: 11,
+    color: STITCH_COLORS.onSurfaceVariant,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    marginTop: 1,
+  },
+  copyBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    backgroundColor: STITCH_COLORS.surfaceContainerHigh,
+  },
+  copyBtnText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: STITCH_COLORS.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  launchBtn: {
+    width: '100%',
+    paddingVertical: 13,
+    borderRadius: 10,
+    backgroundColor: STITCH_COLORS.primaryContainer,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    shadowColor: STITCH_COLORS.primaryContainer,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  launchBtnIcon: {
+    fontSize: 16,
+    marginRight: 6,
+  },
+  launchBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.4,
+  },
+  terminalSection: {
+    marginBottom: 16,
+  },
+  sectionHeader: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: STITCH_COLORS.outline,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  lockedPromptBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  lockedIcon: {
+    fontSize: 11,
+    marginRight: 4,
+  },
+  lockedText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: STITCH_COLORS.primaryContainer,
+    letterSpacing: 0.8,
+  },
+  terminalWindow: {
+    borderRadius: 12,
+    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
+    borderWidth: 1,
+    borderColor: STITCH_COLORS.surfaceContainerHighest + '70',
+    overflow: 'hidden',
+  },
+  terminalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  terminalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: STITCH_COLORS.surfaceContainerLow,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: STITCH_COLORS.surfaceContainerHighest + '40',
+  },
+  terminalDots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  terminalDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 5,
+  },
+  terminalFileName: {
+    fontSize: 11,
+    color: STITCH_COLORS.onSurfaceVariant,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    marginLeft: 6,
+  },
+  terminalEncoding: {
+    fontSize: 10,
+    color: STITCH_COLORS.outline,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  terminalBody: {
+    padding: 12,
+  },
+  terminalEmptyText: {
+    color: STITCH_COLORS.outline,
+    fontSize: 12,
+    fontStyle: 'italic',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  promptLineRow: {
+    flexDirection: 'row',
+    marginVertical: 1,
+  },
+  promptLineNumber: {
+    width: 26,
+    fontSize: 11,
+    color: STITCH_COLORS.surfaceContainerHighest,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  promptLineCode: {
+    flex: 1,
+    fontSize: 11,
+    color: STITCH_COLORS.onSurfaceVariant,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    lineHeight: 16,
+  },
+  ownerCard: {
+    backgroundColor: STITCH_COLORS.surfaceContainerLow,
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: STITCH_COLORS.surfaceContainerHighest + '50',
+  },
+  ownerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 14,
-    gap: 10,
   },
-  frameworkBadge: {
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  frameworkBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#1D4ED8',
-  },
-  dateText: {
-    fontSize: 13,
-    color: '#94A3B8',
-  },
-  oneLinerCard: {
-    backgroundColor: '#FFFFFF',
-    borderLeftWidth: 4,
-    borderLeftColor: '#2563EB',
-    borderRadius: 10,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  oneLinerText: {
-    fontSize: 15,
-    color: '#1E293B',
-    lineHeight: 22,
-    fontWeight: '500',
-  },
-  sectionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 18,
-    marginBottom: 18,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  sectionHeader: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 12,
-  },
-  metaRow: {
-    marginVertical: 4,
-  },
-  metaLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#64748B',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  metaValue: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#0F172A',
-  },
-  metaSubValue: {
-    fontSize: 14,
-    color: '#475569',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#F1F5F9',
-    marginVertical: 10,
-  },
-  promptHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  initialsAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: STITCH_COLORS.surfaceContainerHigh,
     alignItems: 'center',
-    marginBottom: 4,
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: STITCH_COLORS.primaryContainer + '80',
+    marginRight: 12,
   },
-  promptTag: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
+  initialsText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: STITCH_COLORS.primary,
   },
-  promptTagText: {
-    fontSize: 11,
-    color: '#475569',
+  ownerDetails: {
+    flex: 1,
+  },
+  ownerNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ownerName: {
+    fontSize: 15,
     fontWeight: '700',
+    color: STITCH_COLORS.onSurface,
   },
-  promptSubtitle: {
-    fontSize: 13,
-    color: '#64748B',
-    marginBottom: 12,
+  verifiedBadge: {
+    fontSize: 12,
+    color: STITCH_COLORS.primary,
+    marginLeft: 4,
+    fontWeight: '800',
   },
-  promptContainer: {
-    backgroundColor: '#0F172A',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#1E293B',
-    padding: 14,
-    maxHeight: 240,
+  ownerSub: {
+    fontSize: 12,
+    color: STITCH_COLORS.secondary,
+    marginTop: 1,
+    fontWeight: '600',
   },
-  promptScrollView: {
-    maxHeight: 210,
-  },
-  promptText: {
-    color: '#F8FAFC',
-    fontSize: 13,
-    lineHeight: 20,
+  ownerEmail: {
+    fontSize: 11,
+    color: STITCH_COLORS.outline,
+    marginTop: 1,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
-  deploymentCard: {
-    backgroundColor: '#EFF6FF',
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    marginBottom: 20,
+  ownerFooterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: STITCH_COLORS.surfaceContainerHighest + '40',
   },
-  deploymentLabel: {
-    fontSize: 12,
+  ownerMetaTag: {
+    flexDirection: 'column',
+  },
+  ownerMetaLabel: {
+    fontSize: 9,
     fontWeight: '700',
-    color: '#1E40AF',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
+    color: STITCH_COLORS.outline,
+    letterSpacing: 0.8,
   },
-  deploymentUrl: {
-    fontSize: 13,
-    color: '#1E3A8A',
+  ownerMetaValue: {
+    fontSize: 12,
     fontWeight: '600',
-  },
-  actionContainer: {
-    marginTop: 4,
-  },
-  launchButton: {
-    backgroundColor: '#2563EB',
-    minHeight: 52,
-    borderRadius: 12,
+    color: STITCH_COLORS.onSurfaceVariant,
+    marginTop: 2,
   },
 });

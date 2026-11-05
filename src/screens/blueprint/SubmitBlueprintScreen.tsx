@@ -9,19 +9,20 @@ import {
   Platform,
   TouchableOpacity,
   Alert,
+  Image,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { BlueprintFormData, BlueprintFormErrors } from '../../types/blueprint';
 import { createRepository } from '../../services/repositories';
+import { STITCH_COLORS, STITCH_ASSETS } from '../../constants/theme';
 
 const FRAMEWORK_SUGGESTIONS = [
-  'LangChain',
-  'LlamaIndex',
+  'LangGraph',
   'CrewAI',
+  'DSPy',
   'AutoGen',
-  'Custom',
 ];
 
 interface SubmitBlueprintScreenProps {
@@ -202,13 +203,24 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
         onSuccess();
       }
     } catch (err: any) {
-      const msg = err?.message || 'An unexpected error occurred while publishing.';
+      console.error('[SubmitBlueprint] Unexpected error:', err);
+      const msg = err?.message || 'Failed to submit blueprint.';
       setSubmitError(msg);
       Alert.alert('Error', msg);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const getFieldError = (field: keyof BlueprintFormData): string | null => {
+    if (submitted || touched[field]) {
+      return errors[field] || null;
+    }
+    return null;
+  };
+
+  const oneLinerCharCount = formData.oneLiner.length;
+  const isOneLinerOverLimit = oneLinerCharCount > 140;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -220,172 +232,158 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Ambient Glow */}
+          <View style={styles.ambientGlow} pointerEvents="none" />
+
           {/* Header */}
           <View style={styles.header}>
-            <View style={styles.headerTag}>
-              <Text style={styles.headerTagText}>MVP Application Blueprint</Text>
+            <View style={styles.badgeRow}>
+              <View style={styles.pingBeacon} />
+              <Text style={styles.badgeText}>APPLICATION BLUEPRINT</Text>
             </View>
-            <Text style={styles.title}>Submit Blueprint</Text>
+            <Text style={styles.title}>Submit Project</Text>
             <Text style={styles.subtitle}>
-              Publish your student-built AI application to the ForgeAI repository.
+              Publish your student AI application to the ForgeAI singularity repository.
             </Text>
           </View>
 
-          {/* Form Card */}
+          {/* Form Surface Card */}
           <View style={styles.card}>
-            {/* Feedback Banners */}
-            {submitSuccess ? (
+            <View style={styles.photonLine} />
+
+            {submitSuccess && (
               <View style={styles.successBanner}>
                 <Text style={styles.successBannerText}>
-                  Blueprint published successfully to public.repositories!
+                  ✓ Blueprint published successfully to Supabase!
                 </Text>
               </View>
-            ) : null}
+            )}
 
-            {submitError ? (
+            {submitError && (
               <View style={styles.errorBanner}>
                 <Text style={styles.errorBannerText}>{submitError}</Text>
               </View>
-            ) : null}
+            )}
 
             {/* Field 1: App Name */}
-            <Input
-              label="App Name *"
-              value={formData.appName}
-              onChangeText={(text) => handleFieldChange('appName', text)}
-              placeholder="e.g., StudyBuddy AI"
-              error={(touched.appName || submitted) ? errors.appName : null}
-              testID="blueprint-app-name-input"
-            />
+            <View style={styles.formGroup}>
+              <Input
+                label="App Name *"
+                value={formData.appName}
+                onChangeText={(text) => handleFieldChange('appName', text)}
+                placeholder="e.g., CampusSyllabus Copilot"
+                error={getFieldError('appName')}
+                autoCapitalize="words"
+                containerStyle={styles.inputContainer}
+                testID="blueprint-app-name-input"
+              />
+            </View>
 
-            {/* Field 2: One-Liner (140 max) */}
-            <Input
-              label="One-Liner *"
-              value={formData.oneLiner}
-              onChangeText={(text) => handleFieldChange('oneLiner', text)}
-              placeholder="A concise summary of what your agent accomplishes..."
-              maxLength={140}
-              rightLabel={`${formData.oneLiner.length}/140`}
-              error={(touched.oneLiner || submitted) ? errors.oneLiner : null}
-              helperText="Maximum 140 characters describing core functionality."
-              testID="blueprint-one-liner-input"
-            />
+            {/* Field 2: One-Liner (0/140) */}
+            <View style={styles.formGroup}>
+              <Input
+                label="One-Liner *"
+                value={formData.oneLiner}
+                onChangeText={(text) => handleFieldChange('oneLiner', text)}
+                placeholder="Brief description of what your AI agent accomplishes..."
+                maxLength={150}
+                multiline
+                numberOfLines={3}
+                rightLabel={`${oneLinerCharCount}/140`}
+                error={getFieldError('oneLiner')}
+                containerStyle={styles.inputContainer}
+                testID="blueprint-one-liner-input"
+              />
+            </View>
 
             {/* Field 3: Orchestration Framework */}
-            <View style={styles.frameworkContainer}>
-              <Input
-                label="Orchestration Framework *"
-                value={formData.orchestrationFramework}
-                onChangeText={(text) =>
-                  handleFieldChange('orchestrationFramework', text)
-                }
-                placeholder="e.g., LangChain, LlamaIndex, CrewAI"
-                error={
-                  (touched.orchestrationFramework || submitted)
-                    ? errors.orchestrationFramework
-                    : null
-                }
-                testID="blueprint-framework-input"
-              />
-              <Text style={styles.chipHeader}>Suggested frameworks:</Text>
-              <View style={styles.chipsRow}>
-                {FRAMEWORK_SUGGESTIONS.map((framework) => {
+            <View style={styles.formGroup}>
+              <Text style={styles.fieldLabel}>Orchestration Framework *</Text>
+              <View style={styles.chipsContainer}>
+                {FRAMEWORK_SUGGESTIONS.map((fw) => {
                   const isSelected =
-                    formData.orchestrationFramework.trim().toLowerCase() ===
-                    framework.toLowerCase();
+                    formData.orchestrationFramework.toLowerCase() ===
+                    fw.toLowerCase();
                   return (
                     <TouchableOpacity
-                      key={framework}
+                      key={fw}
                       style={[
                         styles.chip,
-                        isSelected && styles.chipSelected,
+                        isSelected && styles.chipActive,
                       ]}
-                      onPress={() =>
-                        handleFieldChange('orchestrationFramework', framework)
-                      }
+                      onPress={() => {
+                        handleFieldChange(
+                          'orchestrationFramework',
+                          isSelected ? '' : fw
+                        );
+                      }}
                       activeOpacity={0.7}
                     >
                       <Text
                         style={[
                           styles.chipText,
-                          isSelected && styles.chipTextSelected,
+                          isSelected && styles.chipTextActive,
                         ]}
                       >
-                        {framework}
+                        {fw}
                       </Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
+              {getFieldError('orchestrationFramework') ? (
+                <Text style={styles.errorText}>
+                  {getFieldError('orchestrationFramework')}
+                </Text>
+              ) : null}
             </View>
 
             {/* Field 4: Complete System Prompt */}
-            <Input
-              label="Complete System Prompt *"
-              value={formData.systemPrompt}
-              onChangeText={(text) => handleFieldChange('systemPrompt', text)}
-              placeholder="Paste the full, unaltered instructions that guide your agent's reasoning..."
-              multiline
-              numberOfLines={6}
-              error={
-                (touched.systemPrompt || submitted) ? errors.systemPrompt : null
-              }
-              helperText="The complete system prompt powering your application."
-              testID="blueprint-system-prompt-input"
-            />
+            <View style={styles.formGroup}>
+              <View style={styles.terminalLabelRow}>
+                <Text style={styles.fieldLabel}>Complete System Prompt *</Text>
+                <Text style={styles.terminalPromptTag}>agent_system_v1.prompt</Text>
+              </View>
+              <Input
+                value={formData.systemPrompt}
+                onChangeText={(text) => handleFieldChange('systemPrompt', text)}
+                placeholder="Paste the full, exact system prompt used by your agent..."
+                multiline
+                numberOfLines={6}
+                error={getFieldError('systemPrompt')}
+                containerStyle={styles.inputContainer}
+                testID="blueprint-system-prompt-input"
+              />
+            </View>
 
             {/* Field 5: Active Deployment Runtime URL */}
-            <Input
-              label="Active Deployment Runtime URL *"
-              value={formData.deploymentUrl}
-              onChangeText={(text) => handleFieldChange('deploymentUrl', text)}
-              placeholder="https://your-agent.up.railway.app"
-              keyboardType="url"
-              autoCapitalize="none"
-              error={
-                (touched.deploymentUrl || submitted)
-                  ? errors.deploymentUrl
-                  : null
-              }
-              helperText="Direct public endpoint where the agent is running."
-              testID="blueprint-deployment-url-input"
-            />
-
-            {/* Form Validation Summary Notice if Invalid */}
-            {!isFormValid && submitted ? (
-              <View style={styles.validationNotice}>
-                <Text style={styles.validationNoticeText}>
-                  Please complete all required fields with valid values before
-                  publishing.
-                </Text>
-              </View>
-            ) : null}
-
-            {/* Actions */}
-            <View style={styles.actionButtons}>
-              <Button
-                title={isSubmitting ? 'Publishing...' : 'Publish Blueprint'}
-                onPress={handlePublish}
-                disabled={!isFormValid || isSubmitting}
-                loading={isSubmitting}
-                style={!isFormValid || isSubmitting ? styles.disabledButton : undefined}
-                testID="blueprint-publish-button"
+            <View style={styles.formGroup}>
+              <Input
+                label="Active Deployment Runtime URL *"
+                value={formData.deploymentUrl}
+                onChangeText={(text) =>
+                  handleFieldChange('deploymentUrl', text)
+                }
+                placeholder="https://agent.example.com/api"
+                keyboardType="url"
+                autoCapitalize="none"
+                error={getFieldError('deploymentUrl')}
+                helperText="Must be a valid HTTP or HTTPS endpoint accessible by external clients."
+                containerStyle={styles.inputContainer}
+                testID="blueprint-deployment-url-input"
               />
-
-              {(formData.appName ||
-                formData.oneLiner ||
-                formData.orchestrationFramework ||
-                formData.systemPrompt ||
-                formData.deploymentUrl) && !isSubmitting ? (
-                <TouchableOpacity
-                  style={styles.resetButton}
-                  onPress={handleReset}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.resetButtonText}>Clear Form</Text>
-                </TouchableOpacity>
-              ) : null}
             </View>
+
+            {/* Submit Action */}
+            <Button
+              title="Publish Blueprint"
+              onPress={handlePublish}
+              loading={isSubmitting}
+              disabled={isSubmitting || !isFormValid}
+              icon={<Text style={styles.publishIcon}>🚀</Text>}
+              style={styles.publishBtn}
+              testID="blueprint-publish-button"
+            />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -396,147 +394,173 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: STITCH_COLORS.background,
   },
   keyboardContainer: {
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 24,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 40,
+  },
+  ambientGlow: {
+    position: 'absolute',
+    top: -40,
+    alignSelf: 'center',
+    width: 260,
+    height: 180,
+    borderRadius: 130,
+    backgroundColor: STITCH_COLORS.primaryContainer,
+    opacity: 0.1,
   },
   header: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  headerTag: {
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#C7D2FE',
-    marginBottom: 8,
+    backgroundColor: STITCH_COLORS.surfaceContainerHigh,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    marginBottom: 6,
   },
-  headerTagText: {
-    color: '#4338CA',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+  pingBeacon: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: STITCH_COLORS.primaryContainer,
+    marginRight: 6,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: STITCH_COLORS.primary,
+    letterSpacing: 1.2,
   },
   title: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontSize: 24,
+    fontWeight: '700',
+    color: STITCH_COLORS.onSurface,
     letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#64748B',
+    fontSize: 13,
+    color: STITCH_COLORS.onSurfaceVariant,
     marginTop: 4,
-    lineHeight: 20,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: STITCH_COLORS.surfaceContainerLow,
     borderRadius: 16,
-    padding: 20,
+    padding: 18,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 2,
+    borderColor: STITCH_COLORS.surfaceContainerHighest + '60',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 4,
+    overflow: 'hidden',
   },
-  frameworkContainer: {
-    marginBottom: 16,
+  photonLine: {
+    position: 'absolute',
+    top: 0,
+    left: 20,
+    right: 20,
+    height: 2,
+    backgroundColor: STITCH_COLORS.primaryContainer,
+    opacity: 0.7,
   },
-  chipHeader: {
+  successBanner: {
+    backgroundColor: '#064E3B',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: STITCH_COLORS.success,
+  },
+  successBannerText: {
+    color: '#D1FAE5',
     fontSize: 12,
-    color: '#64748B',
-    fontWeight: '600',
-    marginBottom: 8,
-    marginTop: -8,
+    fontWeight: '700',
   },
-  chipsRow: {
+  errorBanner: {
+    backgroundColor: STITCH_COLORS.errorContainer,
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: STITCH_COLORS.error,
+  },
+  errorBannerText: {
+    color: STITCH_COLORS.onSurface,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  formGroup: {
+    marginBottom: 20,
+  },
+  inputContainer: {
+    marginVertical: 0,
+  },
+  fieldLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: STITCH_COLORS.onSurfaceVariant,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  terminalLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  terminalPromptTag: {
+    fontSize: 10,
+    color: STITCH_COLORS.outline,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  chipsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
   chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: STITCH_COLORS.surfaceContainerHigh,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: STITCH_COLORS.surfaceContainerHighest,
   },
-  chipSelected: {
-    backgroundColor: '#2563EB',
-    borderColor: '#1D4ED8',
+  chipActive: {
+    backgroundColor: STITCH_COLORS.primaryContainer,
+    borderColor: STITCH_COLORS.primaryContainer,
   },
   chipText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#334155',
+    color: STITCH_COLORS.onSurfaceVariant,
   },
-  chipTextSelected: {
+  chipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  errorText: {
+    marginTop: 6,
+    fontSize: 12,
+    color: STITCH_COLORS.error,
+    fontWeight: '500',
+  },
+  publishIcon: {
+    fontSize: 16,
     color: '#FFFFFF',
   },
-  validationNotice: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 14,
-  },
-  validationNoticeText: {
-    color: '#B91C1C',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  successBanner: {
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1,
-    borderColor: '#86EFAC',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-  },
-  successBannerText: {
-    color: '#166534',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  errorBanner: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-  },
-  errorBannerText: {
-    color: '#B91C1C',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  actionButtons: {
-    marginTop: 8,
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  resetButton: {
-    alignItems: 'center',
-    paddingVertical: 12,
-    marginTop: 4,
-  },
-  resetButtonText: {
-    color: '#64748B',
-    fontSize: 14,
-    fontWeight: '600',
+  publishBtn: {
+    marginTop: 14,
   },
 });
