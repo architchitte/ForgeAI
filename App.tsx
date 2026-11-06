@@ -3,12 +3,12 @@ import { StatusBar } from 'expo-status-bar';
 import * as WebBrowser from 'expo-web-browser';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
   StyleSheet,
   View,
   ActivityIndicator,
   Text,
-  SafeAreaView,
   TouchableOpacity,
   Image,
   Platform,
@@ -253,10 +253,12 @@ export default function App() {
   }
 
   return (
-    <AuthProvider>
-      <MainNavigator />
-      <StatusBar style="light" />
-    </AuthProvider>
+    <SafeAreaProvider style={styles.rootBackdrop}>
+      <AuthProvider>
+        <MainNavigator />
+        <StatusBar style="light" />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 

@@ -4,13 +4,13 @@ import {
   Text,
   StyleSheet,
   Modal,
-  SafeAreaView,
   ScrollView,
   Alert,
   Platform,
   Linking,
   BackHandler,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import { Repository } from '../../types/repository';
 import { STITCH_COLORS } from '../../constants/theme';

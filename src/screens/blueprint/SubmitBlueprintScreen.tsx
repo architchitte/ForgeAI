@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
@@ -223,7 +222,7 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
   const oneLinerCharCount = formData.oneLiner.length;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <KeyboardAvoidingView
         style={styles.keyboardContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -386,7 +385,7 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 

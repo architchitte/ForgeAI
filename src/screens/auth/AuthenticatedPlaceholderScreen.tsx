@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   Platform,
   Image,
@@ -14,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Linking,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { STITCH_COLORS } from '../../constants/theme';
 import { FONTS } from '../../constants/typography';
@@ -45,6 +45,7 @@ export const AuthenticatedPlaceholderScreen: React.FC<
   AuthenticatedPlaceholderScreenProps
 > = ({ onNavigateToSubmitBlueprint, onSelectRepository }) => {
   const { user, signOut, authActionLoading, updateUserName } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const fullName =
     (user?.user_metadata?.full_name ||
@@ -297,7 +298,7 @@ export const AuthenticatedPlaceholderScreen: React.FC<
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <ScrollView
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
@@ -572,7 +573,15 @@ export const AuthenticatedPlaceholderScreen: React.FC<
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.modalOverlay}
         >
-          <FadeInView offset={48} style={styles.modalContent}>
+          <FadeInView
+            offset={48}
+            style={[
+              styles.modalContent,
+              // Edge-to-edge Android draws the sheet under the navigation bar;
+              // iOS keeps its original fixed padding.
+              Platform.OS === 'android' && { paddingBottom: 20 + insets.bottom },
+            ]}
+          >
             {/* Modal Header */}
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderTitleCol}>
@@ -736,7 +745,7 @@ export const AuthenticatedPlaceholderScreen: React.FC<
           </FadeInView>
         </KeyboardAvoidingView>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 
