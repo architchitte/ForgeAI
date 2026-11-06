@@ -116,6 +116,8 @@ export const updateRepository = async (
         ...(input.framework !== undefined ? { framework: input.framework } : {}),
         ...(input.system_prompt !== undefined ? { system_prompt: input.system_prompt } : {}),
         ...(input.agent_execution_url !== undefined ? { agent_execution_url: input.agent_execution_url } : {}),
+        ...(input.student_name !== undefined ? { student_name: input.student_name } : {}),
+        ...(input.university !== undefined ? { university: input.university } : {}),
       })
       .eq('id', id)
       .select()

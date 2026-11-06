@@ -44,12 +44,53 @@ import {
 } from './src/components/navigation/NavIcons';
 import RubberSegment from './src/components/navigation/RubberSegment';
 import { FadeInView } from './src/components/animation/FadeInView';
+import { TutorialOverlay } from './src/components/onboarding/TutorialOverlay';
+import { TUTORIAL_STEPS, shouldShowTutorial } from './src/constants/tutorial';
 
 type AuthenticatedTab = 'discover' | 'submit' | 'account';
 
 const AuthenticatedView: React.FC = () => {
+  const { user, completeTutorial } = useAuth();
   const [activeTab, setActiveTab] = useState<AuthenticatedTab>('discover');
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
+
+  // First-run tutorial: null = hidden, otherwise the current step index.
+  // Decided once on mount so a metadata refresh mid-tour doesn't restart it.
+  const [tutorialStep, setTutorialStep] = useState<number | null>(() =>
+    shouldShowTutorial(user) ? 0 : null
+  );
+
+  // Show the real tab each tutorial step describes behind the overlay.
+  useEffect(() => {
+    if (tutorialStep === null) return;
+    const step = TUTORIAL_STEPS[tutorialStep];
+    if (!step) return;
+    setSelectedRepo(null);
+    setActiveTab(step.tab);
+  }, [tutorialStep]);
+
+  const finishTutorial = useCallback(() => {
+    setTutorialStep(null);
+    setSelectedRepo(null);
+    setActiveTab('discover');
+    // Hide locally right away; a failed save only means it may show again.
+    completeTutorial().catch((err: any) => {
+      console.warn('[Tutorial] Failed to save completion:', err?.message || err);
+    });
+  }, [completeTutorial]);
+
+  const handleTutorialNext = useCallback(() => {
+    if (tutorialStep === null) return;
+    if (tutorialStep >= TUTORIAL_STEPS.length - 1) {
+      finishTutorial();
+    } else {
+      setTutorialStep(tutorialStep + 1);
+    }
+  }, [tutorialStep, finishTutorial]);
+
+  const handleTutorialBack = useCallback(() => {
+    setTutorialStep((i) => (i === null || i === 0 ? i : i - 1));
+  }, []);
 
   const handleSelectTab = (tab: AuthenticatedTab) => {
     setActiveTab(tab);
@@ -197,6 +238,16 @@ const AuthenticatedView: React.FC = () => {
           draggable
         />
       </View>
+
+      {tutorialStep !== null && (
+        <TutorialOverlay
+          steps={TUTORIAL_STEPS}
+          stepIndex={tutorialStep}
+          onNext={handleTutorialNext}
+          onBack={handleTutorialBack}
+          onSkip={finishTutorial}
+        />
+      )}
     </SafeAreaView>
   );
 };

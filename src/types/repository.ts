@@ -29,6 +29,8 @@ export interface UpdateRepositoryInput {
   framework?: string;
   system_prompt?: string;
   agent_execution_url?: string;
+  student_name?: string | null;
+  university?: string | null;
 }
 
 

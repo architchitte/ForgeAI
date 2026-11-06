@@ -34,6 +34,8 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   updateUserName: (name: string) => Promise<void>;
+  updateUserProfile: (profile: { name: string; university: string | null }) => Promise<void>;
+  completeTutorial: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -206,14 +208,42 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!trimmed) {
       throw new Error('Name cannot be empty.');
     }
+    await saveUserMetadata({ full_name: trimmed, name: trimmed }, 'Failed to update name.');
+  };
+
+  // Saves name + university in a single auth.updateUser call.
+  const updateUserProfile = async ({
+    name,
+    university,
+  }: {
+    name: string;
+    university: string | null;
+  }) => {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      throw new Error('Name cannot be empty.');
+    }
+    const trimmedUniversity = university?.trim() || null;
+    await saveUserMetadata(
+      { full_name: trimmedName, name: trimmedName, university: trimmedUniversity },
+      'Failed to update profile.'
+    );
+  };
+
+  // Marks the first-run tutorial as seen so it never shows again on any device.
+  const completeTutorial = async () => {
+    await saveUserMetadata({ tutorial_completed: true }, 'Failed to save tutorial progress.');
+  };
+
+  const saveUserMetadata = async (
+    metadata: Record<string, string | boolean | null>,
+    fallbackMessage: string
+  ) => {
     try {
       setAuthActionLoading(true);
       setError(null);
       const { data, error: updateErr } = await supabase.auth.updateUser({
-        data: {
-          full_name: trimmed,
-          name: trimmed,
-        },
+        data: metadata,
       });
       if (updateErr) {
         throw updateErr;
@@ -222,7 +252,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(data.user);
       }
     } catch (err: any) {
-      const message = err?.message || 'Failed to update name.';
+      const message = err?.message || fallbackMessage;
       setError(message);
       throw err;
     } finally {
@@ -244,6 +274,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         signInWithGoogle,
         signOut,
         updateUserName,
+        updateUserProfile,
+        completeTutorial,
       }}
     >
       {children}

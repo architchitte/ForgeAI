@@ -45,7 +45,7 @@ interface AuthenticatedPlaceholderScreenProps {
 export const AuthenticatedPlaceholderScreen: React.FC<
   AuthenticatedPlaceholderScreenProps
 > = ({ onNavigateToSubmitBlueprint, onSelectRepository }) => {
-  const { user, signOut, authActionLoading, updateUserName } = useAuth();
+  const { user, signOut, authActionLoading, updateUserProfile } = useAuth();
   const insets = useSafeAreaInsets();
 
   const fullName =
@@ -73,11 +73,19 @@ export const AuthenticatedPlaceholderScreen: React.FC<
   // Edit Name State
   const [isEditingName, setIsEditingName] = useState<boolean>(false);
   const [editedName, setEditedName] = useState<string>(fullName);
+  const [editedUniversity, setEditedUniversity] = useState<string>('');
   const [savingName, setSavingName] = useState<boolean>(false);
   const [nameError, setNameError] = useState<string | null>(null);
 
   // User Projects State
   const [myProjects, setMyProjects] = useState<Repository[]>([]);
+
+  // Profile university lives in user_metadata; fall back to the newest project's
+  // value (list is created_at desc) for accounts whose metadata was never set.
+  const metadataUniversity = ((user?.user_metadata?.university as string) || '').trim();
+  const university =
+    metadataUniversity ||
+    (myProjects.find((p) => p.university && p.university.trim())?.university?.trim() ?? '');
   const [loadingProjects, setLoadingProjects] = useState<boolean>(true);
   const [projectsError, setProjectsError] = useState<string | null>(null);
 
@@ -200,10 +208,17 @@ export const AuthenticatedPlaceholderScreen: React.FC<
     );
   };
 
-  // Sync editedName when user metadata changes
+  // Sync edit fields when user metadata changes
   useEffect(() => {
     setEditedName(fullName);
   }, [fullName]);
+
+  const handleStartEdit = () => {
+    setEditedName(fullName);
+    setEditedUniversity(university);
+    setNameError(null);
+    setIsEditingName(true);
+  };
 
   // Load user's submitted blueprints
   const loadUserProjects = useCallback(async () => {
@@ -233,20 +248,53 @@ export const AuthenticatedPlaceholderScreen: React.FC<
       setNameError('Name cannot be empty.');
       return;
     }
+    const trimmedUniversity = editedUniversity.trim();
+    if (trimmedUniversity.length > 120) {
+      setNameError('University cannot exceed 120 characters.');
+      return;
+    }
+    const nextUniversity = trimmedUniversity || null;
+
     setNameError(null);
     setSavingName(true);
     try {
-      await updateUserName(trimmed);
+      await updateUserProfile({ name: trimmed, university: nextUniversity });
       setIsEditingName(false);
     } catch (err: any) {
-      setNameError(err?.message || 'Failed to update name.');
-    } finally {
+      setNameError(err?.message || 'Failed to update profile.');
       setSavingName(false);
+      return;
     }
+
+    // student_name and university are copied onto each project at publish
+    // time, so keep the user's existing projects in sync with the profile.
+    const stale = myProjects.filter(
+      (p) => (p.student_name || null) !== trimmed || (p.university || null) !== nextUniversity
+    );
+    if (stale.length > 0) {
+      const results = await Promise.all(
+        stale.map((p) =>
+          updateRepository(p.id, { student_name: trimmed, university: nextUniversity })
+        )
+      );
+      const updatedById = new Map(
+        results.filter((r) => r.data).map((r) => [r.data!.id, r.data!])
+      );
+      setMyProjects((prev) => prev.map((p) => updatedById.get(p.id) ?? p));
+      const failed = results.filter((r) => r.error).length;
+      if (failed > 0) {
+        Alert.alert(
+          'Profile Saved',
+          `Your profile was updated, but ${failed} project${failed > 1 ? 's' : ''} could not be updated with your new profile details.`
+        );
+      }
+    }
+    setSavingName(false);
   };
 
   const handleCancelEdit = () => {
     setEditedName(fullName);
+    setEditedUniversity(university);
     setNameError(null);
     setIsEditingName(false);
   };
@@ -325,12 +373,13 @@ export const AuthenticatedPlaceholderScreen: React.FC<
             {/* User Info & Inline Edit */}
             <View style={styles.userInfoCol}>
               {!isEditingName ? (
+                <>
                 <View style={styles.nameRow}>
                   <Text style={styles.userNameText} numberOfLines={1}>
                     {fullName}
                   </Text>
                   <PressableScale
-                    onPress={() => setIsEditingName(true)}
+                    onPress={handleStartEdit}
                     style={styles.editIconBtn}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     activeOpacity={0.7}
@@ -338,6 +387,13 @@ export const AuthenticatedPlaceholderScreen: React.FC<
                     <EditIcon size={13} color={STITCH_COLORS.outline} />
                   </PressableScale>
                 </View>
+                <Text
+                  style={[styles.universityText, !university && styles.universityPlaceholder]}
+                  numberOfLines={1}
+                >
+                  {university || 'Add your university'}
+                </Text>
+                </>
               ) : (
                 <View style={styles.nameEditBox}>
                   <TextInput
@@ -351,6 +407,18 @@ export const AuthenticatedPlaceholderScreen: React.FC<
                     placeholderTextColor={STITCH_COLORS.outline}
                     autoFocus
                   />
+                  <TextInput
+                    style={[styles.nameInput, styles.universityInput]}
+                    value={editedUniversity}
+                    onChangeText={(t) => {
+                      setEditedUniversity(t);
+                      if (nameError) setNameError(null);
+                    }}
+                    placeholder="University (optional)"
+                    placeholderTextColor={STITCH_COLORS.outline}
+                    maxLength={120}
+                    testID="university-input"
+                  />
                   <View style={styles.nameEditBtnRow}>
                     <PressableScale
                       style={styles.saveNameBtn}
@@ -359,9 +427,9 @@ export const AuthenticatedPlaceholderScreen: React.FC<
                       activeOpacity={0.7}
                     >
                       {savingName ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
+                        <ActivityIndicator size="small" color={STITCH_COLORS.onPrimary} />
                       ) : (
-                        <Text style={styles.saveNameBtnText}>✓</Text>
+                        <Text style={styles.saveNameBtnText}>Save</Text>
                       )}
                     </PressableScale>
                     <PressableScale
@@ -370,7 +438,7 @@ export const AuthenticatedPlaceholderScreen: React.FC<
                       disabled={savingName}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.cancelNameBtnText}>✕</Text>
+                      <Text style={styles.cancelNameBtnText}>Cancel</Text>
                     </PressableScale>
                   </View>
                   {nameError && <Text style={styles.nameErrorText}>{nameError}</Text>}
@@ -872,29 +940,33 @@ const styles = StyleSheet.create({
   },
   saveNameBtn: {
     backgroundColor: STITCH_COLORS.primary,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    minWidth: 72,
+    height: 32,
+    paddingHorizontal: 14,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   saveNameBtnText: {
-    color: '#ffffff',
-    fontSize: 12,
+    color: STITCH_COLORS.onPrimary,
+    fontSize: 13,
     fontFamily: FONTS.sans.semibold,
   },
   cancelNameBtn: {
     backgroundColor: STITCH_COLORS.surfaceContainerHigh,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    minWidth: 72,
+    height: 32,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: STITCH_COLORS.outlineVariant,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cancelNameBtnText: {
     color: STITCH_COLORS.onSurfaceVariant,
-    fontSize: 11,
-    fontFamily: FONTS.sans.semibold,
+    fontSize: 13,
+    fontFamily: FONTS.sans.medium,
   },
   nameErrorText: {
     fontSize: 11,
@@ -906,6 +978,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: STITCH_COLORS.onSurfaceVariant,
     marginTop: 2,
+    fontFamily: FONTS.sans.regular,
+  },
+  universityPlaceholder: {
+    color: STITCH_COLORS.outline,
+  },
+  universityInput: {
+    marginTop: 6,
+    fontSize: 13,
     fontFamily: FONTS.sans.regular,
   },
   verifiedEmailPill: {
