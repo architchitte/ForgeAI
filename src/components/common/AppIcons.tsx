@@ -155,4 +155,12 @@ export const RocketIcon: React.FC<IconProps> = ({
   color = '#FFFFFF',
 }) => <Ionicons name="rocket-outline" size={size} color={color} />;
 
+/**
+ * 18. Trash / Delete Icon
+ */
+export const TrashIcon: React.FC<IconProps> = ({
+  size = 14,
+  color = STITCH_COLORS.error,
+}) => <Feather name="trash-2" size={size} color={color} />;
+
 

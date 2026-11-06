@@ -10,10 +10,12 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  Linking,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/common/Button';
 import { STITCH_COLORS } from '../../constants/theme';
+import { PRIVACY_POLICY_URL } from '../../constants/privacy';
 import {
   MailIcon,
   LockIcon,
@@ -75,18 +77,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToSignUp }) 
     );
   };
 
-  const handleTerms = () => {
-    Alert.alert(
-      'Terms of Service',
-      'ForgeAI academic showcase and student agent publishing terms.'
-    );
-  };
-
-  const handlePrivacy = () => {
-    Alert.alert(
-      'Privacy Policy',
-      'ForgeAI data privacy and academic credential protection guidelines.'
-    );
+  const handlePrivacy = async () => {
+    try {
+      const canOpen = await Linking.canOpenURL(PRIVACY_POLICY_URL);
+      if (canOpen) {
+        await Linking.openURL(PRIVACY_POLICY_URL);
+      } else {
+        Alert.alert(
+          'Privacy Policy',
+          `Please visit our Privacy Policy at:\n${PRIVACY_POLICY_URL}`
+        );
+      }
+    } catch {
+      Alert.alert(
+        'Privacy Policy',
+        `Please visit our Privacy Policy at:\n${PRIVACY_POLICY_URL}`
+      );
+    }
   };
 
   const displayedError = localError || error;
@@ -208,7 +215,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToSignUp }) 
               title="Sign In"
               onPress={handleLogin}
               loading={authActionLoading}
-              rightIcon={<ArrowRightIcon size={16} color="#FFFFFF" />}
+              rightIcon={<ArrowRightIcon size={16} color="#000000" />}
               style={styles.submitBtn}
               testID="login-submit-button"
             />
@@ -240,10 +247,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToSignUp }) 
             </View>
 
             <View style={styles.legalLinksRow}>
-              <TouchableOpacity onPress={handleTerms} activeOpacity={0.7}>
-                <Text style={styles.legalLinkText}>Terms of Service</Text>
-              </TouchableOpacity>
-              <Text style={styles.legalDot}>•</Text>
               <TouchableOpacity onPress={handlePrivacy} activeOpacity={0.7}>
                 <Text style={styles.legalLinkText}>Privacy Policy</Text>
               </TouchableOpacity>
@@ -324,30 +327,25 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '100%',
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest, // #ffffff
-    borderRadius: 16,
+    backgroundColor: '#0A0A0A',
+    borderRadius: 12,
     padding: 20,
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest, // #dae2fd
+    borderColor: '#262626',
     marginTop: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
     gap: 14,
   },
   errorBanner: {
-    backgroundColor: STITCH_COLORS.errorContainer, // #ffdad6
-    borderRadius: 8,
+    backgroundColor: '#1F1F1F',
+    borderRadius: 6,
     padding: 10,
     borderLeftWidth: 3,
-    borderLeftColor: STITCH_COLORS.error,
+    borderLeftColor: '#737373',
   },
   errorBannerText: {
-    color: STITCH_COLORS.onErrorContainer,
+    color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   fieldGroup: {
     gap: 6,
@@ -359,27 +357,27 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 13,
-    fontWeight: '600',
-    color: STITCH_COLORS.onSurface,
+    fontWeight: '500',
+    color: '#EDEDED',
   },
   fieldLabelHint: {
     fontSize: 11,
-    color: STITCH_COLORS.onSurfaceVariant,
+    color: '#737373',
   },
   forgotPasswordText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: STITCH_COLORS.primaryContainer,
+    fontWeight: '500',
+    color: '#A1A1A1',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
+    backgroundColor: '#000000',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 10,
+    borderColor: '#262626',
+    borderRadius: 6,
     paddingHorizontal: 12,
-    height: 46,
+    height: 44,
   },
   inputIconWrapper: {
     marginRight: 10,
@@ -390,7 +388,7 @@ const styles = StyleSheet.create({
   textInput: {
     flex: 1,
     fontSize: 14,
-    color: STITCH_COLORS.onSurface,
+    color: '#EDEDED',
   },
   eyeToggleBtn: {
     padding: 6,
@@ -414,23 +412,23 @@ const styles = StyleSheet.create({
     height: 16,
     borderRadius: 4,
     borderWidth: 1.5,
-    borderColor: STITCH_COLORS.outlineVariant,
+    borderColor: '#454545',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#000000',
   },
   checkboxActive: {
-    backgroundColor: STITCH_COLORS.primaryContainer,
-    borderColor: STITCH_COLORS.primaryContainer,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
   },
   checkmarkIcon: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#ffffff',
+    color: '#000000',
   },
   rememberMeText: {
     fontSize: 12,
-    color: STITCH_COLORS.onSurfaceVariant,
+    color: '#A1A1A1',
   },
   sslBadge: {
     flexDirection: 'row',
@@ -441,21 +439,21 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: '#10b981',
+    backgroundColor: '#FFFFFF',
   },
   sslText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: STITCH_COLORS.tertiary,
+    fontWeight: '500',
+    color: '#EDEDED',
   },
   submitBtn: {
-    backgroundColor: STITCH_COLORS.primaryContainer,
-    borderRadius: 10,
-    minHeight: 46,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 6,
+    minHeight: 44,
     marginTop: 4,
   },
   buttonArrow: {
-    color: '#ffffff',
+    color: '#000000',
     fontSize: 14,
     marginLeft: 4,
   },
@@ -467,19 +465,21 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: STITCH_COLORS.surfaceContainerHigh,
+    backgroundColor: '#262626',
   },
   dividerText: {
     marginHorizontal: 10,
     fontSize: 11,
-    color: STITCH_COLORS.outline,
+    color: '#737373',
     textTransform: 'uppercase',
     letterSpacing: 0.6,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   ssoInfoCard: {
-    backgroundColor: STITCH_COLORS.surfaceContainerLow,
-    borderRadius: 10,
+    backgroundColor: '#111111',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#262626',
     padding: 12,
     flexDirection: 'row',
     gap: 8,

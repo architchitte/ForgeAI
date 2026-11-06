@@ -60,7 +60,7 @@ export const Button: React.FC<ButtonProps> = ({
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={isOutline ? STITCH_COLORS.primary : '#FFFFFF'}
+          color={isOutline || isGoogle || isSecondary ? '#FFFFFF' : '#000000'}
         />
       ) : (
         <View style={styles.contentRow}>
@@ -92,48 +92,35 @@ export const Button: React.FC<ButtonProps> = ({
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 48,
-    borderRadius: 12,
-    backgroundColor: STITCH_COLORS.primaryContainer,
+    minHeight: 46,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 16,
     marginVertical: 6,
     width: '100%',
-    shadowColor: STITCH_COLORS.primaryContainer,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 4,
   },
   googleButton: {
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
+    backgroundColor: '#0A0A0A',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    borderColor: '#333333',
   },
   secondaryButton: {
-    backgroundColor: STITCH_COLORS.surfaceContainer,
+    backgroundColor: '#000000',
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest,
-    shadowOpacity: 0,
-    elevation: 0,
+    borderColor: '#333333',
   },
   outlineButton: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: STITCH_COLORS.outlineVariant,
-    shadowOpacity: 0,
-    elevation: 0,
+    borderColor: '#333333',
   },
   disabledButton: {
-    opacity: 0.5,
-    shadowOpacity: 0,
-    elevation: 0,
+    backgroundColor: '#111111',
+    borderWidth: 1,
+    borderColor: '#262626',
+    opacity: 0.6,
   },
   contentRow: {
     flexDirection: 'row',
@@ -153,31 +140,31 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1F1F1F',
     alignItems: 'center',
     justifyContent: 'center',
   },
   googleLetter: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#4285F4',
-  },
-  text: {
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '700',
     color: '#FFFFFF',
-    letterSpacing: 0.2,
+  },
+  text: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000000',
+    letterSpacing: -0.2,
   },
   googleText: {
-    color: STITCH_COLORS.onSurface,
-    fontWeight: '600',
+    color: '#EDEDED',
+    fontWeight: '500',
   },
   secondaryText: {
-    color: STITCH_COLORS.secondary,
-    fontWeight: '600',
+    color: '#EDEDED',
+    fontWeight: '500',
   },
   outlineText: {
-    color: STITCH_COLORS.primary,
-    fontWeight: '600',
+    color: '#EDEDED',
+    fontWeight: '500',
   },
 });

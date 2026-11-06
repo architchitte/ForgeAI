@@ -10,17 +10,18 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  Linking,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/common/Button';
 import { STITCH_COLORS } from '../../constants/theme';
+import { PRIVACY_POLICY_URL } from '../../constants/privacy';
 import {
   UserIcon,
   GraduationCapIcon,
   LockIcon,
   EyeIcon,
   EyeOffIcon,
-  CheckCircleIcon,
   ShieldCheckIcon,
   ArrowRightIcon,
 } from '../../components/common/AppIcons';
@@ -46,14 +47,24 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
-  const [agreedToTerms, setAgreedToTerms] = useState<boolean>(true);
+  const [agreedToPrivacy, setAgreedToPrivacy] = useState<boolean>(true);
   const [localError, setLocalError] = useState<string | null>(null);
   const [verificationSent, setVerificationSent] = useState<boolean>(false);
 
   // Dynamic Password Validation Checks
   const hasMinChars = password.length >= 8;
+  const hasLetter = /[a-zA-Z]/.test(password);
   const hasNumber = /\d/.test(password);
   const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+  // Unmet requirements: only visible when the user has entered text and is missing conditions
+  const unmetRequirements: string[] = [];
+  if (password.length > 0) {
+    if (!hasMinChars) unmetRequirements.push('At least 8 characters');
+    if (!hasLetter) unmetRequirements.push('At least 1 letter (a-z, A-Z)');
+    if (!hasNumber) unmetRequirements.push('At least 1 number');
+    if (!hasSpecialChar) unmetRequirements.push('At least 1 special character / symbol');
+  }
 
   const handleSignUp = async () => {
     clearError();
@@ -65,16 +76,28 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
       setLocalError('Please enter a valid student email address.');
       return;
     }
-    if (password.length < 6) {
-      setLocalError('Password must be at least 6 characters.');
+    if (!hasMinChars) {
+      setLocalError('Password must be at least 8 characters.');
+      return;
+    }
+    if (!hasLetter) {
+      setLocalError('Password must contain at least 1 letter.');
+      return;
+    }
+    if (!hasNumber) {
+      setLocalError('Password must contain at least 1 number.');
+      return;
+    }
+    if (!hasSpecialChar) {
+      setLocalError('Password must contain at least 1 special character.');
       return;
     }
     if (password !== confirmPassword) {
       setLocalError('Passwords do not match.');
       return;
     }
-    if (!agreedToTerms) {
-      setLocalError('Please accept the Terms of Service to continue.');
+    if (!agreedToPrivacy) {
+      setLocalError('Please accept the Privacy Policy to continue.');
       return;
     }
 
@@ -99,18 +122,23 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
     }
   };
 
-  const handleTerms = () => {
-    Alert.alert(
-      'Terms of Service',
-      'ForgeAI academic showcase and student agent publishing terms.'
-    );
-  };
-
-  const handlePrivacy = () => {
-    Alert.alert(
-      'Privacy Policy',
-      'ForgeAI data privacy and academic credential protection guidelines.'
-    );
+  const handlePrivacy = async () => {
+    try {
+      const canOpen = await Linking.canOpenURL(PRIVACY_POLICY_URL);
+      if (canOpen) {
+        await Linking.openURL(PRIVACY_POLICY_URL);
+      } else {
+        Alert.alert(
+          'Privacy Policy',
+          `Please visit our Privacy Policy at:\n${PRIVACY_POLICY_URL}`
+        );
+      }
+    } catch {
+      Alert.alert(
+        'Privacy Policy',
+        `Please visit our Privacy Policy at:\n${PRIVACY_POLICY_URL}`
+      );
+    }
   };
 
   const displayedError = localError || error;
@@ -233,44 +261,18 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                 </TouchableOpacity>
               </View>
 
-              {/* Password Checklist Box */}
-              <View style={styles.requirementsBox}>
-                <View style={styles.requirementRow}>
-                  <CheckCircleIcon size={15} checked={hasMinChars} />
-                  <Text
-                    style={[
-                      styles.requirementLabel,
-                      hasMinChars && styles.requirementLabelActive,
-                    ]}
-                  >
-                    At least 8 characters
-                  </Text>
+              {/* Dynamic Password Requirements Box (only shown when user entered text and conditions are missing) */}
+              {unmetRequirements.length > 0 && (
+                <View style={styles.requirementsBox}>
+                  <Text style={styles.requirementsHeader}>Password requires:</Text>
+                  {unmetRequirements.map((req, idx) => (
+                    <View key={idx} style={styles.requirementRow}>
+                      <View style={styles.requirementDot} />
+                      <Text style={styles.requirementLabel}>{req}</Text>
+                    </View>
+                  ))}
                 </View>
-
-                <View style={styles.requirementRow}>
-                  <CheckCircleIcon size={15} checked={hasNumber} />
-                  <Text
-                    style={[
-                      styles.requirementLabel,
-                      hasNumber && styles.requirementLabelActive,
-                    ]}
-                  >
-                    At least 1 number
-                  </Text>
-                </View>
-
-                <View style={styles.requirementRow}>
-                  <CheckCircleIcon size={15} checked={hasSpecialChar} />
-                  <Text
-                    style={[
-                      styles.requirementLabel,
-                      hasSpecialChar && styles.requirementLabelActive,
-                    ]}
-                  >
-                    At least 1 special character
-                  </Text>
-                </View>
-              </View>
+              )}
             </View>
 
             {/* Confirm Password Field */}
@@ -306,26 +308,22 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
               </View>
             </View>
 
-            {/* Terms and Privacy Agreement Checkbox */}
+            {/* Privacy Policy Agreement Checkbox */}
             <TouchableOpacity
               style={styles.termsRow}
-              onPress={() => setAgreedToTerms((prev) => !prev)}
+              onPress={() => setAgreedToPrivacy((prev) => !prev)}
               activeOpacity={0.8}
             >
               <View
                 style={[
                   styles.checkbox,
-                  agreedToTerms && styles.checkboxActive,
+                  agreedToPrivacy && styles.checkboxActive,
                 ]}
               >
-                {agreedToTerms && <Text style={styles.checkboxTick}>✓</Text>}
+                {agreedToPrivacy && <Text style={styles.checkboxTick}>✓</Text>}
               </View>
               <Text style={styles.termsText}>
                 I agree to the{' '}
-                <Text style={styles.termsHighlight} onPress={handleTerms}>
-                  Terms of Service
-                </Text>{' '}
-                and{' '}
                 <Text style={styles.termsHighlight} onPress={handlePrivacy}>
                   Privacy Policy
                 </Text>
@@ -338,7 +336,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
               title="Create Account"
               onPress={handleSignUp}
               loading={authActionLoading}
-              rightIcon={<ArrowRightIcon size={16} color="#FFFFFF" />}
+              rightIcon={<ArrowRightIcon size={16} color="#000000" />}
               style={styles.submitBtn}
               testID="signup-submit-button"
             />
@@ -406,15 +404,17 @@ const styles = StyleSheet.create({
     letterSpacing: -0.6,
   },
   plaintextLogoAccent: {
-    color: STITCH_COLORS.primaryContainer, // #4f46e5
+    color: '#A1A1A1',
   },
   badgePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 3.5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 9999,
-    backgroundColor: STITCH_COLORS.secondaryFixed, // #d8e2ff
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: '#333333',
     marginBottom: 8,
     gap: 6,
   },
@@ -422,85 +422,80 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: STITCH_COLORS.secondary, // #0058be
+    backgroundColor: '#FFFFFF',
   },
   badgePillText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: STITCH_COLORS.onSecondaryFixed, // #001a42
+    fontWeight: '500',
+    color: '#EDEDED',
   },
   heroTitle: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: STITCH_COLORS.onSurface,
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#FFFFFF',
     letterSpacing: -0.5,
   },
   heroSubtitle: {
     fontSize: 13,
-    color: STITCH_COLORS.onSurfaceVariant,
+    color: '#A1A1A1',
     textAlign: 'center',
     marginTop: 4,
   },
   card: {
     width: '100%',
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest, // #ffffff
-    borderRadius: 16,
+    backgroundColor: '#0A0A0A',
+    borderRadius: 12,
     padding: 20,
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest, // #dae2fd
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
+    borderColor: '#262626',
   },
   verificationBanner: {
-    backgroundColor: '#ECFDF5',
-    borderRadius: 8,
+    backgroundColor: '#111111',
+    borderRadius: 6,
     padding: 12,
     marginBottom: 12,
     borderLeftWidth: 3,
-    borderLeftColor: STITCH_COLORS.success,
+    borderLeftColor: '#FFFFFF',
   },
   verificationTitle: {
-    color: '#065F46',
+    color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
     marginBottom: 2,
   },
   verificationText: {
-    color: '#047857',
+    color: '#EDEDED',
     fontSize: 12,
   },
   errorBanner: {
-    backgroundColor: STITCH_COLORS.errorContainer,
-    borderRadius: 8,
+    backgroundColor: '#1F1F1F',
+    borderRadius: 6,
     padding: 10,
     marginBottom: 12,
     borderLeftWidth: 3,
-    borderLeftColor: STITCH_COLORS.error,
+    borderLeftColor: '#737373',
   },
   errorBannerText: {
-    color: STITCH_COLORS.onSurface,
+    color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   fieldGroup: {
     marginBottom: 12,
   },
   fieldLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: STITCH_COLORS.onSurface,
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#EDEDED',
     marginBottom: 6,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: STITCH_COLORS.surfaceContainerLow, // #f2f3ff
-    borderRadius: 8,
+    backgroundColor: '#000000',
+    borderRadius: 6,
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: '#262626',
     paddingHorizontal: 12,
     height: 44,
   },
@@ -512,8 +507,8 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    fontSize: 13,
-    color: STITCH_COLORS.onSurface,
+    fontSize: 13.5,
+    color: '#EDEDED',
     paddingVertical: 0,
   },
   eyeToggleBtn: {
@@ -524,34 +519,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   requirementsBox: {
-    backgroundColor: STITCH_COLORS.surfaceContainerLow, // #f2f3ff
-    borderRadius: 8,
+    backgroundColor: '#111111',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#262626',
     padding: 10,
     marginTop: 8,
-    gap: 4,
+    gap: 6,
+  },
+  requirementsHeader: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#A1A1A1',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   requirementRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
-  ruleIcon: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: STITCH_COLORS.outline,
-    width: 14,
-    textAlign: 'center',
-  },
-  ruleIconActive: {
-    color: STITCH_COLORS.tertiary, // #005338
+  requirementDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#A1A1A1',
   },
   requirementLabel: {
-    fontSize: 11,
-    color: STITCH_COLORS.onSurfaceVariant,
-  },
-  requirementLabelActive: {
-    color: STITCH_COLORS.tertiary,
-    fontWeight: '600',
+    fontSize: 12,
+    color: '#EDEDED',
   },
   termsRow: {
     flexDirection: 'row',
@@ -559,39 +556,40 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   checkbox: {
-    width: 18,
-    height: 18,
+    width: 16,
+    height: 16,
     borderRadius: 4,
     borderWidth: 1.5,
-    borderColor: STITCH_COLORS.outlineVariant,
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
+    borderColor: '#454545',
+    backgroundColor: '#000000',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
     marginTop: 2,
   },
   checkboxActive: {
-    backgroundColor: STITCH_COLORS.primaryContainer,
-    borderColor: STITCH_COLORS.primaryContainer,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
   },
   checkboxTick: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#000000',
   },
   termsText: {
     flex: 1,
     fontSize: 12,
-    color: STITCH_COLORS.onSurfaceVariant,
+    color: '#A1A1A1',
     lineHeight: 18,
   },
   termsHighlight: {
-    color: STITCH_COLORS.primary,
-    fontWeight: '600',
+    color: '#EDEDED',
+    fontWeight: '500',
+    textDecorationLine: 'underline',
   },
   buttonArrow: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#000000',
   },
   submitBtn: {
     marginTop: 4,
@@ -605,16 +603,16 @@ const styles = StyleSheet.create({
   dividerLine: {
     width: '100%',
     height: 1,
-    backgroundColor: STITCH_COLORS.surfaceContainerHighest,
+    backgroundColor: '#262626',
   },
   dividerBadge: {
     position: 'absolute',
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
+    backgroundColor: '#0A0A0A',
     paddingHorizontal: 8,
   },
   dividerText: {
     fontSize: 11,
-    color: STITCH_COLORS.outline,
+    color: '#737373',
     textTransform: 'uppercase',
   },
   footerRow: {
@@ -625,11 +623,11 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 13,
-    color: STITCH_COLORS.onSurfaceVariant,
+    color: '#A1A1A1',
   },
   footerLink: {
     fontSize: 13,
-    color: STITCH_COLORS.primary,
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });

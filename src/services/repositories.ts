@@ -136,4 +136,29 @@ export const updateRepository = async (
   }
 };
 
+/**
+ * Delete an existing application blueprint from public.repositories.
+ */
+export const deleteRepository = async (
+  id: string
+): Promise<RepositoryResponse<boolean>> => {
+  try {
+    const { error } = await supabase
+      .from('repositories')
+      .delete()
+      .eq('id', id);
 
+    if (error) {
+      console.error('[RepositoriesService] deleteRepository error:', error.message);
+      return { data: false, error: error.message };
+    }
+
+    return { data: true, error: null };
+  } catch (err: any) {
+    console.error('[RepositoriesService] Unexpected delete error:', err);
+    return {
+      data: false,
+      error: err?.message || 'Failed to delete blueprint due to an unexpected error.',
+    };
+  }
+};

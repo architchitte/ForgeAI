@@ -375,7 +375,7 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
               onPress={handlePublish}
               loading={isSubmitting}
               disabled={isSubmitting || !isFormValid}
-              rightIcon={<RocketIcon size={16} color="#FFFFFF" />}
+              rightIcon={<RocketIcon size={16} color="#000000" />}
               style={styles.publishBtn}
               testID="blueprint-publish-button"
             />
@@ -406,7 +406,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: STITCH_COLORS.secondaryFixed, // #d8e2ff
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: '#333333',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 9999,
@@ -417,62 +419,57 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: STITCH_COLORS.secondary, // #0058be
+    backgroundColor: '#FFFFFF',
   },
   badgeText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: STITCH_COLORS.onSecondaryFixed, // #001a42
+    fontWeight: '500',
+    color: '#EDEDED',
   },
   title: {
     fontSize: 24,
-    fontWeight: '700',
-    color: STITCH_COLORS.onSurface,
+    fontWeight: '600',
+    color: '#FFFFFF',
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 13,
-    color: STITCH_COLORS.onSurfaceVariant,
+    color: '#A1A1A1',
     marginTop: 4,
     lineHeight: 18,
   },
   card: {
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest, // #ffffff
-    borderRadius: 16,
+    backgroundColor: '#0A0A0A',
+    borderRadius: 12,
     padding: 18,
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest,   // #dae2fd
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    borderColor: '#262626',
   },
   successBanner: {
-    backgroundColor: STITCH_COLORS.emeraldBg, // #ecfdf5
-    borderRadius: 8,
+    backgroundColor: '#111111',
+    borderRadius: 6,
     padding: 10,
     marginBottom: 12,
     borderLeftWidth: 3,
-    borderLeftColor: STITCH_COLORS.emerald,  // #10b981
+    borderLeftColor: '#FFFFFF',
   },
   successBannerText: {
-    color: STITCH_COLORS.emeraldDark, // #065f46
+    color: '#EDEDED',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '500',
   },
   errorBanner: {
-    backgroundColor: STITCH_COLORS.errorContainer,
-    borderRadius: 8,
+    backgroundColor: '#1F1F1F',
+    borderRadius: 6,
     padding: 10,
     marginBottom: 12,
     borderLeftWidth: 3,
-    borderLeftColor: STITCH_COLORS.error,
+    borderLeftColor: '#737373',
   },
   errorBannerText: {
-    color: STITCH_COLORS.onSurface,
+    color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   formGroup: {
     marginBottom: 16,
@@ -482,8 +479,8 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    color: STITCH_COLORS.onSurface,
+    fontWeight: '500',
+    color: '#EDEDED',
     marginBottom: 6,
   },
   terminalLabelRow: {
@@ -494,7 +491,7 @@ const styles = StyleSheet.create({
   },
   terminalPromptTag: {
     fontSize: 10.5,
-    color: STITCH_COLORS.outline,
+    color: '#737373',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   chipsContainer: {
@@ -503,35 +500,35 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 8,
-    backgroundColor: STITCH_COLORS.surfaceContainerLow, // #f2f3ff
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#111111',
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest, // #dae2fd
+    borderColor: '#262626',
   },
   chipActive: {
-    backgroundColor: STITCH_COLORS.primaryContainer, // #4f46e5
-    borderColor: STITCH_COLORS.primaryContainer,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
   },
   chipText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: STITCH_COLORS.onSurfaceVariant,
+    fontWeight: '500',
+    color: '#A1A1A1',
   },
   chipTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+    color: '#000000',
+    fontWeight: '600',
   },
   errorText: {
     marginTop: 6,
     fontSize: 12,
-    color: STITCH_COLORS.error,
+    color: '#FFFFFF',
     fontWeight: '500',
   },
   publishIcon: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#000000',
   },
   publishBtn: {
     marginTop: 8,

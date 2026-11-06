@@ -35,29 +35,11 @@ const FRAMEWORK_FILTERS = [
   { id: 'autogen', label: 'AutoGen' },
 ];
 
-const getFrameworkBadgeStyle = (framework: string) => {
-  const fw = (framework || '').toLowerCase();
-  if (fw.includes('langgraph')) {
-    return {
-      bg: STITCH_COLORS.primaryFixed, // #e2dfff
-      text: STITCH_COLORS.onPrimaryFixedVariant, // #3323cc
-    };
-  }
-  if (fw.includes('crewai')) {
-    return {
-      bg: STITCH_COLORS.secondaryFixed, // #d8e2ff
-      text: STITCH_COLORS.onSecondaryFixedVariant, // #004395
-    };
-  }
-  if (fw.includes('dspy')) {
-    return {
-      bg: STITCH_COLORS.primaryFixed, // #e2dfff
-      text: STITCH_COLORS.onPrimaryFixedVariant, // #3323cc
-    };
-  }
+const getFrameworkBadgeStyle = (_framework: string) => {
   return {
-    bg: STITCH_COLORS.surfaceContainerHigh, // #e2e7ff
-    text: STITCH_COLORS.onSurface,
+    bg: '#111111',
+    text: '#A1A1A1',
+    border: '#262626',
   };
 };
 
@@ -180,7 +162,16 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
               </Text>
             </View>
           </View>
-          <View style={[styles.frameworkBadge, { backgroundColor: fwBadge.bg }]}>
+          <View
+            style={[
+              styles.frameworkBadge,
+              {
+                backgroundColor: fwBadge.bg,
+                borderColor: fwBadge.border,
+                borderWidth: 1,
+              },
+            ]}
+          >
             <Text style={[styles.frameworkBadgeText, { color: fwBadge.text }]}>
               {item.framework}
             </Text>
@@ -210,11 +201,6 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
 
   const renderHeader = () => (
     <View style={styles.headerContainer}>
-      {/* Curated Showcase Badge */}
-      <View style={styles.beaconBadge}>
-        <View style={styles.beaconDot} />
-        <Text style={styles.beaconText}>Curated Showcase</Text>
-      </View>
 
       {/* Hero Title & Subtitle */}
       <Text style={styles.heroTitle}>Student AI Projects</Text>
@@ -405,7 +391,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: STITCH_COLORS.secondaryFixed, // #d8e2ff
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: '#333333',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 9999,
@@ -416,41 +404,36 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: STITCH_COLORS.secondary, // #0058be
+    backgroundColor: '#FFFFFF',
   },
   beaconText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: STITCH_COLORS.onSecondaryFixed, // #001a42
+    fontWeight: '500',
+    color: '#EDEDED',
   },
   heroTitle: {
     fontSize: 26,
-    fontWeight: '700',
-    color: STITCH_COLORS.onSurface, // #131b2e
+    fontWeight: '600',
+    color: '#FFFFFF',
     letterSpacing: -0.5,
   },
   heroSubtitle: {
     fontSize: 14,
-    color: STITCH_COLORS.onSurfaceVariant, // #464555
+    color: '#A1A1A1',
     marginTop: 4,
     lineHeight: 20,
   },
   searchBarWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest, // #ffffff
-    borderRadius: 12,
+    backgroundColor: '#000000',
+    borderRadius: 8,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest, // #dae2fd
-    height: 46,
+    borderColor: '#262626',
+    height: 44,
     marginTop: 14,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
   },
   searchIconWrap: {
     marginRight: 8,
@@ -459,14 +442,14 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    color: STITCH_COLORS.onSurface,
+    color: '#EDEDED',
     fontSize: 14,
   },
   clearSearchBtn: {
     padding: 6,
   },
   clearSearchText: {
-    color: STITCH_COLORS.outline,
+    color: '#737373',
     fontSize: 12,
   },
   chipsScroll: {
@@ -478,62 +461,53 @@ const styles = StyleSheet.create({
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 9999,
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest, // #ffffff
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#000000',
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest,
+    borderColor: '#262626',
     gap: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 3,
-    elevation: 1,
   },
   filterChipActive: {
-    backgroundColor: STITCH_COLORS.primary, // #3525cd
-    borderColor: STITCH_COLORS.primary,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
   },
   chipLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    color: STITCH_COLORS.onSurfaceVariant,
+    fontWeight: '500',
+    color: '#A1A1A1',
   },
   chipLabelActive: {
-    color: '#ffffff',
+    color: '#000000',
+    fontWeight: '600',
   },
   chipCountBadge: {
-    backgroundColor: STITCH_COLORS.surfaceContainerHigh,
+    backgroundColor: '#171717',
     paddingHorizontal: 6,
     paddingVertical: 1,
-    borderRadius: 10,
+    borderRadius: 4,
   },
   chipCountBadgeActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: '#E5E5E5',
   },
   chipCountText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: STITCH_COLORS.onSurface,
+    fontWeight: '600',
+    color: '#EDEDED',
   },
   chipCountTextActive: {
-    color: '#ffffff',
+    color: '#000000',
   },
 
   // Project Card
   card: {
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest, // #ffffff
-    borderRadius: 14,
+    backgroundColor: '#0A0A0A',
+    borderRadius: 12,
     padding: 16,
-    marginBottom: 14,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    borderColor: '#262626',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -546,9 +520,10 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   cardAppName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: STITCH_COLORS.onSurface,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
   },
   authorRow: {
     flexDirection: 'row',
@@ -561,21 +536,21 @@ const styles = StyleSheet.create({
   },
   cardAuthor: {
     fontSize: 12,
-    color: STITCH_COLORS.onSurfaceVariant,
+    color: '#A1A1A1',
   },
   frameworkBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: 4,
     alignSelf: 'flex-start',
   },
   frameworkBadgeText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   oneLiner: {
     fontSize: 13.5,
-    color: STITCH_COLORS.onSurfaceVariant,
+    color: '#A1A1A1',
     lineHeight: 19,
     marginBottom: 12,
   },
@@ -585,14 +560,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: STITCH_COLORS.surfaceContainerLow,
+    borderTopColor: '#171717',
   },
   activeStatusPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ecfdf5',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
-    borderColor: '#a7f3d0',
+    borderColor: '#333333',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 10,
@@ -602,12 +577,12 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#10b981',
+    backgroundColor: '#FFFFFF',
   },
   activeStatusText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#065f46',
+    fontWeight: '500',
+    color: '#EDEDED',
   },
   viewProjectLink: {
     flexDirection: 'row',
@@ -616,12 +591,12 @@ const styles = StyleSheet.create({
   },
   viewProjectText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: STITCH_COLORS.primary,
+    fontWeight: '500',
+    color: '#FFFFFF',
   },
   viewProjectIcon: {
     fontSize: 14,
-    color: STITCH_COLORS.primary,
+    color: '#FFFFFF',
   },
 
   // Call To Action Footer
@@ -630,14 +605,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   cohortCard: {
-    backgroundColor: STITCH_COLORS.primary, // #3525cd
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: STITCH_COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 3,
+    backgroundColor: '#0A0A0A',
+    borderRadius: 12,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#262626',
   },
   cohortBadgeRow: {
     flexDirection: 'row',
@@ -650,25 +622,25 @@ const styles = StyleSheet.create({
   },
   cohortBadgeText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '600',
+    color: '#A1A1A1',
     letterSpacing: 0.8,
   },
   cohortTitle: {
-    fontSize: 19,
-    fontWeight: '700',
-    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   cohortDesc: {
     fontSize: 13,
-    color: '#dad7ff',
+    color: '#A1A1A1',
     marginVertical: 8,
     lineHeight: 18,
   },
   cohortButton: {
-    backgroundColor: '#ffffff',
-    paddingVertical: 12,
-    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -676,9 +648,9 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   cohortButtonText: {
-    color: STITCH_COLORS.primary,
-    fontSize: 14,
-    fontWeight: '700',
+    color: '#000000',
+    fontSize: 13.5,
+    fontWeight: '600',
   },
 
   loadingContainer: {

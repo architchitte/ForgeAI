@@ -28,6 +28,7 @@ import {
   RocketIcon,
   SlidersIcon,
 } from './src/components/navigation/NavIcons';
+import RubberSegment from './src/components/navigation/RubberSegment';
 
 type AuthenticatedTab = 'discover' | 'submit' | 'account';
 
@@ -89,99 +90,72 @@ const AuthenticatedView: React.FC = () => {
         )}
       </View>
 
-      {/* Rounded Bottom Navigation Dock (3 Tabs: Discover, Submit, Profile) */}
+      {/* Rounded Bottom Navigation Dock (RubberSegment) */}
       <View style={styles.bottomDockContainer}>
-        <View style={styles.bottomDock}>
-          {/* Tab 1: Discover — Minimal Target Reticle */}
-          <TouchableOpacity
-            style={[
-              styles.dockItem,
-              activeTab === 'discover' && styles.dockItemActive,
-            ]}
-            onPress={() => handleSelectTab('discover')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.dockIconWrapper}>
-              <TargetIcon
-                size={22}
-                color={
-                  activeTab === 'discover'
-                    ? STITCH_COLORS.primaryContainer
-                    : STITCH_COLORS.outline
-                }
-                strokeWidth={1.8}
-              />
-            </View>
-            <Text
-              style={[
-                styles.dockLabel,
-                activeTab === 'discover' && styles.dockLabelActive,
-              ]}
-            >
-              Discover
-            </Text>
-          </TouchableOpacity>
-
-          {/* Tab 2: Submit — Minimal Rocket */}
-          <TouchableOpacity
-            style={[
-              styles.dockItem,
-              activeTab === 'submit' && styles.dockItemActive,
-            ]}
-            onPress={() => handleSelectTab('submit')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.dockIconWrapper}>
-              <RocketIcon
-                size={22}
-                color={
-                  activeTab === 'submit'
-                    ? STITCH_COLORS.primaryContainer
-                    : STITCH_COLORS.outline
-                }
-                strokeWidth={1.8}
-              />
-            </View>
-            <Text
-              style={[
-                styles.dockLabel,
-                activeTab === 'submit' && styles.dockLabelActive,
-              ]}
-            >
-              Submit
-            </Text>
-          </TouchableOpacity>
-
-          {/* Tab 3: Profile — Person / Sliders */}
-          <TouchableOpacity
-            style={[
-              styles.dockItem,
-              activeTab === 'account' && styles.dockItemActive,
-            ]}
-            onPress={() => handleSelectTab('account')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.dockIconWrapper}>
-              <SlidersIcon
-                size={22}
-                color={
-                  activeTab === 'account'
-                    ? STITCH_COLORS.primaryContainer
-                    : STITCH_COLORS.outline
-                }
-                strokeWidth={1.8}
-              />
-            </View>
-            <Text
-              style={[
-                styles.dockLabel,
-                activeTab === 'account' && styles.dockLabelActive,
-              ]}
-            >
-              Profile
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <RubberSegment
+          items={[
+            {
+              value: 'discover',
+              label: 'Discover',
+              icon: (active: boolean) => (
+                <TargetIcon
+                  size={20}
+                  color={
+                    active
+                      ? STITCH_COLORS.primaryContainer
+                      : STITCH_COLORS.outline
+                  }
+                  strokeWidth={1.8}
+                />
+              ),
+            },
+            {
+              value: 'submit',
+              label: 'Submit',
+              icon: (active: boolean) => (
+                <RocketIcon
+                  size={20}
+                  color={
+                    active
+                      ? STITCH_COLORS.primaryContainer
+                      : STITCH_COLORS.outline
+                  }
+                  strokeWidth={1.8}
+                />
+              ),
+            },
+            {
+              value: 'account',
+              label: 'Profile',
+              icon: (active: boolean) => (
+                <SlidersIcon
+                  size={20}
+                  color={
+                    active
+                      ? STITCH_COLORS.primaryContainer
+                      : STITCH_COLORS.outline
+                  }
+                  strokeWidth={1.8}
+                />
+              ),
+            },
+          ]}
+          value={activeTab}
+          onChange={(val) => handleSelectTab(val as AuthenticatedTab)}
+          trackColor={STITCH_COLORS.surfaceContainerLowest}
+          thumbColor={STITCH_COLORS.surfaceContainerHigh}
+          textColor={STITCH_COLORS.onSurfaceVariant}
+          activeTextColor="#ffffff"
+          height={62}
+          radius={22}
+          inset={4}
+          stretch={100}
+          squash={3}
+          speed={1}
+          glide={75}
+          equalSlots
+          draggable
+        />
       </View>
     </SafeAreaView>
   );
@@ -194,7 +168,7 @@ const MainNavigator: React.FC = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={STITCH_COLORS.primaryContainer} />
+        <ActivityIndicator size="large" color="#ffffff" />
         <Text style={styles.loadingText}>Initializing ForgeAI Core...</Text>
       </View>
     );
@@ -215,7 +189,7 @@ export default function App() {
   return (
     <AuthProvider>
       <MainNavigator />
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
     </AuthProvider>
   );
 }
@@ -231,7 +205,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
     fontSize: 13,
     color: STITCH_COLORS.onSurfaceVariant,
-    fontWeight: '600',
+    fontWeight: '500',
     letterSpacing: 0.5,
   },
   authSafeArea: {
@@ -239,33 +213,28 @@ const styles = StyleSheet.create({
     backgroundColor: STITCH_COLORS.background,
   },
   appBar: {
-    height: 56,
+    height: 54,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
-    backgroundColor: 'rgba(250, 248, 255, 0.96)',
+    backgroundColor: '#000000',
     borderBottomWidth: 1,
-    borderBottomColor: STITCH_COLORS.surfaceContainerHighest,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    borderBottomColor: STITCH_COLORS.borderSubtle,
   },
   appBarBrand: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   appBarTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: STITCH_COLORS.onSurface,
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#ffffff',
     letterSpacing: -0.6,
     textAlign: 'center',
   },
   appBarTitleAccent: {
-    color: STITCH_COLORS.primaryContainer,
+    color: STITCH_COLORS.onSurfaceVariant,
   },
   screenContainer: {
     flex: 1,
@@ -276,51 +245,5 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 12 : 8,
     paddingTop: 4,
     backgroundColor: STITCH_COLORS.background,
-  },
-  bottomDock: {
-    height: 62,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    backgroundColor: '#ffffff',
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 4,
-    paddingHorizontal: 6,
-  },
-  dockItem: {
-    flex: 1,
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 4,
-    borderRadius: 14,
-  },
-  dockItemActive: {
-    backgroundColor: STITCH_COLORS.surfaceContainerLow,
-  },
-  dockIconWrapper: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dockLabel: {
-    fontSize: 10.5,
-    fontWeight: '500',
-    color: STITCH_COLORS.onSurfaceVariant,
-    marginTop: 3,
-    letterSpacing: 0.2,
-    textAlign: 'center',
-  },
-  dockLabelActive: {
-    color: STITCH_COLORS.primaryContainer,
-    fontWeight: '700',
   },
 });

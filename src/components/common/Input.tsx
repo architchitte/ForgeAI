@@ -77,7 +77,7 @@ export const Input: React.FC<InputProps> = ({
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={STITCH_COLORS.outline}
+          placeholderTextColor={STITCH_COLORS.placeholder}
           secureTextEntry={isPassword ? hidePassword : secureTextEntry}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
@@ -124,24 +124,24 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
-    fontWeight: '600',
-    color: STITCH_COLORS.onSurface,
+    fontWeight: '500',
+    color: '#EDEDED',
     letterSpacing: -0.1,
   },
   rightLabel: {
     fontSize: 11,
-    color: STITCH_COLORS.secondary,
-    fontWeight: '600',
+    color: '#A1A1A1',
+    fontWeight: '500',
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest, // #ffffff
+    backgroundColor: '#000000',
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest,   // #dae2fd
-    borderRadius: 8,
+    borderColor: '#262626',
+    borderRadius: 6,
     paddingHorizontal: 12,
-    minHeight: 46,
+    minHeight: 44,
   },
   multilineWrapper: {
     minHeight: 110,
@@ -149,17 +149,17 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   inputFocused: {
-    borderColor: STITCH_COLORS.primaryContainer, // #4f46e5
+    borderColor: '#FFFFFF',
   },
   inputError: {
-    borderColor: STITCH_COLORS.error,
+    borderColor: '#737373',
   },
   leftIconContainer: {
     marginRight: 8,
   },
   input: {
     flex: 1,
-    color: STITCH_COLORS.onSurface,
+    color: '#EDEDED',
     fontSize: 13.5,
     paddingVertical: 10,
   },
@@ -172,19 +172,19 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     fontSize: 10,
-    fontWeight: '800',
-    color: STITCH_COLORS.secondary,
+    fontWeight: '700',
+    color: '#A1A1A1',
     letterSpacing: 0.5,
   },
   errorText: {
     marginTop: 4,
     fontSize: 12,
-    color: STITCH_COLORS.error,
+    color: '#FFFFFF',
     fontWeight: '500',
   },
   helperText: {
     marginTop: 4,
     fontSize: 11,
-    color: STITCH_COLORS.outline,
+    color: '#737373',
   },
 });

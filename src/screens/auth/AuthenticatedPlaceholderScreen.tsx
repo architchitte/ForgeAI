@@ -13,17 +13,24 @@ import {
   Alert,
   Modal,
   KeyboardAvoidingView,
+  Linking,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { STITCH_COLORS } from '../../constants/theme';
 import { Repository } from '../../types/repository';
-import { fetchUserRepositories, updateRepository } from '../../services/repositories';
+import {
+  fetchUserRepositories,
+  updateRepository,
+  deleteRepository,
+} from '../../services/repositories';
+import { PRIVACY_POLICY_URL } from '../../constants/privacy';
 import {
   UserIcon,
   EditIcon,
   LogOutIcon,
   ShieldCheckIcon,
   ArrowRightIcon,
+  TrashIcon,
 } from '../../components/common/AppIcons';
 
 interface AuthenticatedPlaceholderScreenProps {
@@ -162,6 +169,32 @@ export const AuthenticatedPlaceholderScreen: React.FC<
     }
   };
 
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
+
+  const handleDeleteProject = (project: Repository) => {
+    Alert.alert(
+      'Delete Project',
+      `Are you sure you want to delete "${project.app_name}"? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setDeletingProjectId(project.id);
+            const { error } = await deleteRepository(project.id);
+            setDeletingProjectId(null);
+            if (error) {
+              Alert.alert('Delete Failed', error);
+            } else {
+              setMyProjects((prev) => prev.filter((p) => p.id !== project.id));
+            }
+          },
+        },
+      ]
+    );
+  };
+
   // Sync editedName when user metadata changes
   useEffect(() => {
     setEditedName(fullName);
@@ -222,6 +255,25 @@ export const AuthenticatedPlaceholderScreen: React.FC<
         { text: 'Log Out', style: 'destructive', onPress: signOut },
       ]
     );
+  };
+
+  const handleOpenPrivacyPolicy = async () => {
+    try {
+      const canOpen = await Linking.canOpenURL(PRIVACY_POLICY_URL);
+      if (canOpen) {
+        await Linking.openURL(PRIVACY_POLICY_URL);
+      } else {
+        Alert.alert(
+          'Privacy Policy',
+          `Please visit our Privacy Policy at:\n${PRIVACY_POLICY_URL}`
+        );
+      }
+    } catch {
+      Alert.alert(
+        'Privacy Policy',
+        `Please visit our Privacy Policy at:\n${PRIVACY_POLICY_URL}`
+      );
+    }
   };
 
   // Format relative time helper
@@ -353,16 +405,6 @@ export const AuthenticatedPlaceholderScreen: React.FC<
               </View>
             </View>
 
-            {onNavigateToSubmitBlueprint && (
-              <TouchableOpacity
-                onPress={onNavigateToSubmitBlueprint}
-                style={styles.newProjectLink}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.newProjectIcon}>⊕</Text>
-                <Text style={styles.newProjectText}>New Project</Text>
-              </TouchableOpacity>
-            )}
           </View>
 
           {loadingProjects ? (
@@ -428,14 +470,30 @@ export const AuthenticatedPlaceholderScreen: React.FC<
 
                   {/* Card Bottom Actions */}
                   <View style={styles.cardBottomRow}>
-                    <TouchableOpacity
-                      style={styles.editProjectBtn}
-                      onPress={() => handleOpenEditProject(project)}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.editProjectBtnIcon}>✎</Text>
-                      <Text style={styles.editProjectBtnText}>Edit Project</Text>
-                    </TouchableOpacity>
+                    <View style={styles.projectManageGroup}>
+                      <TouchableOpacity
+                        style={styles.iconActionBtn}
+                        onPress={() => handleOpenEditProject(project)}
+                        activeOpacity={0.7}
+                        accessibilityLabel="Edit Project"
+                      >
+                        <EditIcon size={14} color="#EDEDED" />
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.iconActionBtn, styles.deleteActionBtn]}
+                        onPress={() => handleDeleteProject(project)}
+                        activeOpacity={0.7}
+                        accessibilityLabel="Delete Project"
+                        disabled={deletingProjectId === project.id}
+                      >
+                        {deletingProjectId === project.id ? (
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                          <TrashIcon size={14} color="#FFFFFF" />
+                        )}
+                      </TouchableOpacity>
+                    </View>
 
                     <View style={styles.actionBtnGroup}>
                       {onSelectRepository && (
@@ -445,7 +503,7 @@ export const AuthenticatedPlaceholderScreen: React.FC<
                           activeOpacity={0.8}
                         >
                           <Text style={styles.viewDetailsBtnText}>View Details</Text>
-                          <ArrowRightIcon size={14} color={'white'} />
+                          <ArrowRightIcon size={14} color="#000000" />
                         </TouchableOpacity>
                       )}
                     </View>
@@ -456,7 +514,20 @@ export const AuthenticatedPlaceholderScreen: React.FC<
           )}
         </View>
 
-        {/* 3. Signed In & Log Out Card */}
+        {/* 3. Account Privacy & Policy */}
+        <TouchableOpacity
+          style={styles.privacyCard}
+          onPress={handleOpenPrivacyPolicy}
+          activeOpacity={0.7}
+        >
+          <View style={styles.privacyCardLeft}>
+            <ShieldCheckIcon size={16} color={STITCH_COLORS.primaryContainer} />
+            <Text style={styles.privacyCardText}>Privacy Policy</Text>
+          </View>
+          <Text style={styles.privacyCardArrow}>↗</Text>
+        </TouchableOpacity>
+
+        {/* 4. Signed In & Log Out Card */}
         <View style={styles.logoutCard}>
           <View style={styles.logoutInfoCol}>
             <Text style={styles.signedInLabel}>Signed In</Text>
@@ -993,16 +1064,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   projectArticleCard: {
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest, // #ffffff
-    borderRadius: 14,
+    backgroundColor: '#0A0A0A',
+    borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    borderColor: '#262626',
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -1016,20 +1082,24 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   frameworkPill: {
-    backgroundColor: STITCH_COLORS.surfaceContainerHigh, // #e2e7ff
+    backgroundColor: '#111111',
+    borderWidth: 1,
+    borderColor: '#262626',
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 4,
   },
   frameworkPillText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: STITCH_COLORS.onSurface,
+    fontWeight: '500',
+    color: '#A1A1A1',
   },
   activeStatusPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: STITCH_COLORS.tertiaryContainer, // #006e4b
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: '#333333',
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 10,
@@ -1039,27 +1109,27 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: '#67f4b7',
+    backgroundColor: '#FFFFFF',
   },
   activeStatusText: {
     fontSize: 10,
-    fontWeight: '600',
-    color: '#ffffff',
+    fontWeight: '500',
+    color: '#EDEDED',
   },
   relativeTimeText: {
     fontSize: 11,
-    color: STITCH_COLORS.outline,
+    color: '#737373',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   projectCardTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: STITCH_COLORS.onSurface,
+    color: '#FFFFFF',
     marginBottom: 4,
   },
   projectCardDesc: {
     fontSize: 13,
-    color: STITCH_COLORS.onSurfaceVariant,
+    color: '#A1A1A1',
     lineHeight: 18,
     marginBottom: 12,
   },
@@ -1069,25 +1139,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: STITCH_COLORS.surfaceContainerLow,
+    borderTopColor: '#171717',
   },
-  editProjectBtn: {
-    backgroundColor: STITCH_COLORS.surfaceContainerHigh, // #e2e7ff
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+  projectManageGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 8,
   },
-  editProjectBtnIcon: {
-    color: STITCH_COLORS.primary,
-    fontSize: 12,
+  iconActionBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    backgroundColor: '#171717',
+    borderWidth: 1,
+    borderColor: '#333333',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  editProjectBtnText: {
-    color: STITCH_COLORS.primary,
-    fontSize: 12,
-    fontWeight: '600',
+  deleteActionBtn: {
+    backgroundColor: '#1F1F1F',
+    borderColor: '#333333',
   },
   actionBtnGroup: {
     flexDirection: 'row',
@@ -1095,39 +1166,62 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   viewDetailsBtn: {
-    backgroundColor: STITCH_COLORS.primary, // #3525cd
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 6,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
   viewDetailsBtnText: {
-    color: '#ffffff',
+    color: '#000000',
     fontSize: 12,
     fontWeight: '600',
   },
   arrowIcon: {
-    color: '#ffffff',
+    color: '#000000',
     fontSize: 12,
   },
 
-  // 3. Signed In & Logout Card
-  logoutCard: {
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
-    borderRadius: 14,
+  // 3. Privacy Policy Card
+  privacyCard: {
+    backgroundColor: '#0A0A0A',
+    borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest,
+    borderColor: '#262626',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    marginBottom: 12,
+  },
+  privacyCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  privacyCardText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: STITCH_COLORS.onSurface,
+  },
+  privacyCardArrow: {
+    fontSize: 14,
+    color: STITCH_COLORS.outline,
+    fontWeight: '600',
+  },
+
+  // 4. Signed In & Logout Card
+  logoutCard: {
+    backgroundColor: '#0A0A0A',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#262626',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   logoutInfoCol: {
     flex: 1,
@@ -1136,21 +1230,23 @@ const styles = StyleSheet.create({
   signedInLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: STITCH_COLORS.onSurface,
+    color: '#FFFFFF',
   },
   signedInEmail: {
     fontSize: 12,
-    color: STITCH_COLORS.onSurfaceVariant,
+    color: '#A1A1A1',
     marginTop: 2,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: STITCH_COLORS.errorContainer, // #ffdad6
+    backgroundColor: '#1F1F1F',
+    borderWidth: 1,
+    borderColor: '#333333',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 6,
     gap: 6,
   },
   logoutIcon: {
@@ -1158,29 +1254,26 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: STITCH_COLORS.onErrorContainer, // #93000a
+    fontWeight: '500',
+    color: '#FFFFFF',
   },
 
   // Edit Project Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(19, 27, 46, 0.45)',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest, // #ffffff
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: '#0A0A0A',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#333333',
     maxHeight: '90%',
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: Platform.OS === 'ios' ? 32 : 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 10,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1188,42 +1281,46 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: STITCH_COLORS.surfaceContainerLow,
+    borderBottomColor: '#262626',
   },
   modalHeaderTitleCol: {
     flex: 1,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: STITCH_COLORS.onSurface,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   modalSubtitle: {
     fontSize: 12,
-    color: STITCH_COLORS.onSurfaceVariant,
+    color: '#A1A1A1',
     marginTop: 2,
   },
   modalCloseBtn: {
     width: 32,
     height: 32,
-    borderRadius: 16,
-    backgroundColor: STITCH_COLORS.surfaceContainerLow,
+    borderRadius: 6,
+    backgroundColor: '#171717',
+    borderWidth: 1,
+    borderColor: '#333333',
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalCloseBtnText: {
     fontSize: 13,
-    fontWeight: '700',
-    color: STITCH_COLORS.onSurfaceVariant,
+    fontWeight: '600',
+    color: '#A1A1A1',
   },
   modalErrorBox: {
-    backgroundColor: STITCH_COLORS.errorContainer,
-    borderRadius: 8,
+    backgroundColor: '#1F1F1F',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#737373',
     padding: 10,
     marginTop: 10,
   },
   modalErrorText: {
-    color: STITCH_COLORS.onErrorContainer,
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '500',
   },
@@ -1245,28 +1342,28 @@ const styles = StyleSheet.create({
   },
   modalFieldLabel: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: 0.5,
-    color: STITCH_COLORS.onSurfaceVariant,
+    color: '#EDEDED',
   },
   modalCharCount: {
     fontSize: 11,
-    color: STITCH_COLORS.outline,
+    color: '#737373',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   modalCharCountError: {
-    color: STITCH_COLORS.error,
+    color: '#FFFFFF',
     fontWeight: '700',
   },
   modalInput: {
-    backgroundColor: STITCH_COLORS.surfaceContainerLow, // #f2f3ff
-    borderRadius: 10,
+    backgroundColor: '#000000',
+    borderRadius: 6,
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest,
+    borderColor: '#262626',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 14,
-    color: STITCH_COLORS.onSurface,
+    fontSize: 13.5,
+    color: '#EDEDED',
   },
   modalInputMultiline: {
     minHeight: 56,
@@ -1286,54 +1383,57 @@ const styles = StyleSheet.create({
   modalFrameworkChip: {
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 8,
-    backgroundColor: STITCH_COLORS.surfaceContainerLow,
+    borderRadius: 6,
+    backgroundColor: '#111111',
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest,
+    borderColor: '#262626',
   },
   modalFrameworkChipSelected: {
-    backgroundColor: STITCH_COLORS.primary,
-    borderColor: STITCH_COLORS.primary,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
   },
   modalFrameworkChipText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: STITCH_COLORS.onSurfaceVariant,
+    fontWeight: '500',
+    color: '#A1A1A1',
   },
   modalFrameworkChipTextSelected: {
-    color: '#ffffff',
+    color: '#000000',
+    fontWeight: '600',
   },
   modalActionsRow: {
     flexDirection: 'row',
     gap: 10,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: STITCH_COLORS.surfaceContainerLow,
+    borderTopColor: '#262626',
   },
   modalCancelBtn: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: STITCH_COLORS.surfaceContainerLow,
+    borderRadius: 6,
+    backgroundColor: '#111111',
+    borderWidth: 1,
+    borderColor: '#333333',
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalCancelBtnText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: STITCH_COLORS.onSurfaceVariant,
+    fontWeight: '500',
+    color: '#EDEDED',
   },
   modalSaveBtn: {
     flex: 2,
     paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: STITCH_COLORS.primary, // #3525cd
+    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalSaveBtnText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#ffffff',
+    color: '#000000',
   },
 });

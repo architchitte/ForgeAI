@@ -223,9 +223,9 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
             {/* macOS-style Window Header */}
             <View style={styles.windowHeader}>
               <View style={styles.windowControls}>
-                <View style={[styles.controlDot, { backgroundColor: '#FF5F56' }]} />
-                <View style={[styles.controlDot, { backgroundColor: '#FFBD2E' }]} />
-                <View style={[styles.controlDot, { backgroundColor: '#27C93F' }]} />
+                <View style={[styles.controlDot, { backgroundColor: '#262626' }]} />
+                <View style={[styles.controlDot, { backgroundColor: '#333333' }]} />
+                <View style={[styles.controlDot, { backgroundColor: '#454545' }]} />
                 <Text style={styles.windowLabel}>system_instructions</Text>
               </View>
               <Text style={styles.encodingLabel}>UTF-8</Text>
@@ -265,7 +265,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           <Text style={styles.launchButtonText}>
             {isLaunching ? 'Opening Runtime...' : 'Launch App'}
           </Text>
-          <ArrowRightIcon size={16} color="#FFFFFF" strokeWidth={2.2} />
+          <ArrowRightIcon size={16} color="#000000" strokeWidth={2.2} />
         </TouchableOpacity>
       </View>
     </View>
@@ -358,16 +358,11 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   card: {
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest, // #ffffff
-    borderRadius: 16,
+    backgroundColor: '#0A0A0A',
+    borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest,   // #dae2fd
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    borderColor: '#262626',
     marginBottom: 16,
   },
   creatorHeader: {
@@ -379,17 +374,17 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: STITCH_COLORS.surfaceContainerLow,
+    backgroundColor: '#111111',
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest,
+    borderColor: '#262626',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   avatarText: {
     fontSize: 15,
-    fontWeight: '700',
-    color: STITCH_COLORS.primaryContainer,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   creatorInfo: {
     flex: 1,
@@ -401,25 +396,25 @@ const styles = StyleSheet.create({
   },
   creatorName: {
     fontSize: 15,
-    fontWeight: '700',
-    color: STITCH_COLORS.onSurface,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   verifiedIconWrap: {
     width: 15,
     height: 15,
     borderRadius: 7.5,
-    backgroundColor: STITCH_COLORS.primaryContainer,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   verifiedIcon: {
     fontSize: 9,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#000000',
   },
   creatorSub: {
     fontSize: 12,
-    color: STITCH_COLORS.onSurfaceVariant,
+    color: '#A1A1A1',
     marginTop: 2,
   },
   creatorMetricsRow: {
@@ -429,32 +424,32 @@ const styles = StyleSheet.create({
   },
   metricWell: {
     flex: 1,
-    backgroundColor: STITCH_COLORS.surfaceContainerLow, // #f2f3ff
-    borderRadius: 8,
+    backgroundColor: '#111111',
+    borderRadius: 6,
     padding: 10,
   },
   metricLabel: {
     fontSize: 11,
-    color: STITCH_COLORS.onSurfaceVariant,
+    color: '#A1A1A1',
     marginBottom: 2,
   },
   metricValue: {
     fontSize: 14,
-    fontWeight: '700',
-    color: STITCH_COLORS.onSurface,
+    fontWeight: '600',
+    color: '#EDEDED',
   },
   metricValuePrimary: {
     fontSize: 14,
-    fontWeight: '700',
-    color: STITCH_COLORS.primaryContainer,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   sectionBlock: {
     marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: '700',
-    color: STITCH_COLORS.onSurface,
+    fontWeight: '600',
+    color: '#FFFFFF',
     marginBottom: 8,
     letterSpacing: -0.2,
   },
@@ -465,11 +460,11 @@ const styles = StyleSheet.create({
   },
   specCard: {
     flex: 1,
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
-    borderRadius: 12,
+    backgroundColor: '#0A0A0A',
+    borderRadius: 8,
     padding: 12,
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest,
+    borderColor: '#262626',
   },
   specLabelRow: {
     flexDirection: 'row',
@@ -482,19 +477,19 @@ const styles = StyleSheet.create({
   },
   specLabel: {
     fontSize: 11,
-    color: STITCH_COLORS.onSurfaceVariant,
+    color: '#A1A1A1',
   },
   specValue: {
     fontSize: 13.5,
     fontWeight: '600',
-    color: STITCH_COLORS.onSurface,
+    color: '#EDEDED',
   },
   endpointBox: {
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
-    borderRadius: 12,
+    backgroundColor: '#0A0A0A',
+    borderRadius: 8,
     padding: 10,
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest,
+    borderColor: '#262626',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -507,35 +502,37 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   httpMethodBadge: {
-    backgroundColor: STITCH_COLORS.primaryFixed,
+    backgroundColor: '#1F1F1F',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   httpMethodText: {
     fontSize: 10,
-    fontWeight: '700',
-    color: STITCH_COLORS.onPrimaryFixed,
+    fontWeight: '600',
+    color: '#EDEDED',
   },
   endpointUrlText: {
     flex: 1,
     fontSize: 12,
-    color: STITCH_COLORS.onSurface,
+    color: '#EDEDED',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   copyButton: {
-    backgroundColor: STITCH_COLORS.surfaceContainerLow,
+    backgroundColor: '#171717',
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#333333',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
   copyButtonText: {
     fontSize: 10.5,
-    fontWeight: '700',
-    color: STITCH_COLORS.primaryContainer,
+    fontWeight: '600',
+    color: '#FFFFFF',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   promptHeaderRow: {
@@ -545,21 +542,23 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   promptFileBadge: {
-    backgroundColor: STITCH_COLORS.surfaceContainerLow,
+    backgroundColor: '#111111',
+    borderWidth: 1,
+    borderColor: '#262626',
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 4,
   },
   promptFileBadgeText: {
     fontSize: 10.5,
-    color: STITCH_COLORS.onSurfaceVariant,
+    color: '#A1A1A1',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   terminalWindow: {
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
-    borderRadius: 12,
+    backgroundColor: '#0A0A0A',
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest,
+    borderColor: '#262626',
     overflow: 'hidden',
   },
   windowHeader: {
@@ -568,9 +567,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: STITCH_COLORS.surfaceContainerLow,
+    backgroundColor: '#111111',
     borderBottomWidth: 1,
-    borderBottomColor: STITCH_COLORS.surfaceContainerHighest,
+    borderBottomColor: '#262626',
   },
   windowControls: {
     flexDirection: 'row',
@@ -584,13 +583,13 @@ const styles = StyleSheet.create({
   },
   windowLabel: {
     fontSize: 11,
-    color: STITCH_COLORS.onSurfaceVariant,
+    color: '#A1A1A1',
     marginLeft: 4,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   encodingLabel: {
     fontSize: 10,
-    color: STITCH_COLORS.outline,
+    color: '#737373',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   codeBody: {
@@ -603,19 +602,19 @@ const styles = StyleSheet.create({
   codeLineNumber: {
     width: 26,
     fontSize: 11,
-    color: STITCH_COLORS.outline,
+    color: '#737373',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   codeLineText: {
     flex: 1,
     fontSize: 12,
-    color: STITCH_COLORS.onSurface,
+    color: '#EDEDED',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     lineHeight: 18,
   },
   emptyPromptText: {
     fontSize: 12,
-    color: STITCH_COLORS.outline,
+    color: '#737373',
     fontStyle: 'italic',
   },
   dockedActionBar: {
@@ -623,34 +622,29 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(250, 248, 255, 0.96)',
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
     borderTopWidth: 1,
-    borderTopColor: STITCH_COLORS.surfaceContainerHighest,
+    borderTopColor: '#262626',
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: Platform.OS === 'ios' ? 24 : 12,
   },
   launchButton: {
-    height: 48,
-    backgroundColor: STITCH_COLORS.primaryContainer, // #4f46e5
-    borderRadius: 10,
+    height: 46,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 6,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: STITCH_COLORS.primaryContainer,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 3,
   },
   launchButtonIcon: {
     fontSize: 16,
     marginRight: 6,
   },
   launchButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000000',
   },
 });

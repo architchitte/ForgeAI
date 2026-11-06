@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — ForgeAI</title>
+  <meta name="description" content="Privacy Policy for the ForgeAI Android application (com.forgeai.app)." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-canvas: #FFFFFF;
+      --bg-surface: #FAFAFC;
+      --bg-subdued: #F1F5F9;
+      --border-subtle: #E2E8F0;
+      --text-main: #0F172A;
+      --text-muted: #475569;
+      --text-caption: #64748B;
+      --primary-indigo: #635BFF;
+      --primary-hover: #4F46E5;
+      --accent-cyan: #06B6D4;
+      --accent-cyan-bg: #ECFEFF;
+      --accent-cyan-border: #A5F3FC;
+      --emerald-success: #10B981;
+      --emerald-bg: #ECFDF5;
+      --emerald-border: #A7F3D0;
+      --emerald-dark: #065F46;
+      --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: 'JetBrains Mono', Menlo, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-canvas);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      line-height: 1.65;
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    header {
+      background-color: var(--bg-canvas);
+      border-bottom: 1px solid var(--border-subtle);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(12px);
+      background-color: rgba(255, 255, 255, 0.95);
+    }
+
+    .nav-container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand-logo {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--text-main);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .brand-logo span {
+      color: var(--primary-indigo);
+    }
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background-color: var(--accent-cyan-bg);
+      border: 1px solid var(--accent-cyan-border);
+      color: #0E7490;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 9999px;
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: var(--accent-cyan);
+    }
+
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+
+    .hero-section {
+      margin-bottom: 40px;
+      padding-bottom: 28px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .app-meta-tag {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-caption);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--text-main);
+      margin-bottom: 12px;
+      line-height: 1.25;
+    }
+
+    .last-updated {
+      font-size: 14px;
+      color: var(--text-caption);
+    }
+
+    .callout-box {
+      background-color: var(--emerald-bg);
+      border: 1px solid var(--emerald-border);
+      border-radius: 12px;
+      padding: 20px 22px;
+      margin: 28px 0 36px;
+    }
+
+    .callout-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--emerald-dark);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .callout-text {
+      font-size: 14px;
+      color: var(--emerald-dark);
+      line-height: 1.6;
+    }
+
+    h2 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+      margin-top: 40px;
+      margin-bottom: 16px;
+    }
+
+    h3 {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-top: 24px;
+      margin-bottom: 10px;
+    }
+
+    p {
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      line-height: 1.65;
+    }
+
+    ul, ol {
+      margin-left: 24px;
+      margin-bottom: 20px;
+      color: var(--text-muted);
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    li strong {
+      color: var(--text-main);
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0 28px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .data-table th, .data-table td {
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    .data-table th {
+      background-color: var(--bg-surface);
+      font-weight: 600;
+      color: var(--text-main);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .data-table td {
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+    }
+
+    .data-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .code-inline {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      background-color: var(--bg-subdued);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--primary-hover);
+    }
+
+    .guarantee-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 24px 0 32px;
+    }
+
+    @media (max-width: 680px) {
+      .guarantee-grid {
+        grid-template-columns: 1fr;
+      }
+      h1 {
+        font-size: 28px;
+      }
+    }
+
+    .guarantee-card {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+
+    .guarantee-card h4 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .guarantee-card p {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      margin-bottom: 0;
+    }
+
+    .contact-card {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 24px;
+      margin-top: 32px;
+    }
+
+    .contact-card a {
+      color: var(--primary-indigo);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .contact-card a:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      border-top: 1px solid var(--border-subtle);
+      background-color: var(--bg-surface);
+      padding: 32px 24px;
+      text-align: center;
+      color: var(--text-caption);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="nav-container">
+      <a href="#" class="brand-logo">Forge<span>AI</span></a>
+      <div class="badge-pill">
+        <div class="badge-dot"></div>
+        Google Play Verified
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="hero-section">
+      <div class="app-meta-tag">ForgeAI Android Application &bull; Package: com.forgeai.app</div>
+      <h1>Privacy Policy</h1>
+      <div class="last-updated">Last Updated &amp; Effective Date: November 6, 2026</div>
+    </div>
+
+    <div class="callout-box">
+      <div class="callout-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Our Core Privacy Commitment
+      </div>
+      <div class="callout-text">
+        ForgeAI is an open student application showcase designed solely for discovering and sharing student-built AI applications. We collect only what is strictly necessary for authentication and manual project publishing. We do not sell your data, perform background tracking, or scan your device.
+      </div>
+    </div>
+
+    <!-- 1. Objective and Architecture -->
+    <h2>1. Overview &amp; Scope</h2>
+    <p>
+      This Privacy Policy describes how ForgeAI (&ldquo;we&rdquo;, &ldquo;our&rdquo;, or &ldquo;the Application&rdquo;) collects, stores, processes, and protects information when you install, access, or use our mobile application (Android Package: <span class="code-inline">com.forgeai.app</span>).
+    </p>
+    <p>
+      ForgeAI functions as a curated digital repository where university students publish application blueprints and system prompts for their AI projects, and explore blueprints published by other student creators.
+    </p>
+
+    <!-- Core Negative Disclosures Required by Policy -->
+    <h2>2. Explicit Limitations (What ForgeAI Does NOT Do)</h2>
+    <p>
+      To ensure complete transparency and meet Google Play Store requirements, we explicitly state that:
+    </p>
+    <div class="guarantee-grid">
+      <div class="guarantee-card">
+        <h4><span style="color:#10B981;">&#10003;</span> No Device Scanning</h4>
+        <p>ForgeAI does not automatically scan, inspect, or access your device's files, storage, documents, photos, or personal applications.</p>
+      </div>
+      <div class="guarantee-card">
+        <h4><span style="color:#10B981;">&#10003;</span> No Automated GitHub Scraping</h4>
+        <p>ForgeAI does not access, crawl, or automatically collect source code from your private or public GitHub repositories.</p>
+      </div>
+      <div class="guarantee-card">
+        <h4><span style="color:#10B981;">&#10003;</span> No Native Agent Execution</h4>
+        <p>ForgeAI does not execute, run, or host student AI applications on ForgeAI servers. Applications run on author-hosted runtimes.</p>
+      </div>
+      <div class="guarantee-card">
+        <h4><span style="color:#10B981;">&#10003;</span> No Automated AI Evaluation</h4>
+        <p>ForgeAI does not perform automated AI-based evaluation, grading, scoring, or automated validation on submitted blueprints.</p>
+      </div>
+    </div>
+
+    <!-- 2. Information Collected -->
+    <h2>3. Information We Collect</h2>
+    <p>
+      We collect information through two distinct mechanisms: user authentication and manual blueprint submission.
+    </p>
+
+    <h3>A. Authentication Information</h3>
+    <p>To create an account and verify authorized contributions, we process:</p>
+    <ul>
+      <li><strong>Email Address:</strong> Provided voluntarily via Email/Password signup or Google OAuth.</li>
+      <li><strong>Display Name:</strong> Sourced from your Google profile metadata or manually updated in your user profile.</li>
+      <li><strong>Profile Avatar (Optional):</strong> If authenticated via Google OAuth, the public avatar picture URL is referenced for your in-app profile.</li>
+      <li><strong>Authentication Session Tokens:</strong> Cryptographically signed JWT tokens generated by Supabase Authentication to maintain active logins. Session tokens are persisted securely on your device via encrypted local SQLite storage.</li>
+    </ul>
+
+    <h3>B. Manually Submitted Blueprint Information</h3>
+    <p>
+      Repository entries are created <strong>only when you explicitly complete and submit the Blueprint Submission Form</strong>. ForgeAI stores the following five user-entered fields:
+    </p>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Field Name</th>
+          <th>Description &amp; Purpose</th>
+          <th>Storage Location</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>App Name</strong></td>
+          <td>The title of the student AI application</td>
+          <td>Public repository database</td>
+        </tr>
+        <tr>
+          <td><strong>One-Liner</strong></td>
+          <td>A concise summary (max 140 characters)</td>
+          <td>Public repository database</td>
+        </tr>
+        <tr>
+          <td><strong>Orchestration Framework</strong></td>
+          <td>The framework used (e.g., LangGraph, CrewAI, DSPy, AutoGen)</td>
+          <td>Public repository database</td>
+        </tr>
+        <tr>
+          <td><strong>Complete System Prompt</strong></td>
+          <td>The operational system prompt powering the agent</td>
+          <td>Public repository database</td>
+        </tr>
+        <tr>
+          <td><strong>Active Deployment Runtime URL</strong></td>
+          <td>The external HTTPS link where the student agent is hosted (e.g., Streamlit, Vercel)</td>
+          <td>Public repository database</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      When a blueprint is published, it is associated with your authenticated <strong>student email</strong>, <strong>student name</strong>, and optional <strong>university affiliation</strong> to provide proper project authorship attribution in the public repository feed.
+    </p>
+
+    <h3>C. Technical &amp; Diagnostic Data</h3>
+    <ul>
+      <li><strong>Network Requests:</strong> Basic IP and request headers required by Supabase API gateways to fulfill database read/write queries.</li>
+      <li><strong>No Invasive Device Permissions:</strong> ForgeAI requests zero invasive Android permissions (no Camera, no Contacts, no Microphone, no Background Location, no Read External Storage).</li>
+    </ul>
+
+    <!-- 3. Data Storage & Architecture -->
+    <h2>4. Backend Architecture &amp; Data Storage</h2>
+    <p>
+      ForgeAI uses <strong>Supabase</strong> (powered by PostgreSQL) for authentication and data management:
+    </p>
+    <ul>
+      <li><strong>Supabase Authentication:</strong> Handles password hashing (bcrypt), token issuance, and OAuth session verification. Passwords are never stored in plaintext and cannot be read by ForgeAI administrators.</li>
+      <li><strong>Supabase PostgreSQL Database:</strong> Blueprint records reside in the <span class="code-inline">repositories</span> table.</li>
+      <li><strong>Row Level Security (RLS):</strong> The database enforces granular PostgreSQL Row Level Security:
+        <ul>
+          <li><em>Public Read Access:</em> All app users can browse published blueprints in the showcase repository.</li>
+          <li><em>Authenticated Write Access:</em> Only authenticated users with verified sessions can insert new blueprints.</li>
+          <li><em>Owner-Restricted Modifications:</em> Users can only update or edit blueprints associated with their own verified credentials.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <!-- 4. Data Usage Limitations -->
+    <h2>5. How We Use Information</h2>
+    <p>We use the collected information strictly to:</p>
+    <ul>
+      <li>Authenticate your identity and safeguard your account against unauthorized access.</li>
+      <li>Display published AI application blueprints in the public showcase feed for peer learning and review.</li>
+      <li>Enable users to launch external deployment runtime URLs in their device's default web browser via standard Android intents.</li>
+      <li>Allow authors to manage, edit, or delete their submitted blueprints.</li>
+    </ul>
+    <p>
+      <strong>No Data Commercialization:</strong> ForgeAI does not sell, rent, monetize, or trade your personal or project data with data brokers or advertising networks. We do not display third-party advertisements.
+    </p>
+
+    <!-- 5. User Rights and Data Deletion -->
+    <h2>6. User Rights, Account Deletion &amp; Data Retention</h2>
+    <p>
+      Under Google Play Store policies and international data protection laws (GDPR, CCPA), you retain full sovereignty over your data.
+    </p>
+    <h3>A. Deletion of Published Blueprints</h3>
+    <p>
+      You can edit or request deletion of your published blueprints directly within the application via your Profile screen or by contacting our team.
+    </p>
+    <h3>B. Complete Account &amp; Data Deletion Procedure</h3>
+    <p>
+      To permanently delete your user account and all associated blueprint records:
+    </p>
+    <ol>
+      <li>Send an email to our designated privacy contact at <a href="mailto:architchitte001@gmail.com">architchitte001@gmail.com</a> with the subject line <strong>&ldquo;ForgeAI Account Deletion Request&rdquo;</strong>.</li>
+      <li>Include your registered email address.</li>
+      <li>Upon verification, your Supabase Auth account and all submitted records in the <span class="code-inline">repositories</span> database will be permanently purged within 7 business days.</li>
+    </ol>
+
+    <!-- 6. Third-Party Services -->
+    <h2>7. Third-Party Service Providers</h2>
+    <p>ForgeAI relies on a minimal set of established infrastructure partners:</p>
+    <ul>
+      <li><strong>Supabase Inc.:</strong> Backend database, auth, and hosting infrastructure (<a href="https://supabase.com/privacy" target="_blank" rel="noopener">Supabase Privacy Policy</a>).</li>
+      <li><strong>Google Identity Services:</strong> Provides Google Sign-In capability (<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy Policy</a>).</li>
+      <li><strong>External Deployment Hosts:</strong> Student deployment URLs lead to external platforms (Streamlit, Modal, Vercel, Hugging Face). Once you click &ldquo;Launch App&rdquo;, interactions on external websites are governed by those respective services' privacy practices.</li>
+    </ul>
+
+    <!-- 7. Children's Privacy -->
+    <h2>8. Children's Privacy</h2>
+    <p>
+      ForgeAI is designed for university and college students aged 13 and above. We do not knowingly collect personal identifiable information from children under the age of 13. If you believe a child under 13 has submitted information to ForgeAI, please contact us immediately to have it purged.
+    </p>
+
+    <!-- 8. Updates to this Policy -->
+    <h2>9. Changes to this Privacy Policy</h2>
+    <p>
+      We may update our Privacy Policy periodically. Any revisions will be reflected on this page with an updated &ldquo;Last Updated&rdquo; date. Significant changes will be announced directly within the mobile application.
+    </p>
+
+    <!-- 9. Contact Section -->
+    <h2>10. Developer Contact Information</h2>
+    <div class="contact-card">
+      <p style="margin-bottom: 8px;">For questions, privacy inquiries, or data deletion requests, contact the developer:</p>
+      <p style="margin-bottom: 4px;"><strong>Developer:</strong> Archit Chitte &bull; ForgeAI Team</p>
+      <p style="margin-bottom: 4px;"><strong>Application:</strong> ForgeAI (Package: <span class="code-inline">com.forgeai.app</span>)</p>
+      <p style="margin-bottom: 0;"><strong>Privacy &amp; Support Email:</strong> <a href="mailto:architchitte001@gmail.com">architchitte001@gmail.com</a></p>
+    </div>
+  </main>
+
+  <footer>
+    &copy; 2026 ForgeAI. Built for university student builders. All rights reserved.
+  </footer>
+
+</body>
+</html>
+
