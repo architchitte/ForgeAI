@@ -26,11 +26,10 @@ import { STITCH_COLORS, STITCH_ASSETS } from './src/constants/theme';
 import {
   TargetIcon,
   RocketIcon,
-  WorkflowIcon,
   SlidersIcon,
 } from './src/components/navigation/NavIcons';
 
-type AuthenticatedTab = 'discover' | 'submit' | 'activity' | 'account';
+type AuthenticatedTab = 'discover' | 'submit' | 'account';
 
 const AuthenticatedView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AuthenticatedTab>('discover');
@@ -38,58 +37,40 @@ const AuthenticatedView: React.FC = () => {
 
   const handleSelectTab = (tab: AuthenticatedTab) => {
     setActiveTab(tab);
-    if (tab === 'discover') {
-      // Return to feed listings when Discover is clicked
-      setSelectedRepo(null);
-    }
+    setSelectedRepo(null);
   };
 
   return (
     <SafeAreaView style={styles.authSafeArea}>
-      {/* Unified Glassmorphic Top Header on ALL pages (No 'Student Projects') */}
+      {/* Centered Top Header with ForgeAI Logo */}
       <View style={styles.appBar}>
         <TouchableOpacity
           style={styles.appBarBrand}
           onPress={() => handleSelectTab('discover')}
           activeOpacity={0.8}
         >
-          <Image
-            source={STITCH_ASSETS.singularityLogo}
-            style={styles.appBarLogo}
-            resizeMode="contain"
-          />
-          <Text style={styles.appBarTitle}>ForgeAI</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.appBarRight}
-          onPress={() => handleSelectTab('account')}
-          activeOpacity={0.7}
-        >
-          <View style={styles.appBarAvatar}>
-            <Text style={styles.avatarIcon}>👤</Text>
-          </View>
+          <Text style={styles.appBarTitle}>
+            Forge<Text style={styles.appBarTitleAccent}>AI</Text>
+          </Text>
         </TouchableOpacity>
       </View>
 
       {/* Active Screen View */}
       <View style={styles.screenContainer}>
-        {activeTab === 'discover' ? (
-          selectedRepo ? (
-            <ProjectDetailView
-              repository={selectedRepo}
-              onBack={() => setSelectedRepo(null)}
-            />
-          ) : (
-            <RepositoryFeedScreen
-              isActive={activeTab === 'discover' && !selectedRepo}
-              onNavigateToSubmit={() => {
-                setSelectedRepo(null);
-                setActiveTab('submit');
-              }}
-              onSelectRepository={(repo) => setSelectedRepo(repo)}
-            />
-          )
+        {selectedRepo ? (
+          <ProjectDetailView
+            repository={selectedRepo}
+            onBack={() => setSelectedRepo(null)}
+          />
+        ) : activeTab === 'discover' ? (
+          <RepositoryFeedScreen
+            isActive={activeTab === 'discover'}
+            onNavigateToSubmit={() => {
+              setSelectedRepo(null);
+              setActiveTab('submit');
+            }}
+            onSelectRepository={(repo) => setSelectedRepo(repo)}
+          />
         ) : activeTab === 'submit' ? (
           <SubmitBlueprintScreen
             onSuccess={() => {
@@ -103,18 +84,19 @@ const AuthenticatedView: React.FC = () => {
               setSelectedRepo(null);
               setActiveTab('submit');
             }}
+            onSelectRepository={(repo) => setSelectedRepo(repo)}
           />
         )}
       </View>
 
-      {/* Rounded Bottom Navigation Dock based on reference */}
+      {/* Rounded Bottom Navigation Dock (3 Tabs: Discover, Submit, Profile) */}
       <View style={styles.bottomDockContainer}>
         <View style={styles.bottomDock}>
           {/* Tab 1: Discover — Minimal Target Reticle */}
           <TouchableOpacity
             style={[
               styles.dockItem,
-              activeTab === 'discover' && !selectedRepo && styles.dockItemActive,
+              activeTab === 'discover' && styles.dockItemActive,
             ]}
             onPress={() => handleSelectTab('discover')}
             activeOpacity={0.7}
@@ -122,14 +104,18 @@ const AuthenticatedView: React.FC = () => {
             <View style={styles.dockIconWrapper}>
               <TargetIcon
                 size={22}
-                color={STITCH_COLORS.primaryContainer}
+                color={
+                  activeTab === 'discover'
+                    ? STITCH_COLORS.primaryContainer
+                    : STITCH_COLORS.outline
+                }
                 strokeWidth={1.8}
               />
             </View>
             <Text
               style={[
                 styles.dockLabel,
-                activeTab === 'discover' && !selectedRepo && styles.dockLabelActive,
+                activeTab === 'discover' && styles.dockLabelActive,
               ]}
             >
               Discover
@@ -148,7 +134,11 @@ const AuthenticatedView: React.FC = () => {
             <View style={styles.dockIconWrapper}>
               <RocketIcon
                 size={22}
-                color={STITCH_COLORS.primaryContainer}
+                color={
+                  activeTab === 'submit'
+                    ? STITCH_COLORS.primaryContainer
+                    : STITCH_COLORS.outline
+                }
                 strokeWidth={1.8}
               />
             </View>
@@ -162,33 +152,7 @@ const AuthenticatedView: React.FC = () => {
             </Text>
           </TouchableOpacity>
 
-          {/* Tab 3: Activity — Minimal Workflow Nodes */}
-          <TouchableOpacity
-            style={[
-              styles.dockItem,
-              activeTab === 'activity' && styles.dockItemActive,
-            ]}
-            onPress={() => handleSelectTab('activity')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.dockIconWrapper}>
-              <WorkflowIcon
-                size={22}
-                color={STITCH_COLORS.primaryContainer}
-                strokeWidth={1.8}
-              />
-            </View>
-            <Text
-              style={[
-                styles.dockLabel,
-                activeTab === 'activity' && styles.dockLabelActive,
-              ]}
-            >
-              Activity
-            </Text>
-          </TouchableOpacity>
-
-          {/* Tab 4: Account — Minimal Settings / Sliders */}
+          {/* Tab 3: Profile — Person / Sliders */}
           <TouchableOpacity
             style={[
               styles.dockItem,
@@ -200,7 +164,11 @@ const AuthenticatedView: React.FC = () => {
             <View style={styles.dockIconWrapper}>
               <SlidersIcon
                 size={22}
-                color={STITCH_COLORS.primaryContainer}
+                color={
+                  activeTab === 'account'
+                    ? STITCH_COLORS.primaryContainer
+                    : STITCH_COLORS.outline
+                }
                 strokeWidth={1.8}
               />
             </View>
@@ -210,7 +178,7 @@ const AuthenticatedView: React.FC = () => {
                 activeTab === 'account' && styles.dockLabelActive,
               ]}
             >
-              Account
+              Profile
             </Text>
           </TouchableOpacity>
         </View>
@@ -247,7 +215,7 @@ export default function App() {
   return (
     <AuthProvider>
       <MainNavigator />
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
     </AuthProvider>
   );
 }
@@ -262,7 +230,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 14,
     fontSize: 13,
-    color: STITCH_COLORS.outline,
+    color: STITCH_COLORS.onSurfaceVariant,
     fontWeight: '600',
     letterSpacing: 0.5,
   },
@@ -274,48 +242,30 @@ const styles = StyleSheet.create({
     height: 56,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: 16,
-    backgroundColor: 'rgba(17, 19, 25, 0.94)',
+    backgroundColor: 'rgba(250, 248, 255, 0.96)',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(50, 53, 59, 0.65)',
-    shadowColor: STITCH_COLORS.primaryContainer,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
+    borderBottomColor: STITCH_COLORS.surfaceContainerHighest,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   appBarBrand: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  appBarLogo: {
-    width: 32,
-    height: 32,
-    marginRight: 10,
-  },
-  appBarTitle: {
-    fontSize: 19,
-    fontWeight: '800',
-    color: STITCH_COLORS.onSurface,
-    letterSpacing: -0.4,
-  },
-  appBarRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  appBarAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: STITCH_COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: STITCH_COLORS.primaryContainer + '60',
   },
-  avatarIcon: {
-    fontSize: 14,
+  appBarTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: STITCH_COLORS.onSurface,
+    letterSpacing: -0.6,
+    textAlign: 'center',
+  },
+  appBarTitleAccent: {
+    color: STITCH_COLORS.primaryContainer,
   },
   screenContainer: {
     flex: 1,
@@ -332,15 +282,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    backgroundColor: 'rgba(12, 14, 19, 0.96)',
+    backgroundColor: '#ffffff',
     borderRadius: 22,
-    borderWidth: 1.2,
-    borderColor: 'rgba(99, 102, 241, 0.4)', // subtle indigo/violet border matching the reference screenshot
-    shadowColor: STITCH_COLORS.primaryContainer,
+    borderWidth: 1,
+    borderColor: STITCH_COLORS.surfaceContainerHighest,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 14,
-    elevation: 6,
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 4,
     paddingHorizontal: 6,
   },
   dockItem: {
@@ -353,7 +303,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   dockItemActive: {
-    backgroundColor: 'rgba(255, 107, 26, 0.08)', // subtle active background pill indicator
+    backgroundColor: STITCH_COLORS.surfaceContainerLow,
   },
   dockIconWrapper: {
     width: 24,
@@ -364,7 +314,7 @@ const styles = StyleSheet.create({
   dockLabel: {
     fontSize: 10.5,
     fontWeight: '500',
-    color: '#94A3B8',
+    color: STITCH_COLORS.onSurfaceVariant,
     marginTop: 3,
     letterSpacing: 0.2,
     textAlign: 'center',

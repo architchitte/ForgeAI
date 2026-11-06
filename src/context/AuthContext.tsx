@@ -33,6 +33,7 @@ interface AuthContextType {
   ) => Promise<{ needsEmailVerification: boolean }>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  updateUserName: (name: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -200,6 +201,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const updateUserName = async (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      throw new Error('Name cannot be empty.');
+    }
+    try {
+      setAuthActionLoading(true);
+      setError(null);
+      const { data, error: updateErr } = await supabase.auth.updateUser({
+        data: {
+          full_name: trimmed,
+          name: trimmed,
+        },
+      });
+      if (updateErr) {
+        throw updateErr;
+      }
+      if (data?.user) {
+        setUser(data.user);
+      }
+    } catch (err: any) {
+      const message = err?.message || 'Failed to update name.';
+      setError(message);
+      throw err;
+    } finally {
+      setAuthActionLoading(false);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -213,6 +243,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         signUpWithEmail,
         signInWithGoogle,
         signOut,
+        updateUserName,
       }}
     >
       {children}

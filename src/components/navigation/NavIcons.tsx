@@ -8,7 +8,7 @@ export interface IconProps {
   strokeWidth?: number;
 }
 
-const DEFAULT_ORANGE = STITCH_COLORS.primaryContainer; // #ff6b1a (Singularity Fiery Orange)
+const DEFAULT_ACCENT = STITCH_COLORS.primaryContainer; // #4f46e5 Indigo Accent
 const DEFAULT_STROKE = 1.8;
 const DEFAULT_SIZE = 22;
 
@@ -18,7 +18,7 @@ const DEFAULT_SIZE = 22;
  */
 export const TargetIcon: React.FC<IconProps> = ({
   size = DEFAULT_SIZE,
-  color = DEFAULT_ORANGE,
+  color = DEFAULT_ACCENT,
   strokeWidth = DEFAULT_STROKE,
 }) => {
   const outerRadius = size / 2;
@@ -72,7 +72,7 @@ export const TargetIcon: React.FC<IconProps> = ({
  */
 export const RocketIcon: React.FC<IconProps> = ({
   size = DEFAULT_SIZE,
-  color = DEFAULT_ORANGE,
+  color = DEFAULT_ACCENT,
   strokeWidth = DEFAULT_STROKE,
 }) => {
   const bodyWidth = Math.round(size * 0.44);
@@ -162,7 +162,7 @@ export const RocketIcon: React.FC<IconProps> = ({
  */
 export const WorkflowIcon: React.FC<IconProps> = ({
   size = DEFAULT_SIZE,
-  color = DEFAULT_ORANGE,
+  color = DEFAULT_ACCENT,
   strokeWidth = DEFAULT_STROKE,
 }) => {
   const nodeSize = 4.5;
@@ -326,7 +326,7 @@ export const WorkflowIcon: React.FC<IconProps> = ({
  */
 export const SlidersIcon: React.FC<IconProps> = ({
   size = DEFAULT_SIZE,
-  color = DEFAULT_ORANGE,
+  color = DEFAULT_ACCENT,
   strokeWidth = DEFAULT_STROKE,
 }) => {
   return (

@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import { Repository, CreateRepositoryInput } from '../types/repository';
+import { Repository, CreateRepositoryInput, UpdateRepositoryInput } from '../types/repository';
 
 export interface RepositoryResponse<T> {
   data: T | null;
@@ -29,6 +29,34 @@ export const fetchRepositories = async (): Promise<
     return {
       data: null,
       error: err?.message || 'Failed to fetch repositories due to an unexpected error.',
+    };
+  }
+};
+
+/**
+ * Retrieve blueprint repositories submitted by a specific student email.
+ */
+export const fetchUserRepositories = async (
+  email: string
+): Promise<RepositoryResponse<Repository[]>> => {
+  try {
+    const { data, error } = await supabase
+      .from('repositories')
+      .select('*')
+      .eq('student_email', email)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('[RepositoriesService] fetchUserRepositories error:', error.message);
+      return { data: null, error: error.message };
+    }
+
+    return { data: (data as Repository[]) || [], error: null };
+  } catch (err: any) {
+    console.error('[RepositoriesService] Unexpected fetch error for user repos:', err);
+    return {
+      data: null,
+      error: err?.message || 'Failed to fetch your projects.',
     };
   }
 };
@@ -71,4 +99,41 @@ export const createRepository = async (
     };
   }
 };
+
+/**
+ * Update an existing application blueprint in public.repositories.
+ */
+export const updateRepository = async (
+  id: string,
+  input: UpdateRepositoryInput
+): Promise<RepositoryResponse<Repository>> => {
+  try {
+    const { data, error } = await supabase
+      .from('repositories')
+      .update({
+        ...(input.app_name !== undefined ? { app_name: input.app_name } : {}),
+        ...(input.one_liner !== undefined ? { one_liner: input.one_liner } : {}),
+        ...(input.framework !== undefined ? { framework: input.framework } : {}),
+        ...(input.system_prompt !== undefined ? { system_prompt: input.system_prompt } : {}),
+        ...(input.agent_execution_url !== undefined ? { agent_execution_url: input.agent_execution_url } : {}),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[RepositoriesService] updateRepository error:', error.message);
+      return { data: null, error: error.message };
+    }
+
+    return { data: data as Repository, error: null };
+  } catch (err: any) {
+    console.error('[RepositoriesService] Unexpected update error:', err);
+    return {
+      data: null,
+      error: err?.message || 'Failed to update blueprint due to an unexpected error.',
+    };
+  }
+};
+
 

@@ -77,7 +77,7 @@ export const Input: React.FC<InputProps> = ({
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={STITCH_COLORS.outline + '80'}
+          placeholderTextColor={STITCH_COLORS.outline}
           secureTextEntry={isPassword ? hidePassword : secureTextEntry}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
@@ -123,11 +123,10 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   label: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: STITCH_COLORS.onSurfaceVariant,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
+    fontSize: 12,
+    fontWeight: '600',
+    color: STITCH_COLORS.onSurface,
+    letterSpacing: -0.1,
   },
   rightLabel: {
     fontSize: 11,
@@ -137,9 +136,9 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
+    backgroundColor: STITCH_COLORS.surfaceContainerLowest, // #ffffff
     borderWidth: 1,
-    borderColor: STITCH_COLORS.outlineVariant + '70',
+    borderColor: STITCH_COLORS.surfaceContainerHighest,   // #dae2fd
     borderRadius: 8,
     paddingHorizontal: 12,
     minHeight: 46,
@@ -150,7 +149,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   inputFocused: {
-    borderColor: STITCH_COLORS.primaryContainer,
+    borderColor: STITCH_COLORS.primaryContainer, // #4f46e5
   },
   inputError: {
     borderColor: STITCH_COLORS.error,
@@ -161,7 +160,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     color: STITCH_COLORS.onSurface,
-    fontSize: 14,
+    fontSize: 13.5,
     paddingVertical: 10,
   },
   multilineInput: {

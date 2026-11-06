@@ -3,21 +3,23 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   FlatList,
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
   TextInput,
-  Image,
-  Animated,
-  Easing,
   Platform,
 } from 'react-native';
 import { Repository } from '../../types/repository';
 import { fetchRepositories } from '../../services/repositories';
 import { ProjectDetailSheet } from '../../components/detail/ProjectDetailSheet';
-import { STITCH_COLORS, STITCH_ASSETS } from '../../constants/theme';
+import { STITCH_COLORS } from '../../constants/theme';
+import {
+  GraduationCapIcon,
+  ArrowRightIcon,
+  SearchIcon,
+  RocketIcon,
+} from '../../components/common/AppIcons';
 
 interface RepositoryFeedScreenProps {
   onNavigateToSubmit?: () => void;
@@ -27,11 +29,37 @@ interface RepositoryFeedScreenProps {
 
 const FRAMEWORK_FILTERS = [
   { id: 'all', label: 'All Projects' },
-  { id: 'langgraph', label: 'LANGGRAPH' },
-  { id: 'crewai', label: 'CREWAI' },
-  { id: 'dspy', label: 'DSPY' },
-  { id: 'autogen', label: 'AUTOGEN' },
+  { id: 'langgraph', label: 'LangGraph' },
+  { id: 'crewai', label: 'CrewAI' },
+  { id: 'dspy', label: 'DSPy' },
+  { id: 'autogen', label: 'AutoGen' },
 ];
+
+const getFrameworkBadgeStyle = (framework: string) => {
+  const fw = (framework || '').toLowerCase();
+  if (fw.includes('langgraph')) {
+    return {
+      bg: STITCH_COLORS.primaryFixed, // #e2dfff
+      text: STITCH_COLORS.onPrimaryFixedVariant, // #3323cc
+    };
+  }
+  if (fw.includes('crewai')) {
+    return {
+      bg: STITCH_COLORS.secondaryFixed, // #d8e2ff
+      text: STITCH_COLORS.onSecondaryFixedVariant, // #004395
+    };
+  }
+  if (fw.includes('dspy')) {
+    return {
+      bg: STITCH_COLORS.primaryFixed, // #e2dfff
+      text: STITCH_COLORS.onPrimaryFixedVariant, // #3323cc
+    };
+  }
+  return {
+    bg: STITCH_COLORS.surfaceContainerHigh, // #e2e7ff
+    text: STITCH_COLORS.onSurface,
+  };
+};
 
 export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
   onNavigateToSubmit,
@@ -50,30 +78,6 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
   // Selected repository for Project Detail Sheet
   const [selectedRepository, setSelectedRepository] = useState<Repository | null>(null);
   const [isDetailVisible, setIsDetailVisible] = useState<boolean>(false);
-
-  // Animation for beacon ping
-  const beaconPing = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.timing(beaconPing, {
-        toValue: 1,
-        duration: 1600,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      })
-    ).start();
-  }, [beaconPing]);
-
-  const beaconScale = beaconPing.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 2.2],
-  });
-
-  const beaconOpacity = beaconPing.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.8, 0],
-  });
 
   const isInitialMount = useRef(true);
 
@@ -144,134 +148,17 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
     });
   }, [repositories, searchQuery, selectedFramework]);
 
-  // Diagram Topology Visualizers matching the 4 Stitch variants
-  const renderTopologyDisplay = (framework: string, index: number) => {
-    const fw = framework.toLowerCase();
-    const variantIndex = index % 4;
-
-    if (fw.includes('crew') || variantIndex === 1) {
-      // Variant 2: HPC Cluster Node Visualizer
-      return (
-        <View style={styles.topologyContainer}>
-          <View style={styles.clusterGrid}>
-            {[1, 2, 3, 4].map((node) => (
-              <View key={node} style={styles.clusterTile}>
-                <View style={styles.clusterTileHeader}>
-                  <Text style={styles.clusterTileTag}>NODE 0{node}</Text>
-                  <View
-                    style={[
-                      styles.clusterTileDot,
-                      node <= 2 && { backgroundColor: STITCH_COLORS.primaryContainer },
-                    ]}
-                  />
-                </View>
-                <View style={styles.clusterBar}>
-                  <View
-                    style={[
-                      styles.clusterBarFill,
-                      { width: `${30 + node * 18}%` },
-                    ]}
-                  />
-                </View>
-                <Text style={styles.clusterMetric}>GPU CLUSTER #{node}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      );
-    }
-
-    if (fw.includes('dspy') || variantIndex === 2) {
-      // Variant 3: Dialectic Orbit Graph Preview
-      return (
-        <View style={styles.topologyContainer}>
-          <View style={styles.orbitContainer}>
-            <View style={styles.orbitEllipseOuter} />
-            <View style={styles.orbitEllipseInner} />
-            <View style={styles.centralCore}>
-              <View style={styles.centralCoreDot} />
-            </View>
-            <View style={styles.satellite1}>
-              <Text style={styles.satelliteLabel}>SYNTH</Text>
-            </View>
-            <View style={styles.satellite2}>
-              <Text style={styles.satelliteLabel}>DIALECTIC</Text>
-            </View>
-          </View>
-        </View>
-      );
-    }
-
-    if (fw.includes('autogen') || variantIndex === 3) {
-      // Variant 4: Molecular Reaction Network
-      return (
-        <View style={styles.topologyContainer}>
-          <View style={styles.moleculeContainer}>
-            <View style={styles.moleculeNode1}>
-              <Text style={styles.moleculeLabel}>CATALYST</Text>
-            </View>
-            <View style={styles.moleculeBond} />
-            <View style={styles.moleculeNode2}>
-              <Text style={styles.moleculeLabel}>SYNTH-ISO</Text>
-            </View>
-            <View style={styles.moleculeBond2} />
-            <View style={styles.moleculeNode3} />
-          </View>
-        </View>
-      );
-    }
-
-    // Variant 1: Schematic DAG Topology Display (Ingest, Parser, Cross-Ref, Eval-Loop, Horizon)
-    return (
-      <View style={styles.topologyContainer}>
-        <View style={styles.dagContent}>
-          <View style={styles.dagNodeGroup}>
-            <View style={[styles.dagNodeCircle, { borderColor: STITCH_COLORS.primaryContainer }]}>
-              <View style={styles.dagCoreOrange} />
-            </View>
-            <Text style={styles.dagNodeLabel}>INGEST</Text>
-          </View>
-
-          <View style={styles.dagWire} />
-
-          <View style={styles.dagNodeGroup}>
-            <View style={[styles.dagNodeCircle, { borderColor: STITCH_COLORS.secondaryContainer }]}>
-              <View style={styles.dagCoreAmber} />
-            </View>
-            <Text style={styles.dagNodeLabel}>PARSER</Text>
-          </View>
-
-          <View style={styles.dagWireOrange} />
-
-          <View style={styles.dagNodeGroup}>
-            <View style={[styles.dagNodeCircle, { borderColor: STITCH_COLORS.primary }]}>
-              <View style={styles.dagCorePeach} />
-            </View>
-            <Text style={styles.dagNodeLabel}>EVAL-LOOP</Text>
-          </View>
-
-          <View style={styles.dagWire} />
-
-          <View style={styles.dagNodeGroup}>
-            <View style={[styles.dagNodeCircle, { borderColor: STITCH_COLORS.primaryContainer }]}>
-              <View style={styles.dagCoreOrange} />
-            </View>
-            <Text style={styles.dagNodeLabel}>HORIZON</Text>
-          </View>
-        </View>
-      </View>
-    );
-  };
-
-  const renderCard = ({ item, index }: { item: Repository; index: number }) => {
+  const renderCard = ({ item }: { item: Repository }) => {
     const studentDisplayName =
       item.student_name && item.student_name.trim().length > 0
-        ? item.student_name
+        ? item.student_name.trim()
         : item.student_email;
 
     const creatorSubtitle = item.university
       ? `${studentDisplayName} · ${item.university}`
       : studentDisplayName;
+
+    const fwBadge = getFrameworkBadgeStyle(item.framework);
 
     return (
       <TouchableOpacity
@@ -280,46 +167,41 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
         activeOpacity={0.8}
         testID={`repository-card-${item.id}`}
       >
-        {/* Accretion top gradient accent */}
-        <View style={styles.cardAccentLine} />
-
-        {/* Metadata Header */}
+        {/* Card Header */}
         <View style={styles.cardHeader}>
           <View style={styles.cardTitleCol}>
             <Text style={styles.cardAppName} numberOfLines={1}>
               {item.app_name}
             </Text>
-            <Text style={styles.cardAuthor} numberOfLines={1}>
-              {creatorSubtitle}
-            </Text>
+            <View style={styles.authorRow}>
+              <GraduationCapIcon size={14} color={STITCH_COLORS.primaryContainer} />
+              <Text style={styles.cardAuthor} numberOfLines={1}>
+                {creatorSubtitle}
+              </Text>
+            </View>
           </View>
-          <View style={styles.frameworkBadge}>
-            <Text style={styles.frameworkBadgeText}>
-              {item.framework.toUpperCase()}
+          <View style={[styles.frameworkBadge, { backgroundColor: fwBadge.bg }]}>
+            <Text style={[styles.frameworkBadgeText, { color: fwBadge.text }]}>
+              {item.framework}
             </Text>
           </View>
         </View>
-
-        {/* Schematic DAG Topology Visualizer */}
-        {renderTopologyDisplay(item.framework, index)}
 
         {/* Description */}
         <Text style={styles.oneLiner} numberOfLines={2}>
           {item.one_liner}
         </Text>
 
-        {/* Telemetry Footer */}
+        {/* Card Bottom: Active Status Pill & View Project Button */}
         <View style={styles.cardFooter}>
-          <View style={styles.footerTag}>
-            <View style={styles.footerTagDot} />
-            <Text style={styles.footerTagText}>
-              {item.university || 'FORGE AGENT'}
-            </Text>
+          <View style={styles.activeStatusPill}>
+            <View style={styles.activeDot} />
+            <Text style={styles.activeStatusText}>Active</Text>
           </View>
 
           <View style={styles.viewProjectLink}>
             <Text style={styles.viewProjectText}>View Project</Text>
-            <Text style={styles.viewProjectIcon}>↗</Text>
+            <ArrowRightIcon size={14} color={STITCH_COLORS.primaryContainer} />
           </View>
         </View>
       </TouchableOpacity>
@@ -328,116 +210,99 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
 
   const renderHeader = () => (
     <View style={styles.headerContainer}>
-      {/* Ambient Relativistic Light Field */}
-      <View style={styles.ambientAura} pointerEvents="none" />
-
-      {/* Header Horizon */}
-      <View style={styles.topHorizon}>
-        <View style={styles.beaconBadge}>
-          <View style={styles.beaconDotWrap}>
-            <Animated.View
-              style={[
-                styles.beaconPulseRing,
-                {
-                  transform: [{ scale: beaconScale }],
-                  opacity: beaconOpacity,
-                },
-              ]}
-            />
-            <View style={styles.beaconDot} />
-          </View>
-          <Text style={styles.beaconText}>STUDENT PROJECTS</Text>
-        </View>
-        <Text style={styles.heroTitle}>Student AI Projects</Text>
-        <Text style={styles.heroSubtitle}>
-          Discover AI projects and workflows built by university students.
-        </Text>
+      {/* Curated Showcase Badge */}
+      <View style={styles.beaconBadge}>
+        <View style={styles.beaconDot} />
+        <Text style={styles.beaconText}>Curated Showcase</Text>
       </View>
 
-      {/* Command Horizon Search & Filter Terminal */}
-      <View style={styles.searchSection}>
-        <View style={styles.searchBarWrapper}>
-          <Text style={styles.terminalPromptIcon}>&gt;_</Text>
-          <TextInput
-            style={styles.searchInput}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholder="Search projects, frameworks, schools..."
-            placeholderTextColor={STITCH_COLORS.outlineVariant}
-            autoCapitalize="none"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity
-              onPress={() => setSearchQuery('')}
-              style={styles.clearSearchBtn}
-            >
-              <Text style={styles.clearSearchText}>✕</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+      {/* Hero Title & Subtitle */}
+      <Text style={styles.heroTitle}>Student AI Projects</Text>
+      <Text style={styles.heroSubtitle}>
+        Discover AI projects built by university students.
+      </Text>
 
-        {/* Framework Filter Chips */}
-        <View style={styles.chipsScroll}>
-          {FRAMEWORK_FILTERS.map((chip) => {
-            const isSelected = selectedFramework === chip.id;
-            return (
-              <TouchableOpacity
-                key={chip.id}
+      {/* Modern Search Bar */}
+      <View style={styles.searchBarWrapper}>
+        <View style={styles.searchIconWrap}>
+          <SearchIcon size={16} color={STITCH_COLORS.outline} />
+        </View>
+        <TextInput
+          style={styles.searchInput}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search projects, frameworks, schools..."
+          placeholderTextColor={STITCH_COLORS.outline}
+          autoCapitalize="none"
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity
+            onPress={() => setSearchQuery('')}
+            style={styles.clearSearchBtn}
+          >
+            <Text style={styles.clearSearchText}>✕</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Framework Filter Chips */}
+      <View style={styles.chipsScroll}>
+        {FRAMEWORK_FILTERS.map((chip) => {
+          const isSelected = selectedFramework.toLowerCase() === chip.id.toLowerCase();
+          return (
+            <TouchableOpacity
+              key={chip.id}
+              style={[
+                styles.filterChip,
+                isSelected && styles.filterChipActive,
+              ]}
+              onPress={() => setSelectedFramework(chip.id)}
+              activeOpacity={0.7}
+            >
+              <Text
                 style={[
-                  styles.filterChip,
-                  isSelected && styles.filterChipActive,
+                  styles.chipLabel,
+                  isSelected && styles.chipLabelActive,
                 ]}
-                onPress={() => setSelectedFramework(chip.id)}
-                activeOpacity={0.7}
               >
+                {chip.label}
+              </Text>
+              {chip.id === 'all' && (
                 <View
                   style={[
-                    styles.chipDot,
-                    isSelected && styles.chipDotActive,
-                  ]}
-                />
-                <Text
-                  style={[
-                    styles.chipLabel,
-                    isSelected && styles.chipLabelActive,
+                    styles.chipCountBadge,
+                    isSelected && styles.chipCountBadgeActive,
                   ]}
                 >
-                  {chip.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+                  <Text
+                    style={[
+                      styles.chipCountText,
+                      isSelected && styles.chipCountTextActive,
+                    ]}
+                  >
+                    {repositories.length}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );
 
   const renderFooter = () => (
     <View style={styles.footerContainer}>
-      {/* Cosmic Cohort Callout Card */}
+      {/* Call To Action Card */}
       <View style={styles.cohortCard}>
-        <View style={styles.cohortGlow1} pointerEvents="none" />
-        <View style={styles.cohortGlow2} pointerEvents="none" />
-
         <View style={styles.cohortBadgeRow}>
-          <View style={styles.beaconDotWrap}>
-            <Animated.View
-              style={[
-                styles.beaconPulseRing,
-                {
-                  transform: [{ scale: beaconScale }],
-                  opacity: beaconOpacity,
-                },
-              ]}
-            />
-            <View style={styles.beaconDot} />
-          </View>
+          <RocketIcon size={14} color="#ffffff" />
           <Text style={styles.cohortBadgeText}>COMMUNITY SHOWCASE</Text>
         </View>
 
         <Text style={styles.cohortTitle}>Submit Your Project</Text>
         <Text style={styles.cohortDesc}>
-          Share your AI project with the student community and get feedback.
+          Share your AI project with student builders and get feedback.
         </Text>
 
         <TouchableOpacity
@@ -445,7 +310,8 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
           onPress={onNavigateToSubmit}
           activeOpacity={0.8}
         >
-          <Text style={styles.cohortButtonText}>Submit a Project →</Text>
+          <Text style={styles.cohortButtonText}>Submit a Project</Text>
+          <ArrowRightIcon size={14} color={STITCH_COLORS.primary} />
         </TouchableOpacity>
       </View>
     </View>
@@ -456,8 +322,8 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
       {/* Main Stream */}
       {loading && !refreshing ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={STITCH_COLORS.primaryContainer} />
-          <Text style={styles.loadingText}>Syncing Event Horizon...</Text>
+          <ActivityIndicator size="large" color={STITCH_COLORS.primary} />
+          <Text style={styles.loadingText}>Loading student blueprints...</Text>
         </View>
       ) : error ? (
         <View style={styles.errorContainer}>
@@ -479,10 +345,12 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
           ListFooterComponent={renderFooter}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>⚡</Text>
+              <View style={styles.emptyIcon}>
+                <SearchIcon size={28} color={STITCH_COLORS.outline} />
+              </View>
               <Text style={styles.emptyTitle}>No Projects Found</Text>
               <Text style={styles.emptySubtitle}>
-                No student agent blueprint matches your telemetry filters. Alter query coordinates or reset active parameters.
+                No student AI projects matched your search query or filter.
               </Text>
               {(searchQuery !== '' || selectedFramework !== 'all') && (
                 <TouchableOpacity
@@ -492,7 +360,7 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
                     setSelectedFramework('all');
                   }}
                 >
-                  <Text style={styles.resetBtnText}>Reset Horizon Filters</Text>
+                  <Text style={styles.resetBtnText}>Reset Filters</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -502,8 +370,8 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor={STITCH_COLORS.primaryContainer}
-              colors={[STITCH_COLORS.primaryContainer]}
+              tintColor={STITCH_COLORS.primary}
+              colors={[STITCH_COLORS.primary]}
             />
           }
         />
@@ -522,151 +390,77 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: STITCH_COLORS.background,
-  },
-  appBar: {
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    backgroundColor: STITCH_COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: STITCH_COLORS.surfaceContainerHighest + '40',
-  },
-  appBarBrand: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  appBarLogo: {
-    width: 32,
-    height: 32,
-    marginRight: 10,
-  },
-  appBarTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: STITCH_COLORS.onSurface,
-    letterSpacing: -0.3,
-  },
-  appBarSub: {
-    fontSize: 10,
-    color: STITCH_COLORS.onSurfaceVariant,
-    fontWeight: '500',
-  },
-  appBarRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  appBarAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: STITCH_COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarIcon: {
-    fontSize: 14,
+    backgroundColor: STITCH_COLORS.background, // #faf8ff
   },
   listContent: {
     paddingHorizontal: 16,
-    paddingBottom: 24,
+    paddingTop: 8,
+    paddingBottom: 36,
   },
   headerContainer: {
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
-  ambientAura: {
-    position: 'absolute',
-    top: -20,
-    alignSelf: 'center',
-    width: 280,
-    height: 200,
-    borderRadius: 140,
-    backgroundColor: STITCH_COLORS.primaryContainer,
-    opacity: 0.1,
-  },
-  topHorizon: {
-    marginBottom: 16,
+    paddingTop: 8,
+    paddingBottom: 16,
   },
   beaconBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: STITCH_COLORS.surfaceContainerHigh,
+    backgroundColor: STITCH_COLORS.secondaryFixed, // #d8e2ff
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 12,
-    marginBottom: 6,
-  },
-  beaconDotWrap: {
-    width: 12,
-    height: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 6,
-    position: 'relative',
-  },
-  beaconPulseRing: {
-    position: 'absolute',
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: STITCH_COLORS.primaryContainer,
+    borderRadius: 9999,
+    marginBottom: 8,
+    gap: 6,
   },
   beaconDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: STITCH_COLORS.primaryContainer,
-    shadowColor: STITCH_COLORS.primaryContainer,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
+    backgroundColor: STITCH_COLORS.secondary, // #0058be
   },
   beaconText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: STITCH_COLORS.primary,
-    letterSpacing: 1.2,
+    fontSize: 11,
+    fontWeight: '600',
+    color: STITCH_COLORS.onSecondaryFixed, // #001a42
   },
   heroTitle: {
     fontSize: 26,
     fontWeight: '700',
-    color: STITCH_COLORS.onSurface,
+    color: STITCH_COLORS.onSurface, // #131b2e
     letterSpacing: -0.5,
   },
   heroSubtitle: {
-    fontSize: 13,
-    color: STITCH_COLORS.onSurfaceVariant,
+    fontSize: 14,
+    color: STITCH_COLORS.onSurfaceVariant, // #464555
     marginTop: 4,
-  },
-  searchSection: {
-    marginBottom: 12,
+    lineHeight: 20,
   },
   searchBarWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
+    backgroundColor: STITCH_COLORS.surfaceContainerLowest, // #ffffff
     borderRadius: 12,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: STITCH_COLORS.outlineVariant + '40',
-    height: 44,
+    borderColor: STITCH_COLORS.surfaceContainerHighest, // #dae2fd
+    height: 46,
+    marginTop: 14,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  terminalPromptIcon: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: STITCH_COLORS.primary,
+  searchIconWrap: {
     marginRight: 8,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   searchInput: {
     flex: 1,
     color: STITCH_COLORS.onSurface,
-    fontSize: 13,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 14,
   },
   clearSearchBtn: {
     padding: 6,
@@ -678,65 +472,68 @@ const styles = StyleSheet.create({
   chipsScroll: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 10,
+    gap: 8,
+    marginTop: 2,
   },
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
-    backgroundColor: STITCH_COLORS.surfaceContainerHigh,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 9999,
+    backgroundColor: STITCH_COLORS.surfaceContainerLowest, // #ffffff
+    borderWidth: 1,
+    borderColor: STITCH_COLORS.surfaceContainerHighest,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
   },
   filterChipActive: {
-    backgroundColor: STITCH_COLORS.primaryContainer,
-    shadowColor: STITCH_COLORS.primaryContainer,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  chipDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: STITCH_COLORS.outlineVariant,
-    marginRight: 5,
-  },
-  chipDotActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: STITCH_COLORS.primary, // #3525cd
+    borderColor: STITCH_COLORS.primary,
   },
   chipLabel: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
     color: STITCH_COLORS.onSurfaceVariant,
-    letterSpacing: 0.5,
   },
   chipLabelActive: {
-    color: '#FFFFFF',
+    color: '#ffffff',
   },
+  chipCountBadge: {
+    backgroundColor: STITCH_COLORS.surfaceContainerHigh,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 10,
+  },
+  chipCountBadgeActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  chipCountText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: STITCH_COLORS.onSurface,
+  },
+  chipCountTextActive: {
+    color: '#ffffff',
+  },
+
+  // Project Card
   card: {
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
+    backgroundColor: STITCH_COLORS.surfaceContainerLowest, // #ffffff
     borderRadius: 14,
     padding: 16,
-    marginVertical: 8,
+    marginBottom: 14,
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest + '60',
+    borderColor: STITCH_COLORS.surfaceContainerHighest,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 4,
-    overflow: 'hidden',
-  },
-  cardAccentLine: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: STITCH_COLORS.primaryContainer,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -749,368 +546,141 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   cardAppName: {
-    fontSize: 17,
+    fontSize: 20,
     fontWeight: '700',
     color: STITCH_COLORS.onSurface,
+  },
+  authorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 3,
+  },
+  schoolIcon: {
+    fontSize: 12,
   },
   cardAuthor: {
     fontSize: 12,
     color: STITCH_COLORS.onSurfaceVariant,
-    marginTop: 2,
   },
   frameworkBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
-    backgroundColor: STITCH_COLORS.surfaceContainerHighest,
+    alignSelf: 'flex-start',
   },
   frameworkBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: STITCH_COLORS.primary,
-    letterSpacing: 0.8,
-  },
-  topologyContainer: {
-    height: 84,
-    borderRadius: 8,
-    backgroundColor: STITCH_COLORS.surfaceContainerLow,
-    marginVertical: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest + '40',
-    overflow: 'hidden',
-    paddingHorizontal: 10,
-  },
-  dagContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    paddingHorizontal: 6,
-  },
-  dagNodeGroup: {
-    alignItems: 'center',
-  },
-  dagNodeCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: STITCH_COLORS.surfaceContainerHighest,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-  },
-  dagCoreOrange: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    backgroundColor: STITCH_COLORS.primaryContainer,
-  },
-  dagCoreAmber: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    backgroundColor: STITCH_COLORS.secondary,
-  },
-  dagCorePeach: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    backgroundColor: STITCH_COLORS.primary,
-  },
-  dagNodeLabel: {
-    fontSize: 8,
-    fontWeight: '700',
-    color: STITCH_COLORS.onSurfaceVariant,
-    marginTop: 4,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-  },
-  dagWire: {
-    flex: 1,
-    height: 1,
-    backgroundColor: STITCH_COLORS.outlineVariant,
-    marginHorizontal: 4,
-  },
-  dagWireOrange: {
-    flex: 1,
-    height: 1.5,
-    backgroundColor: STITCH_COLORS.primaryContainer,
-    marginHorizontal: 4,
-  },
-  clusterGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    gap: 6,
-  },
-  clusterTile: {
-    flex: 1,
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
-    padding: 6,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest + '50',
-  },
-  clusterTileHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  clusterTileTag: {
-    fontSize: 7,
-    fontWeight: '700',
-    color: STITCH_COLORS.outline,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-  },
-  clusterTileDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: STITCH_COLORS.outlineVariant,
-  },
-  clusterBar: {
-    height: 3,
-    backgroundColor: STITCH_COLORS.surfaceContainerHighest,
-    borderRadius: 1.5,
-    marginVertical: 4,
-    overflow: 'hidden',
-  },
-  clusterBarFill: {
-    height: '100%',
-    backgroundColor: STITCH_COLORS.secondary,
-  },
-  clusterMetric: {
-    fontSize: 6,
-    color: STITCH_COLORS.onSurfaceVariant,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-  },
-  orbitContainer: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  orbitEllipseOuter: {
-    position: 'absolute',
-    width: 180,
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: STITCH_COLORS.primaryContainer + '40',
-    transform: [{ rotate: '-15deg' }],
-  },
-  orbitEllipseInner: {
-    position: 'absolute',
-    width: 120,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: STITCH_COLORS.secondary + '30',
-    transform: [{ rotate: '15deg' }],
-  },
-  centralCore: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: STITCH_COLORS.primaryContainer,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: STITCH_COLORS.primaryContainer,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
-  },
-  centralCoreDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FFFFFF',
-  },
-  satellite1: {
-    position: 'absolute',
-    left: 18,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 3,
-    backgroundColor: STITCH_COLORS.surfaceContainerHighest,
-  },
-  satellite2: {
-    position: 'absolute',
-    right: 18,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 3,
-    backgroundColor: STITCH_COLORS.surfaceContainerHighest,
-  },
-  satelliteLabel: {
-    fontSize: 7,
-    fontWeight: '700',
-    color: STITCH_COLORS.primary,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-  },
-  moleculeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-  },
-  moleculeNode1: {
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 4,
-    backgroundColor: STITCH_COLORS.surfaceContainerHighest,
-    borderWidth: 1,
-    borderColor: STITCH_COLORS.primaryContainer,
-  },
-  moleculeNode2: {
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 4,
-    backgroundColor: STITCH_COLORS.surfaceContainerHighest,
-    borderWidth: 1,
-    borderColor: STITCH_COLORS.secondary,
-  },
-  moleculeNode3: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: STITCH_COLORS.primary,
-  },
-  moleculeLabel: {
-    fontSize: 8,
-    fontWeight: '800',
-    color: STITCH_COLORS.onSurface,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-  },
-  moleculeBond: {
-    width: 24,
-    height: 2,
-    backgroundColor: STITCH_COLORS.primaryContainer,
-  },
-  moleculeBond2: {
-    width: 20,
-    height: 1.5,
-    backgroundColor: STITCH_COLORS.secondary,
+    fontSize: 11,
+    fontWeight: '600',
   },
   oneLiner: {
-    fontSize: 13,
+    fontSize: 13.5,
     color: STITCH_COLORS.onSurfaceVariant,
-    lineHeight: 18,
-    marginVertical: 4,
+    lineHeight: 19,
+    marginBottom: 12,
   },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 8,
-    paddingTop: 8,
+    paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: STITCH_COLORS.surfaceContainerHighest + '40',
+    borderTopColor: STITCH_COLORS.surfaceContainerLow,
   },
-  footerTag: {
+  activeStatusPill: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#ecfdf5',
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    gap: 5,
   },
-  footerTagDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: STITCH_COLORS.primaryContainer,
-    marginRight: 6,
+  activeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10b981',
   },
-  footerTagText: {
+  activeStatusText: {
     fontSize: 11,
-    color: STITCH_COLORS.outline,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontWeight: '600',
+    color: '#065f46',
   },
   viewProjectLink: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
   },
   viewProjectText: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '600',
     color: STITCH_COLORS.primary,
-    letterSpacing: 0.5,
   },
   viewProjectIcon: {
-    fontSize: 12,
+    fontSize: 14,
     color: STITCH_COLORS.primary,
-    marginLeft: 3,
   },
+
+  // Call To Action Footer
   footerContainer: {
-    marginTop: 16,
+    marginTop: 8,
     marginBottom: 20,
   },
   cohortCard: {
-    backgroundColor: STITCH_COLORS.surfaceContainerLow,
+    backgroundColor: STITCH_COLORS.primary, // #3525cd
     borderRadius: 16,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest + '70',
-    overflow: 'hidden',
-  },
-  cohortGlow1: {
-    position: 'absolute',
-    right: -20,
-    bottom: -20,
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: STITCH_COLORS.primaryContainer,
-    opacity: 0.15,
-  },
-  cohortGlow2: {
-    position: 'absolute',
-    left: -20,
-    top: -20,
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: STITCH_COLORS.secondaryContainer,
-    opacity: 0.1,
+    padding: 20,
+    shadowColor: STITCH_COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 3,
   },
   cohortBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    gap: 6,
+    marginBottom: 8,
+  },
+  rocketIcon: {
+    fontSize: 14,
   },
   cohortBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: STITCH_COLORS.primary,
-    letterSpacing: 1.2,
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255, 255, 255, 0.9)',
+    letterSpacing: 0.8,
   },
   cohortTitle: {
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '700',
-    color: STITCH_COLORS.onSurface,
+    color: '#ffffff',
   },
   cohortDesc: {
-    fontSize: 12,
-    color: STITCH_COLORS.onSurfaceVariant,
-    marginVertical: 6,
-    lineHeight: 17,
+    fontSize: 13,
+    color: '#dad7ff',
+    marginVertical: 8,
+    lineHeight: 18,
   },
   cohortButton: {
-    backgroundColor: STITCH_COLORS.primaryContainer,
-    paddingVertical: 11,
-    borderRadius: 8,
+    backgroundColor: '#ffffff',
+    paddingVertical: 12,
+    borderRadius: 10,
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
     marginTop: 6,
-    shadowColor: STITCH_COLORS.primaryContainer,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 3,
   },
   cohortButtonText: {
-    color: '#FFFFFF',
+    color: STITCH_COLORS.primary,
     fontSize: 14,
     fontWeight: '700',
   },
+
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
@@ -1121,7 +691,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 13,
     color: STITCH_COLORS.outline,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   errorContainer: {
     flex: 1,
@@ -1154,7 +723,6 @@ const styles = StyleSheet.create({
   emptyIcon: {
     fontSize: 28,
     marginBottom: 10,
-    color: STITCH_COLORS.primaryContainer,
   },
   emptyTitle: {
     fontSize: 18,
@@ -1170,13 +738,13 @@ const styles = StyleSheet.create({
   },
   resetBtn: {
     marginTop: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 16,
     backgroundColor: STITCH_COLORS.surfaceContainerHigh,
   },
   resetBtnText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: STITCH_COLORS.primary,
   },

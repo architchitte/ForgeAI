@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,14 +8,22 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
-  Image,
-  Animated,
-  Easing,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
-import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
-import { STITCH_COLORS, STITCH_ASSETS } from '../../constants/theme';
+import { STITCH_COLORS } from '../../constants/theme';
+import {
+  UserIcon,
+  GraduationCapIcon,
+  LockIcon,
+  EyeIcon,
+  EyeOffIcon,
+  CheckCircleIcon,
+  ShieldCheckIcon,
+  ArrowRightIcon,
+} from '../../components/common/AppIcons';
 
 interface SignUpScreenProps {
   onNavigateToLogin: () => void;
@@ -36,55 +44,11 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
   const [agreedToTerms, setAgreedToTerms] = useState<boolean>(true);
   const [localError, setLocalError] = useState<string | null>(null);
   const [verificationSent, setVerificationSent] = useState<boolean>(false);
-
-  // Animations matching Stitch animate-ping micro-interactions
-  const pingAnim = useRef(new Animated.Value(0)).current;
-  const beaconPing = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    // 2s ping loop for singularity core
-    Animated.loop(
-      Animated.timing(pingAnim, {
-        toValue: 1,
-        duration: 2200,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      })
-    ).start();
-
-    // 1.5s ping loop for beacon dot
-    Animated.loop(
-      Animated.timing(beaconPing, {
-        toValue: 1,
-        duration: 1500,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      })
-    ).start();
-  }, [pingAnim, beaconPing]);
-
-  const pingScale = pingAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.4],
-  });
-
-  const pingOpacity = pingAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.5, 0],
-  });
-
-  const beaconScale = beaconPing.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 2.2],
-  });
-
-  const beaconOpacity = beaconPing.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.8, 0],
-  });
 
   // Dynamic Password Validation Checks
   const hasMinChars = password.length >= 8;
@@ -135,6 +99,20 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
     }
   };
 
+  const handleTerms = () => {
+    Alert.alert(
+      'Terms of Service',
+      'ForgeAI academic showcase and student agent publishing terms.'
+    );
+  };
+
+  const handlePrivacy = () => {
+    Alert.alert(
+      'Privacy Policy',
+      'ForgeAI data privacy and academic credential protection guidelines.'
+    );
+  };
+
   const displayedError = localError || error;
 
   return (
@@ -146,61 +124,24 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {/* Dynamic Accretion Ambient Glow */}
-          <View style={styles.ambientAura} pointerEvents="none" />
-
-          {/* Header & Singularity Emblem */}
+          {/* Header */}
           <View style={styles.header}>
-            <View style={styles.emblemContainer}>
-              {/* Animated Ping Ring: animate-ping */}
-              <Animated.View
-                style={[
-                  styles.pingOrbitRing,
-                  {
-                    transform: [{ scale: pingScale }],
-                    opacity: pingOpacity,
-                  },
-                ]}
-              />
-
-              <View style={styles.secondaryRing} />
-
-              <View style={styles.coreBlackHole}>
-                <Image
-                  source={STITCH_ASSETS.singularityLogo}
-                  style={styles.singularityLogo}
-                  resizeMode="contain"
-                />
-              </View>
+            <View style={styles.plaintextLogoWrapper}>
+              <Text style={styles.plaintextLogo}>
+                Forge<Text style={styles.plaintextLogoAccent}>AI</Text>
+              </Text>
             </View>
 
-            <View style={styles.badgePill}>
-              <View style={styles.beaconDotWrap}>
-                <Animated.View
-                  style={[
-                    styles.beaconPulseRing,
-                    {
-                      transform: [{ scale: beaconScale }],
-                      opacity: beaconOpacity,
-                    },
-                  ]}
-                />
-                <View style={styles.beaconDot} />
-              </View>
-              <Text style={styles.badgePillText}>CREATE ACCOUNT</Text>
-            </View>
-
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>
+            <Text style={styles.heroTitle}>Create Account</Text>
+            <Text style={styles.heroSubtitle}>
               Join ForgeAI to share and discover student AI projects.
             </Text>
           </View>
 
-          {/* Registration Form Surface */}
+          {/* Registration Form Card */}
           <View style={styles.card}>
-            <View style={styles.photonLine} />
-
             {verificationSent ? (
               <View style={styles.verificationBanner}>
                 <Text style={styles.verificationTitle}>Verification Email Sent</Text>
@@ -216,115 +157,156 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
               </View>
             ) : null}
 
-            <Input
-              label="Full Name"
-              value={fullName}
-              onChangeText={(text) => setFullName(text)}
-              placeholder="Alex Chen"
-              autoCapitalize="words"
-              testID="signup-name-input"
-            />
-
-            <Input
-              label="Student Email"
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                if (displayedError) clearError();
-              }}
-              placeholder="student@university.edu"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              testID="signup-email-input"
-            />
-
-            <Input
-              label="Password"
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                if (displayedError) clearError();
-              }}
-              placeholder="••••••••••••"
-              isPassword
-              testID="signup-password-input"
-            />
-
-            {/* Password Requirements Checklist */}
-            <View style={styles.requirementsBox}>
-              <Text style={styles.requirementsHeader}>Password requirements</Text>
-
-              <View style={styles.requirementRow}>
-                <View
-                  style={[
-                    styles.checkBadge,
-                    hasMinChars && styles.checkBadgeActive,
-                  ]}
-                >
-                  <Text style={styles.checkText}>✓</Text>
+            {/* Full Name Field */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Full Name</Text>
+              <View style={styles.inputContainer}>
+                <View style={styles.inputIconWrap}>
+                  <UserIcon size={18} color={STITCH_COLORS.outline} />
                 </View>
-                <Text
-                  style={[
-                    styles.requirementLabel,
-                    hasMinChars && styles.requirementLabelActive,
-                  ]}
-                >
-                  At least 8 characters
-                </Text>
-              </View>
-
-              <View style={styles.requirementRow}>
-                <View
-                  style={[
-                    styles.checkBadge,
-                    hasNumber && styles.checkBadgeActive,
-                  ]}
-                >
-                  <Text style={styles.checkText}>✓</Text>
-                </View>
-                <Text
-                  style={[
-                    styles.requirementLabel,
-                    hasNumber && styles.requirementLabelActive,
-                  ]}
-                >
-                  At least 1 number
-                </Text>
-              </View>
-
-              <View style={styles.requirementRow}>
-                <View
-                  style={[
-                    styles.checkBadge,
-                    hasSpecialChar && styles.checkBadgeActive,
-                  ]}
-                >
-                  <Text style={styles.checkText}>✓</Text>
-                </View>
-                <Text
-                  style={[
-                    styles.requirementLabel,
-                    hasSpecialChar && styles.requirementLabelActive,
-                  ]}
-                >
-                  At least 1 special character
-                </Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={fullName}
+                  onChangeText={(text) => setFullName(text)}
+                  placeholder="Alex Chen"
+                  placeholderTextColor={STITCH_COLORS.outline}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  testID="signup-name-input"
+                />
               </View>
             </View>
 
-            <Input
-              label="Confirm Password"
-              value={confirmPassword}
-              onChangeText={(text) => {
-                setConfirmPassword(text);
-                if (displayedError) clearError();
-              }}
-              placeholder="••••••••••••"
-              isPassword
-              testID="signup-confirm-password-input"
-            />
+            {/* Student Email Field */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Student Email</Text>
+              <View style={styles.inputContainer}>
+                <View style={styles.inputIconWrap}>
+                  <GraduationCapIcon size={18} color={STITCH_COLORS.outline} />
+                </View>
+                <TextInput
+                  style={styles.textInput}
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    if (displayedError) clearError();
+                  }}
+                  placeholder="alex.chen@university.edu"
+                  placeholderTextColor={STITCH_COLORS.outline}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  testID="signup-email-input"
+                />
+              </View>
+            </View>
 
-            {/* Academic Protocol Agreement */}
+            {/* Password Field */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Password</Text>
+              <View style={styles.inputContainer}>
+                <View style={styles.inputIconWrap}>
+                  <LockIcon size={18} color={STITCH_COLORS.outline} />
+                </View>
+                <TextInput
+                  style={styles.textInput}
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (displayedError) clearError();
+                  }}
+                  placeholder="••••••••••••"
+                  placeholderTextColor={STITCH_COLORS.outline}
+                  secureTextEntry={!showPassword}
+                  testID="signup-password-input"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeToggleBtn}
+                  activeOpacity={0.7}
+                >
+                  {showPassword ? (
+                    <EyeIcon size={18} color={STITCH_COLORS.outline} />
+                  ) : (
+                    <EyeOffIcon size={18} color={STITCH_COLORS.outline} />
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* Password Checklist Box */}
+              <View style={styles.requirementsBox}>
+                <View style={styles.requirementRow}>
+                  <CheckCircleIcon size={15} checked={hasMinChars} />
+                  <Text
+                    style={[
+                      styles.requirementLabel,
+                      hasMinChars && styles.requirementLabelActive,
+                    ]}
+                  >
+                    At least 8 characters
+                  </Text>
+                </View>
+
+                <View style={styles.requirementRow}>
+                  <CheckCircleIcon size={15} checked={hasNumber} />
+                  <Text
+                    style={[
+                      styles.requirementLabel,
+                      hasNumber && styles.requirementLabelActive,
+                    ]}
+                  >
+                    At least 1 number
+                  </Text>
+                </View>
+
+                <View style={styles.requirementRow}>
+                  <CheckCircleIcon size={15} checked={hasSpecialChar} />
+                  <Text
+                    style={[
+                      styles.requirementLabel,
+                      hasSpecialChar && styles.requirementLabelActive,
+                    ]}
+                  >
+                    At least 1 special character
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Confirm Password Field */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Confirm Password</Text>
+              <View style={styles.inputContainer}>
+                <View style={styles.inputIconWrap}>
+                  <ShieldCheckIcon size={18} color={STITCH_COLORS.outline} />
+                </View>
+                <TextInput
+                  style={styles.textInput}
+                  value={confirmPassword}
+                  onChangeText={(text) => {
+                    setConfirmPassword(text);
+                    if (displayedError) clearError();
+                  }}
+                  placeholder="••••••••••••"
+                  placeholderTextColor={STITCH_COLORS.outline}
+                  secureTextEntry={!showConfirmPassword}
+                  testID="signup-confirm-password-input"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={styles.eyeToggleBtn}
+                  activeOpacity={0.7}
+                >
+                  {showConfirmPassword ? (
+                    <EyeIcon size={18} color={STITCH_COLORS.outline} />
+                  ) : (
+                    <EyeOffIcon size={18} color={STITCH_COLORS.outline} />
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Terms and Privacy Agreement Checkbox */}
             <TouchableOpacity
               style={styles.termsRow}
               onPress={() => setAgreedToTerms((prev) => !prev)}
@@ -340,21 +322,36 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
               </View>
               <Text style={styles.termsText}>
                 I agree to the{' '}
-                <Text style={styles.termsHighlight}>Terms of Service</Text> and{' '}
-                <Text style={styles.termsHighlight}>Privacy Policy</Text>.
+                <Text style={styles.termsHighlight} onPress={handleTerms}>
+                  Terms of Service
+                </Text>{' '}
+                and{' '}
+                <Text style={styles.termsHighlight} onPress={handlePrivacy}>
+                  Privacy Policy
+                </Text>
+                .
               </Text>
             </TouchableOpacity>
 
+            {/* Submit Button */}
             <Button
               title="Create Account"
               onPress={handleSignUp}
               loading={authActionLoading}
-              rightIcon={<Text style={styles.buttonArrow}>→</Text>}
+              rightIcon={<ArrowRightIcon size={16} color="#FFFFFF" />}
               style={styles.submitBtn}
               testID="signup-submit-button"
             />
 
-            {/* Google Signup */}
+            {/* Divider */}
+            <View style={styles.dividerContainer}>
+              <View style={styles.dividerLine} />
+              <View style={styles.dividerBadge}>
+                <Text style={styles.dividerText}>or</Text>
+              </View>
+            </View>
+
+            {/* Google SSO Button */}
             <Button
               title="Sign up with Google"
               variant="google"
@@ -364,11 +361,11 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
             />
           </View>
 
-          {/* Navigation to Login */}
+          {/* Footer Link to Login */}
           <View style={styles.footerRow}>
             <Text style={styles.footerText}>Already have an account?</Text>
             <TouchableOpacity onPress={onNavigateToLogin} activeOpacity={0.7}>
-              <Text style={styles.footerLink}> Sign In ↗</Text>
+              <Text style={styles.footerLink}> Sign In</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -380,120 +377,65 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: STITCH_COLORS.background,
+    backgroundColor: STITCH_COLORS.background, // #faf8ff
   },
   keyboardContainer: {
     flex: 1,
   },
   scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 40,
+    paddingVertical: 24,
     alignItems: 'center',
-  },
-  ambientAura: {
-    position: 'absolute',
-    top: -50,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: STITCH_COLORS.primaryContainer,
-    opacity: 0.15,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  emblemContainer: {
-    width: 96,
-    height: 96,
+  plaintextLogoWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
-    position: 'relative',
+    marginBottom: 8,
+    marginTop: 4,
   },
-  pingOrbitRing: {
-    position: 'absolute',
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    borderWidth: 1.5,
-    borderColor: STITCH_COLORS.primaryContainer,
+  plaintextLogo: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: STITCH_COLORS.onSurface, // #131b2e
+    letterSpacing: -0.6,
   },
-  secondaryRing: {
-    position: 'absolute',
-    width: 86,
-    height: 86,
-    borderRadius: 43,
-    borderWidth: 1,
-    borderColor: STITCH_COLORS.secondary + '40',
-  },
-  coreBlackHole: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: STITCH_COLORS.primaryContainer,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.7,
-    shadowRadius: 18,
-    elevation: 6,
-  },
-  singularityLogo: {
-    width: 58,
-    height: 58,
+  plaintextLogoAccent: {
+    color: STITCH_COLORS.primaryContainer, // #4f46e5
   },
   badgePill: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 12,
-    backgroundColor: STITCH_COLORS.surfaceContainerHigh,
-    borderWidth: 1,
-    borderColor: STITCH_COLORS.outlineVariant + '40',
+    paddingVertical: 3.5,
+    borderRadius: 9999,
+    backgroundColor: STITCH_COLORS.secondaryFixed, // #d8e2ff
     marginBottom: 8,
+    gap: 6,
   },
-  beaconDotWrap: {
-    width: 12,
-    height: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 6,
-    position: 'relative',
-  },
-  beaconPulseRing: {
-    position: 'absolute',
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: STITCH_COLORS.primaryContainer,
-  },
-  beaconDot: {
+  badgeDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: STITCH_COLORS.primaryContainer,
-    shadowColor: STITCH_COLORS.primaryContainer,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
+    backgroundColor: STITCH_COLORS.secondary, // #0058be
   },
   badgePillText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: STITCH_COLORS.secondary,
-    letterSpacing: 1.2,
+    fontSize: 11,
+    fontWeight: '600',
+    color: STITCH_COLORS.onSecondaryFixed, // #001a42
   },
-  title: {
+  heroTitle: {
     fontSize: 26,
     fontWeight: '700',
     color: STITCH_COLORS.onSurface,
     letterSpacing: -0.5,
   },
-  subtitle: {
+  heroSubtitle: {
     fontSize: 13,
     color: STITCH_COLORS.onSurfaceVariant,
     textAlign: 'center',
@@ -501,29 +443,19 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '100%',
-    backgroundColor: STITCH_COLORS.surfaceContainerLow,
+    backgroundColor: STITCH_COLORS.surfaceContainerLowest, // #ffffff
     borderRadius: 16,
-    padding: 18,
+    padding: 20,
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest + '60',
+    borderColor: STITCH_COLORS.surfaceContainerHighest, // #dae2fd
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 6,
-  },
-  photonLine: {
-    position: 'absolute',
-    top: 0,
-    left: 20,
-    right: 20,
-    height: 2,
-    backgroundColor: STITCH_COLORS.primaryContainer,
-    opacity: 0.8,
-    borderRadius: 1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
   },
   verificationBanner: {
-    backgroundColor: '#064E3B',
+    backgroundColor: '#ECFDF5',
     borderRadius: 8,
     padding: 12,
     marginBottom: 12,
@@ -531,13 +463,13 @@ const styles = StyleSheet.create({
     borderLeftColor: STITCH_COLORS.success,
   },
   verificationTitle: {
-    color: '#D1FAE5',
+    color: '#065F46',
     fontSize: 13,
     fontWeight: '700',
     marginBottom: 2,
   },
   verificationText: {
-    color: '#A7F3D0',
+    color: '#047857',
     fontSize: 12,
   },
   errorBanner: {
@@ -553,64 +485,90 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  requirementsBox: {
-    backgroundColor: STITCH_COLORS.surfaceContainerLow,
-    borderWidth: 1,
-    borderColor: STITCH_COLORS.outlineVariant + '40',
-    borderRadius: 6,
-    padding: 10,
-    marginVertical: 4,
+  fieldGroup: {
+    marginBottom: 12,
   },
-  requirementsHeader: {
-    fontSize: 11,
+  fieldLabel: {
+    fontSize: 13,
     fontWeight: '600',
-    color: STITCH_COLORS.outline,
+    color: STITCH_COLORS.onSurface,
     marginBottom: 6,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: STITCH_COLORS.surfaceContainerLow, // #f2f3ff
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    paddingHorizontal: 12,
+    height: 44,
+  },
+  inputIconWrap: {
+    width: 22,
+    marginRight: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 13,
+    color: STITCH_COLORS.onSurface,
+    paddingVertical: 0,
+  },
+  eyeToggleBtn: {
+    padding: 4,
+    marginLeft: 6,
+  },
+  eyeToggleIcon: {
+    fontSize: 16,
+  },
+  requirementsBox: {
+    backgroundColor: STITCH_COLORS.surfaceContainerLow, // #f2f3ff
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 8,
+    gap: 4,
   },
   requirementRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 2,
+    gap: 6,
   },
-  checkBadge: {
+  ruleIcon: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: STITCH_COLORS.outline,
     width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: STITCH_COLORS.surfaceContainerHighest,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
+    textAlign: 'center',
   },
-  checkBadgeActive: {
-    backgroundColor: STITCH_COLORS.primaryContainer,
-  },
-  checkText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#FFFFFF',
+  ruleIconActive: {
+    color: STITCH_COLORS.tertiary, // #005338
   },
   requirementLabel: {
     fontSize: 11,
-    color: STITCH_COLORS.outline,
+    color: STITCH_COLORS.onSurfaceVariant,
   },
   requirementLabelActive: {
-    color: STITCH_COLORS.onSurface,
+    color: STITCH_COLORS.tertiary,
+    fontWeight: '600',
   },
   termsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginVertical: 10,
   },
   checkbox: {
     width: 18,
     height: 18,
     borderRadius: 4,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: STITCH_COLORS.outlineVariant,
     backgroundColor: STITCH_COLORS.surfaceContainerLowest,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
+    marginTop: 2,
   },
   checkboxActive: {
     backgroundColor: STITCH_COLORS.primaryContainer,
@@ -625,7 +583,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     color: STITCH_COLORS.onSurfaceVariant,
-    lineHeight: 16,
+    lineHeight: 18,
   },
   termsHighlight: {
     color: STITCH_COLORS.primary,
@@ -636,13 +594,34 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   submitBtn: {
-    marginTop: 6,
+    marginTop: 4,
+  },
+  dividerContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 12,
+  },
+  dividerLine: {
+    width: '100%',
+    height: 1,
+    backgroundColor: STITCH_COLORS.surfaceContainerHighest,
+  },
+  dividerBadge: {
+    position: 'absolute',
+    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
+    paddingHorizontal: 8,
+  },
+  dividerText: {
+    fontSize: 11,
+    color: STITCH_COLORS.outline,
+    textTransform: 'uppercase',
   },
   footerRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 22,
+    marginTop: 18,
   },
   footerText: {
     fontSize: 13,
@@ -650,7 +629,7 @@ const styles = StyleSheet.create({
   },
   footerLink: {
     fontSize: 13,
-    color: STITCH_COLORS.secondary,
+    color: STITCH_COLORS.primary,
     fontWeight: '700',
   },
 });

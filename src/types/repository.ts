@@ -23,3 +23,12 @@ export interface CreateRepositoryInput {
   university?: string | null;
 }
 
+export interface UpdateRepositoryInput {
+  app_name?: string;
+  one_liner?: string;
+  framework?: string;
+  system_prompt?: string;
+  agent_execution_url?: string;
+}
+
+

@@ -107,13 +107,13 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   googleButton: {
-    backgroundColor: STITCH_COLORS.surfaceContainerHigh,
+    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
     borderWidth: 1,
-    borderColor: STITCH_COLORS.outlineVariant + '40',
+    borderColor: '#e2e8f0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
     elevation: 1,
   },
   secondaryButton: {

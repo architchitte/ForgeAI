@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,14 +8,19 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
-  Image,
-  Animated,
-  Easing,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
-import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
-import { STITCH_COLORS, STITCH_ASSETS } from '../../constants/theme';
+import { STITCH_COLORS } from '../../constants/theme';
+import {
+  MailIcon,
+  LockIcon,
+  EyeIcon,
+  EyeOffIcon,
+  ArrowRightIcon,
+} from '../../components/common/AppIcons';
 
 interface LoginScreenProps {
   onNavigateToSignUp: () => void;
@@ -27,72 +32,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToSignUp }) 
 
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [rememberMe, setRememberMe] = useState<boolean>(true);
   const [localError, setLocalError] = useState<string | null>(null);
-
-  // Animation values matching Stitch CSS
-  const spinOuter = useRef(new Animated.Value(0)).current;
-  const spinInner = useRef(new Animated.Value(0)).current;
-  const pulseAura = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    // 18s clockwise linear spin for outer orbit ring
-    Animated.loop(
-      Animated.timing(spinOuter, {
-        toValue: 1,
-        duration: 18000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    ).start();
-
-    // 12s counter-clockwise linear spin for inner dashed ring
-    Animated.loop(
-      Animated.timing(spinInner, {
-        toValue: 1,
-        duration: 12000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    ).start();
-
-    // Pulsing ambient aura
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAura, {
-          toValue: 1,
-          duration: 3000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAura, {
-          toValue: 0,
-          duration: 3000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, [spinOuter, spinInner, pulseAura]);
-
-  const outerRotate = spinOuter.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
-
-  const innerRotate = spinInner.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '-360deg'],
-  });
-
-  const auraOpacity = pulseAura.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.12, 0.24],
-  });
-
-  const auraScale = pulseAura.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.08],
-  });
 
   const handleLogin = async () => {
     clearError();
@@ -125,6 +67,28 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToSignUp }) 
     }
   };
 
+  const handleForgotPassword = () => {
+    Alert.alert(
+      'Reset Password',
+      'If you have an active university account, password reset instructions will be sent to your registered academic email.',
+      [{ text: 'OK' }]
+    );
+  };
+
+  const handleTerms = () => {
+    Alert.alert(
+      'Terms of Service',
+      'ForgeAI academic showcase and student agent publishing terms.'
+    );
+  };
+
+  const handlePrivacy = () => {
+    Alert.alert(
+      'Privacy Policy',
+      'ForgeAI data privacy and academic credential protection guidelines.'
+    );
+  };
+
   const displayedError = localError || error;
 
   return (
@@ -136,114 +100,127 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToSignUp }) 
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {/* Animated Radial Gravitational Ambient Aura */}
-          <Animated.View
-            style={[
-              styles.ambientAura,
-              {
-                opacity: auraOpacity,
-                transform: [{ scale: auraScale }],
-              },
-            ]}
-            pointerEvents="none"
-          />
-
-          {/* Hero Singularity Emblem & Brand Header */}
+          {/* Header */}
           <View style={styles.header}>
-            <View style={styles.emblemContainer}>
-              {/* Outer Spin Ring: 18s linear */}
-              <Animated.View
-                style={[
-                  styles.outerOrbitRing,
-                  { transform: [{ rotate: outerRotate }] },
-                ]}
-              />
-
-              {/* Inner Reverse Spin Ring: 12s dashed */}
-              <Animated.View
-                style={[
-                  styles.innerOrbitRing,
-                  { transform: [{ rotate: innerRotate }] },
-                ]}
-              />
-
-              {/* Core Black Hole with Dropped Glow */}
-              <View style={styles.coreBlackHole}>
-                <Image
-                  source={STITCH_ASSETS.singularityLogo}
-                  style={styles.singularityLogo}
-                  resizeMode="contain"
-                />
-              </View>
-            </View>
-
-            <View style={styles.brandTitleRow}>
-              <Text style={styles.brandTitle}>
-                Forge<Text style={styles.brandTitleAccent}>AI</Text>
+            <View style={styles.plaintextLogoWrapper}>
+              <Text style={styles.plaintextLogo}>
+                Forge<Text style={styles.plaintextLogoAccent}>AI</Text>
               </Text>
             </View>
 
-            <View style={styles.badgePill}>
-              <Text style={styles.badgePillText}>SIGN IN</Text>
-            </View>
-
-            <Text style={styles.subtitle}>Sign in to your account.</Text>
+            <Text style={styles.heroTitle}>Welcome back</Text>
+            <Text style={styles.heroSubtitle}>
+              Sign in to your ForgeAI account
+            </Text>
           </View>
 
-          {/* Terminal Login Interface Container */}
+          {/* Form Card */}
           <View style={styles.card}>
-            {/* Photon Accent Line */}
-            <View style={styles.photonLine} />
-
             {displayedError ? (
               <View style={styles.errorBanner}>
                 <Text style={styles.errorBannerText}>{displayedError}</Text>
               </View>
             ) : null}
 
-            <Input
-              label="Email"
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                if (displayedError) clearError();
-              }}
-              placeholder="student@university.edu"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              testID="login-email-input"
-            />
+            {/* Email Field */}
+            <View style={styles.fieldGroup}>
+              <View style={styles.fieldLabelRow}>
+                <Text style={styles.fieldLabel}>Email</Text>
+                <Text style={styles.fieldLabelHint}>Student / Academic</Text>
+              </View>
+              <View style={styles.inputContainer}>
+                <View style={styles.inputIconWrapper}>
+                  <MailIcon size={18} color={STITCH_COLORS.outline} />
+                </View>
+                <TextInput
+                  style={styles.textInput}
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    if (displayedError) clearError();
+                  }}
+                  placeholder="student@university.edu"
+                  placeholderTextColor={STITCH_COLORS.outline}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  testID="login-email-input"
+                />
+              </View>
+            </View>
 
-            <Input
-              label="Password"
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                if (displayedError) clearError();
-              }}
-              placeholder="••••••••••••••••"
-              isPassword
-              testID="login-password-input"
-            />
+            {/* Password Field */}
+            <View style={styles.fieldGroup}>
+              <View style={styles.fieldLabelRow}>
+                <Text style={styles.fieldLabel}>Password</Text>
+                <TouchableOpacity onPress={handleForgotPassword} activeOpacity={0.7}>
+                  <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.inputContainer}>
+                <View style={styles.inputIconWrapper}>
+                  <LockIcon size={18} color={STITCH_COLORS.outline} />
+                </View>
+                <TextInput
+                  style={styles.textInput}
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (displayedError) clearError();
+                  }}
+                  placeholder="••••••••••••"
+                  placeholderTextColor={STITCH_COLORS.outline}
+                  secureTextEntry={!showPassword}
+                  testID="login-password-input"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeToggleBtn}
+                  activeOpacity={0.7}
+                >
+                  {showPassword ? (
+                    <EyeIcon size={18} color={STITCH_COLORS.outline} />
+                  ) : (
+                    <EyeOffIcon size={18} color={STITCH_COLORS.outline} />
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
 
+            {/* Utility Row: Remember Me & SSL Secured */}
+            <View style={styles.utilityRow}>
+              <TouchableOpacity
+                style={styles.rememberMeRow}
+                onPress={() => setRememberMe(!rememberMe)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.checkbox, rememberMe && styles.checkboxActive]}>
+                  {rememberMe && <Text style={styles.checkmarkIcon}>✓</Text>}
+                </View>
+                <Text style={styles.rememberMeText}>Remember for 30 days</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Sign In Button */}
             <Button
               title="Sign In"
               onPress={handleLogin}
               loading={authActionLoading}
-              icon={<Text style={styles.buttonBolt}>⚡</Text>}
+              rightIcon={<ArrowRightIcon size={16} color="#FFFFFF" />}
               style={styles.submitBtn}
               testID="login-submit-button"
             />
 
-            {/* Visual Quantum Divider */}
+            {/* Divider */}
             <View style={styles.dividerRow}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>or continue with</Text>
               <View style={styles.dividerLine} />
             </View>
 
-            {/* Google Workspace Federation Button */}
+            {/* Google Workspace Button */}
             <Button
               title="Continue with Google"
               variant="google"
@@ -253,12 +230,24 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToSignUp }) 
             />
           </View>
 
-          {/* Telemetry Footnote & Registration Link */}
-          <View style={styles.footerRow}>
-            <Text style={styles.footerText}>Don't have an account?</Text>
-            <TouchableOpacity onPress={onNavigateToSignUp} activeOpacity={0.7}>
-              <Text style={styles.footerLink}> Sign Up</Text>
-            </TouchableOpacity>
+          {/* Footer */}
+          <View style={styles.footerContainer}>
+            <View style={styles.footerRow}>
+              <Text style={styles.footerText}>Don't have an account? </Text>
+              <TouchableOpacity onPress={onNavigateToSignUp} activeOpacity={0.7}>
+                <Text style={styles.footerLink}>Sign Up</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.legalLinksRow}>
+              <TouchableOpacity onPress={handleTerms} activeOpacity={0.7}>
+                <Text style={styles.legalLinkText}>Terms of Service</Text>
+              </TouchableOpacity>
+              <Text style={styles.legalDot}>•</Text>
+              <TouchableOpacity onPress={handlePrivacy} activeOpacity={0.7}>
+                <Text style={styles.legalLinkText}>Privacy Policy</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -269,177 +258,274 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToSignUp }) 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: STITCH_COLORS.background,
+    backgroundColor: STITCH_COLORS.background, // #faf8ff
   },
   keyboardContainer: {
     flex: 1,
   },
   scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 40,
+    paddingVertical: 24,
     alignItems: 'center',
-  },
-  ambientAura: {
-    position: 'absolute',
-    top: -50,
-    width: 320,
-    height: 320,
-    borderRadius: 160,
-    backgroundColor: STITCH_COLORS.primaryContainer,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 24,
-  },
-  emblemContainer: {
-    width: 112,
-    height: 112,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    position: 'relative',
-  },
-  outerOrbitRing: {
-    position: 'absolute',
-    width: 112,
-    height: 112,
-    borderRadius: 56,
-    borderWidth: 1.5,
-    borderColor: STITCH_COLORS.primary + '35',
-  },
-  innerOrbitRing: {
-    position: 'absolute',
-    width: 98,
-    height: 98,
-    borderRadius: 49,
-    borderWidth: 1.5,
-    borderColor: STITCH_COLORS.primaryContainer + '60',
-    borderStyle: 'dashed',
-  },
-  coreBlackHole: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: STITCH_COLORS.primaryContainer,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 20,
-    elevation: 8,
-  },
-  singularityLogo: {
-    width: 64,
-    height: 64,
-  },
-  brandTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  brandTitle: {
-    fontSize: 34,
-    fontWeight: '800',
-    color: STITCH_COLORS.onSurface,
-    letterSpacing: -0.5,
-  },
-  brandTitleAccent: {
-    color: STITCH_COLORS.primaryContainer,
-  },
-  badgePill: {
-    paddingHorizontal: 12,
-    paddingVertical: 3,
-    borderRadius: 12,
-    backgroundColor: STITCH_COLORS.surfaceContainerLow,
     marginBottom: 8,
   },
-  badgePillText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: STITCH_COLORS.primary,
-    letterSpacing: 1.5,
+  plaintextLogoWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    marginTop: 6,
   },
-  subtitle: {
+  plaintextLogo: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: STITCH_COLORS.onSurface, // #131b2e
+    letterSpacing: -0.6,
+  },
+  plaintextLogoAccent: {
+    color: STITCH_COLORS.primaryContainer, // #4f46e5
+  },
+  workspacePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: STITCH_COLORS.surfaceContainer, // #eaedff
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 9999,
+    marginBottom: 8,
+    gap: 6,
+  },
+  workspaceDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: STITCH_COLORS.primaryContainer, // #4f46e5
+  },
+  workspacePillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: STITCH_COLORS.onSurfaceVariant,
+  },
+  heroTitle: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: STITCH_COLORS.onSurface, // #131b2e
+    letterSpacing: -0.4,
+  },
+  heroSubtitle: {
     fontSize: 14,
-    color: STITCH_COLORS.outline,
+    color: STITCH_COLORS.onSurfaceVariant, // #464555
+    marginTop: 3,
     textAlign: 'center',
   },
   card: {
     width: '100%',
-    backgroundColor: STITCH_COLORS.surfaceContainerLow,
+    backgroundColor: STITCH_COLORS.surfaceContainerLowest, // #ffffff
     borderRadius: 16,
-    padding: 18,
+    padding: 20,
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest + '60',
+    borderColor: STITCH_COLORS.surfaceContainerHighest, // #dae2fd
+    marginTop: 18,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 6,
-  },
-  photonLine: {
-    position: 'absolute',
-    top: 0,
-    left: 20,
-    right: 20,
-    height: 2,
-    backgroundColor: STITCH_COLORS.primaryContainer,
-    opacity: 0.8,
-    borderRadius: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+    gap: 14,
   },
   errorBanner: {
-    backgroundColor: STITCH_COLORS.errorContainer,
+    backgroundColor: STITCH_COLORS.errorContainer, // #ffdad6
     borderRadius: 8,
     padding: 10,
-    marginBottom: 12,
     borderLeftWidth: 3,
     borderLeftColor: STITCH_COLORS.error,
   },
   errorBannerText: {
-    color: STITCH_COLORS.onSurface,
+    color: STITCH_COLORS.onErrorContainer,
     fontSize: 12,
     fontWeight: '600',
   },
-  buttonBolt: {
-    fontSize: 16,
-    color: '#FFFFFF',
+  fieldGroup: {
+    gap: 6,
+  },
+  fieldLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: STITCH_COLORS.onSurface,
+  },
+  fieldLabelHint: {
+    fontSize: 11,
+    color: STITCH_COLORS.onSurfaceVariant,
+  },
+  forgotPasswordText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: STITCH_COLORS.primaryContainer,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 46,
+  },
+  inputIconWrapper: {
+    marginRight: 10,
+    width: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 14,
+    color: STITCH_COLORS.onSurface,
+  },
+  eyeToggleBtn: {
+    padding: 6,
+  },
+  eyeToggleIcon: {
+    fontSize: 14,
+  },
+  utilityRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  rememberMeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  checkbox: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: STITCH_COLORS.outlineVariant,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+  },
+  checkboxActive: {
+    backgroundColor: STITCH_COLORS.primaryContainer,
+    borderColor: STITCH_COLORS.primaryContainer,
+  },
+  checkmarkIcon: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  rememberMeText: {
+    fontSize: 12,
+    color: STITCH_COLORS.onSurfaceVariant,
+  },
+  sslBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  sslDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#10b981',
+  },
+  sslText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: STITCH_COLORS.tertiary,
   },
   submitBtn: {
-    marginTop: 10,
+    backgroundColor: STITCH_COLORS.primaryContainer,
+    borderRadius: 10,
+    minHeight: 46,
+    marginTop: 4,
+  },
+  buttonArrow: {
+    color: '#ffffff',
+    fontSize: 14,
+    marginLeft: 4,
   },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 14,
+    marginVertical: 4,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: STITCH_COLORS.surfaceContainerHighest,
+    backgroundColor: STITCH_COLORS.surfaceContainerHigh,
   },
   dividerText: {
     marginHorizontal: 10,
     fontSize: 11,
     color: STITCH_COLORS.outline,
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
     fontWeight: '600',
+  },
+  ssoInfoCard: {
+    backgroundColor: STITCH_COLORS.surfaceContainerLow,
+    borderRadius: 10,
+    padding: 12,
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'flex-start',
+    marginTop: 2,
+  },
+  ssoShieldIcon: {
+    fontSize: 14,
+    marginTop: 1,
+  },
+  ssoInfoText: {
+    flex: 1,
+    fontSize: 11.5,
+    color: STITCH_COLORS.onSurfaceVariant,
+    lineHeight: 16,
+  },
+  footerContainer: {
+    alignItems: 'center',
+    marginTop: 22,
+    gap: 8,
   },
   footerRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 24,
   },
   footerText: {
     fontSize: 13,
-    color: STITCH_COLORS.outline,
+    color: STITCH_COLORS.onSurfaceVariant,
   },
   footerLink: {
     fontSize: 13,
-    color: STITCH_COLORS.primary,
-    fontWeight: '700',
+    color: STITCH_COLORS.primaryContainer,
+    fontWeight: '600',
+  },
+  legalLinksRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
+  legalLinkText: {
+    fontSize: 11,
+    color: STITCH_COLORS.outline,
+  },
+  legalDot: {
+    fontSize: 11,
+    color: STITCH_COLORS.outline,
   },
 });

@@ -9,14 +9,14 @@ import {
   Platform,
   TouchableOpacity,
   Alert,
-  Image,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { BlueprintFormData, BlueprintFormErrors } from '../../types/blueprint';
 import { createRepository } from '../../services/repositories';
-import { STITCH_COLORS, STITCH_ASSETS } from '../../constants/theme';
+import { STITCH_COLORS } from '../../constants/theme';
+import { RocketIcon } from '../../components/navigation/NavIcons';
 
 const FRAMEWORK_SUGGESTIONS = [
   'LangGraph',
@@ -220,7 +220,6 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
   };
 
   const oneLinerCharCount = formData.oneLiner.length;
-  const isOneLinerOverLimit = oneLinerCharCount > 140;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -231,26 +230,22 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {/* Ambient Glow */}
-          <View style={styles.ambientGlow} pointerEvents="none" />
-
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.badgeRow}>
               <View style={styles.pingBeacon} />
-              <Text style={styles.badgeText}>APPLICATION BLUEPRINT</Text>
+              <Text style={styles.badgeText}>Application Blueprint</Text>
             </View>
             <Text style={styles.title}>Submit Project</Text>
             <Text style={styles.subtitle}>
-              Publish your student AI application to the ForgeAI singularity repository.
+              Publish your student AI application to the ForgeAI showcase repository.
             </Text>
           </View>
 
           {/* Form Surface Card */}
           <View style={styles.card}>
-            <View style={styles.photonLine} />
-
             {submitSuccess && (
               <View style={styles.successBanner}>
                 <Text style={styles.successBannerText}>
@@ -342,7 +337,7 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
             <View style={styles.formGroup}>
               <View style={styles.terminalLabelRow}>
                 <Text style={styles.fieldLabel}>Complete System Prompt *</Text>
-                <Text style={styles.terminalPromptTag}>agent_system_v1.prompt</Text>
+                <Text style={styles.terminalPromptTag}>prompt.yaml</Text>
               </View>
               <Input
                 value={formData.systemPrompt}
@@ -364,7 +359,7 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
                 onChangeText={(text) =>
                   handleFieldChange('deploymentUrl', text)
                 }
-                placeholder="https://agent.example.com/api"
+                placeholder="Streamlit, Vercel, or Deployed Application Link"
                 keyboardType="url"
                 autoCapitalize="none"
                 error={getFieldError('deploymentUrl')}
@@ -380,7 +375,7 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
               onPress={handlePublish}
               loading={isSubmitting}
               disabled={isSubmitting || !isFormValid}
-              icon={<Text style={styles.publishIcon}>🚀</Text>}
+              rightIcon={<RocketIcon size={16} color="#FFFFFF" />}
               style={styles.publishBtn}
               testID="blueprint-publish-button"
             />
@@ -404,16 +399,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 40,
   },
-  ambientGlow: {
-    position: 'absolute',
-    top: -40,
-    alignSelf: 'center',
-    width: 260,
-    height: 180,
-    borderRadius: 130,
-    backgroundColor: STITCH_COLORS.primaryContainer,
-    opacity: 0.1,
-  },
   header: {
     marginBottom: 16,
   },
@@ -421,24 +406,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: STITCH_COLORS.surfaceContainerHigh,
+    backgroundColor: STITCH_COLORS.secondaryFixed, // #d8e2ff
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 12,
-    marginBottom: 6,
+    borderRadius: 9999,
+    marginBottom: 8,
+    gap: 6,
   },
   pingBeacon: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: STITCH_COLORS.primaryContainer,
-    marginRight: 6,
+    backgroundColor: STITCH_COLORS.secondary, // #0058be
   },
   badgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: STITCH_COLORS.primary,
-    letterSpacing: 1.2,
+    fontSize: 11,
+    fontWeight: '600',
+    color: STITCH_COLORS.onSecondaryFixed, // #001a42
   },
   title: {
     fontSize: 24,
@@ -450,39 +434,30 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: STITCH_COLORS.onSurfaceVariant,
     marginTop: 4,
+    lineHeight: 18,
   },
   card: {
-    backgroundColor: STITCH_COLORS.surfaceContainerLow,
+    backgroundColor: STITCH_COLORS.surfaceContainerLowest, // #ffffff
     borderRadius: 16,
     padding: 18,
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest + '60',
+    borderColor: STITCH_COLORS.surfaceContainerHighest,   // #dae2fd
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 4,
-    overflow: 'hidden',
-  },
-  photonLine: {
-    position: 'absolute',
-    top: 0,
-    left: 20,
-    right: 20,
-    height: 2,
-    backgroundColor: STITCH_COLORS.primaryContainer,
-    opacity: 0.7,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   successBanner: {
-    backgroundColor: '#064E3B',
+    backgroundColor: STITCH_COLORS.emeraldBg, // #ecfdf5
     borderRadius: 8,
     padding: 10,
     marginBottom: 12,
     borderLeftWidth: 3,
-    borderLeftColor: STITCH_COLORS.success,
+    borderLeftColor: STITCH_COLORS.emerald,  // #10b981
   },
   successBannerText: {
-    color: '#D1FAE5',
+    color: STITCH_COLORS.emeraldDark, // #065f46
     fontSize: 12,
     fontWeight: '700',
   },
@@ -500,17 +475,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   formGroup: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   inputContainer: {
     marginVertical: 0,
   },
   fieldLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: STITCH_COLORS.onSurfaceVariant,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
+    fontSize: 12,
+    fontWeight: '600',
+    color: STITCH_COLORS.onSurface,
     marginBottom: 6,
   },
   terminalLabelRow: {
@@ -520,7 +493,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   terminalPromptTag: {
-    fontSize: 10,
+    fontSize: 10.5,
     color: STITCH_COLORS.outline,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
@@ -531,14 +504,14 @@ const styles = StyleSheet.create({
   },
   chip: {
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: 8,
-    backgroundColor: STITCH_COLORS.surfaceContainerHigh,
+    backgroundColor: STITCH_COLORS.surfaceContainerLow, // #f2f3ff
     borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest,
+    borderColor: STITCH_COLORS.surfaceContainerHighest, // #dae2fd
   },
   chipActive: {
-    backgroundColor: STITCH_COLORS.primaryContainer,
+    backgroundColor: STITCH_COLORS.primaryContainer, // #4f46e5
     borderColor: STITCH_COLORS.primaryContainer,
   },
   chipText: {
@@ -561,6 +534,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   publishBtn: {
-    marginTop: 14,
+    marginTop: 8,
   },
 });

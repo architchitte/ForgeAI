@@ -1,43 +1,67 @@
 export const STITCH_COLORS = {
-  // Background & Surfaces
-  background: '#111319',
-  surface: '#111319',
-  surfaceContainerLowest: '#0c0e13',
-  surfaceContainerLow: '#191c21',
-  surfaceContainer: '#1d2025',
-  surfaceContainerHigh: '#282a30',
-  surfaceContainerHighest: '#32353b',
+  // Background & Surfaces (Light Theme - Level 0, 1, 2)
+  background: '#faf8ff',
+  surface: '#faf8ff',
+  surfaceDim: '#d2d9f4',
+  surfaceBright: '#faf8ff',
+  surfaceContainerLowest: '#ffffff', // Level 1 Card fill
+  surfaceContainerLow: '#f2f3ff',    // Subdued inset wells
+  surfaceContainer: '#eaedff',
+  surfaceContainerHigh: '#e2e7ff',
+  surfaceContainerHighest: '#dae2fd', // Hairline borders
 
-  // Text & Content
-  onSurface: '#e1e2ea',
-  onSurfaceVariant: '#e2bfb2',
-  inverseSurface: '#e1e2ea',
-  inverseOnSurface: '#2e3036',
+  // Text & Content Hierarchy
+  onSurface: '#131b2e',        // Primary headings & high-contrast text
+  onSurfaceVariant: '#464555', // Body copy & secondary structure
+  inverseSurface: '#283044',
+  inverseOnSurface: '#eef0ff',
 
-  // Brand Accents
-  primary: '#ffb596',
-  primaryContainer: '#ff6b1a', // Singularity Fiery Orange
-  primaryDark: '#ff4500',
-  onPrimary: '#581e00',
-  onPrimaryContainer: '#591e00',
+  // Brand Accents (Indigo / Electric Cobalt)
+  primary: '#3525cd',
+  onPrimary: '#ffffff',
+  primaryContainer: '#4f46e5', // Primary interactive buttons
+  onPrimaryContainer: '#dad7ff',
+  inversePrimary: '#c3c0ff',
+  primaryFixed: '#e2dfff',
+  primaryFixedDim: '#c3c0ff',
+  onPrimaryFixed: '#0f0069',
+  onPrimaryFixedVariant: '#3323cc',
 
-  secondary: '#ffb86e', // Warm Amber Gold
-  secondaryContainer: '#d07d06',
-  onSecondary: '#492900',
+  // Secondary (Technical Blue)
+  secondary: '#0058be',
+  onSecondary: '#ffffff',
+  secondaryContainer: '#2170e4',
+  onSecondaryContainer: '#fefcff',
+  secondaryFixed: '#d8e2ff',
+  secondaryFixedDim: '#adc6ff',
+  onSecondaryFixed: '#001a42',
+  onSecondaryFixedVariant: '#004395',
 
-  tertiary: '#ffb5a0',
-  tertiaryContainer: '#ff6a40',
+  // Tertiary & Emerald Status (Active / Verified)
+  tertiary: '#005338',
+  onTertiary: '#ffffff',
+  tertiaryContainer: '#006e4b',
+  onTertiaryContainer: '#67f4b7',
+  tertiaryFixed: '#6ffbbe',
+  tertiaryFixedDim: '#4edea3',
+  onTertiaryFixed: '#002113',
+  onTertiaryFixedVariant: '#005236',
+  emerald: '#10b981',
+  emeraldBg: '#ecfdf5',
+  emeraldBorder: '#a7f3d0',
+  emeraldDark: '#065f46',
 
-  // Outlines & Borders
-  outline: '#a98a7e',
-  outlineVariant: '#5a4137',
-  borderSubtle: '#282a30',
+  // Outlines & Hairline Boundaries
+  outline: '#777587',
+  outlineVariant: '#c7c4d8',
+  borderSubtle: '#dae2fd',
 
-  // States
-  error: '#ffb4ab',
-  errorContainer: '#93000a',
-  onError: '#690005',
-  success: '#34A853',
+  // Feedback & State States
+  error: '#ba1a1a',
+  onError: '#ffffff',
+  errorContainer: '#ffdad6',
+  onErrorContainer: '#93000a',
+  success: '#006e4b',
 };
 
 export const STITCH_ASSETS = {
@@ -47,4 +71,6 @@ export const STITCH_ASSETS = {
     'https://lh3.googleusercontent.com/aida/AEtjO1UBHYqFQky97qWDvj0zi9BVMTKgNAZZiWETBcrGj18Dve-ObWhY1QoYV-La7v6Qdz-XS_SXpKlrdzi0ATJbGPyxoS11Rxfd8tlzIYqgIkrtQILyCoFiZmRpCYHjoag-Z170gMEvJYqle6JG6gIoe1UgWOEc5C4gndNswiOtoQIESYRcZLG1ejrKXEV5Qwmx891kowMJrkDgUsX_aVenTifUiSYrMmxsPXiO8W808OfgzA',
   defaultAvatarUri:
     'https://lh3.googleusercontent.com/aida-public/AB6AXuDJZkZRgBf_WK06tLcIFC5X5Y1gpW4S4BRWMjcd3SBXSk7PVd3m6EVqhNqGcwuPOEnlpBtZDgRsHJDvVlhoVxU7rzUMPMmW7qL3cDJZEZoP3eszS-xsKUZQP4PeXpfpLvrJTSpjhMk2AfDRS-qDFAdLwzEqYtEPHO7GMmRl3eeL849aNyn_GUvxgOqYazfaEYxfdFHmu86BeYqI93454g63DeG3RNPnCI_XTg_yRGzc',
+  lightAvatarUri:
+    'https://lh3.googleusercontent.com/aida-public/AB6AXuBuqH2uZRAJTxdaII4oyU0QQZKsGs43SC-CZELy_A4yjdF5oXtFNVlu5ZxYq_nB_SEeuwCvpMoivU38Wm-8aAY5GQn_KoucEO3Kz5reVuTNyHv6Vl__4OFlX3Ix8DU8xXUoEtIkEXtYAyudW6tTjcX6NxrwIGjkrh5-k8ISjslyzI1aeORF8zWl55L2einDq8qgs2L_OzMaetkgKy2hBanbhtTjCDvpx65Wu5NSgz8S',
 };
