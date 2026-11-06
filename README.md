@@ -275,4 +275,4 @@ The source is in [`docs/privacy-policy.html`](docs/privacy-policy.html).
 
 ## License
 
-See [`LICENSE`](LICENSE) for license terms.
+Released under the [MIT License](LICENSE). Copyright (c) 2026 Archit Chitte.
