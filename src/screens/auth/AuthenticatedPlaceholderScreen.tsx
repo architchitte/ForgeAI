@@ -34,6 +34,7 @@ import {
   ShieldCheckIcon,
   ArrowRightIcon,
   TrashIcon,
+  RocketIcon,
 } from '../../components/common/AppIcons';
 
 interface AuthenticatedPlaceholderScreenProps {
@@ -430,7 +431,9 @@ export const AuthenticatedPlaceholderScreen: React.FC<
             </FadeInView>
           ) : myProjects.length === 0 ? (
             <FadeInView style={styles.emptyCard}>
-              <Text style={styles.emptyRocketIcon}>🚀</Text>
+              <View style={styles.emptyRocketContainer}>
+                <RocketIcon size={22} color="#FFFFFF" />
+              </View>
               <Text style={styles.emptyTitle}>No Projects Submitted Yet</Text>
               <Text style={styles.emptySubtitle}>
                 Publish an AI agent blueprint to share it with the university community.
@@ -1050,15 +1053,21 @@ const styles = StyleSheet.create({
   emptyCard: {
     backgroundColor: STITCH_COLORS.surfaceContainerLowest,
     borderRadius: 14,
-    padding: 20,
+    padding: 24,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: STITCH_COLORS.surfaceContainerHighest,
   },
-  emptyRocketIcon: {
-    fontSize: 26,
-    fontFamily: FONTS.sans.regular,
-    marginBottom: 6,
+  emptyRocketContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#171717',
+    borderWidth: 1,
+    borderColor: '#262626',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
   },
   emptyTitle: {
     fontSize: 14,
@@ -1071,16 +1080,20 @@ const styles = StyleSheet.create({
     color: STITCH_COLORS.onSurfaceVariant,
     textAlign: 'center',
     marginTop: 4,
-    marginBottom: 12,
+    marginBottom: 16,
+    lineHeight: 18,
+    paddingHorizontal: 8,
   },
   submitFirstBtn: {
-    backgroundColor: STITCH_COLORS.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 9,
     borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   submitFirstBtnText: {
-    color: '#ffffff',
+    color: '#000000',
     fontSize: 12,
     fontFamily: FONTS.sans.semibold,
   },
