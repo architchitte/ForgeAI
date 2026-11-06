@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Linking,
   BackHandler,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Repository } from '../../types/repository';
 import { STITCH_COLORS } from '../../constants/theme';
 import { FONTS } from '../../constants/typography';
@@ -74,9 +75,30 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
     }
   };
 
-  const handleCopyEndpoint = () => {
+  // Reset timer for the COPIED label; cleared on unmount / repeat taps.
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    },
+    []
+  );
+
+  const handleCopyEndpoint = async () => {
+    const url = repository.agent_execution_url?.trim();
+    if (!url) return;
+
+    try {
+      await Clipboard.setStringAsync(url);
+    } catch (err) {
+      // Only confirm "COPIED" when the clipboard write actually succeeded.
+      console.warn('[CopyEndpoint] Failed to copy deployment URL:', err);
+      return;
+    }
+
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    copiedTimer.current = setTimeout(() => setCopied(false), 2000);
   };
 
   const handleLaunchAgent = async () => {

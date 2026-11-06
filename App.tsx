@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import * as WebBrowser from 'expo-web-browser';
 import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
 import {
   StyleSheet,
   View,
@@ -15,6 +16,17 @@ import {
 
 WebBrowser.maybeCompleteAuthSession();
 
+// Keep the native splash up until fonts are loaded and the stored session has
+// been restored, then fade straight into the first real screen.
+SplashScreen.preventAutoHideAsync().catch(() => {});
+SplashScreen.setOptions({ duration: 250, fade: true });
+
+// Safety net: never leave the splash up if initialization stalls.
+const SPLASH_MAX_MS = 6000;
+const hideSplash = () => {
+  SplashScreen.hideAsync().catch(() => {});
+};
+
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { LoginScreen } from './src/screens/auth/LoginScreen';
 import { SignUpScreen } from './src/screens/auth/SignUpScreen';
@@ -23,7 +35,7 @@ import { SubmitBlueprintScreen } from './src/screens/blueprint/SubmitBlueprintSc
 import { RepositoryFeedScreen } from './src/screens/feed/RepositoryFeedScreen';
 import { ProjectDetailView } from './src/components/detail/ProjectDetailSheet';
 import { Repository } from './src/types/repository';
-import { STITCH_COLORS, STITCH_ASSETS } from './src/constants/theme';
+import { STITCH_COLORS } from './src/constants/theme';
 import { FONTS, FONT_ASSETS } from './src/constants/typography';
 import {
   TargetIcon,
@@ -44,6 +56,13 @@ const AuthenticatedView: React.FC = () => {
     setSelectedRepo(null);
   };
 
+  const isFeedVisible = activeTab === 'discover' && selectedRepo === null;
+
+  const handleNavigateToSubmit = useCallback(() => {
+    setSelectedRepo(null);
+    setActiveTab('submit');
+  }, []);
+
   return (
     <SafeAreaView style={styles.authSafeArea}>
       {/* Centered Top Header with ForgeAI Logo */}
@@ -61,43 +80,54 @@ const AuthenticatedView: React.FC = () => {
 
       {/* Active Screen View */}
       <View style={styles.screenContainer}>
-        {/* Keyed so each tab / detail view fades in when it is shown */}
+        {/*
+          Discover stays mounted while hidden so it keeps its data, scroll
+          position and filters, and refreshes quietly via `isActive` instead
+          of refetching behind a spinner on every visit.
+        */}
         <FadeInView
-          key={selectedRepo ? `detail-${selectedRepo.id}` : activeTab}
+          trigger={isFeedVisible}
+          disabled={!isFeedVisible}
           offset={6}
-          style={styles.screenTransition}
+          style={[styles.screenTransition, !isFeedVisible && styles.hiddenScreen]}
+          pointerEvents={isFeedVisible ? 'auto' : 'none'}
+          accessibilityElementsHidden={!isFeedVisible}
+          importantForAccessibility={isFeedVisible ? 'auto' : 'no-hide-descendants'}
         >
-          {selectedRepo ? (
-            <ProjectDetailView
-              repository={selectedRepo}
-              onBack={() => setSelectedRepo(null)}
-            />
-          ) : activeTab === 'discover' ? (
-            <RepositoryFeedScreen
-              isActive={activeTab === 'discover'}
-              onNavigateToSubmit={() => {
-                setSelectedRepo(null);
-                setActiveTab('submit');
-              }}
-              onSelectRepository={(repo) => setSelectedRepo(repo)}
-            />
-          ) : activeTab === 'submit' ? (
-            <SubmitBlueprintScreen
-              onSuccess={() => {
-                setSelectedRepo(null);
-                setActiveTab('discover');
-              }}
-            />
-          ) : (
-            <AuthenticatedPlaceholderScreen
-              onNavigateToSubmitBlueprint={() => {
-                setSelectedRepo(null);
-                setActiveTab('submit');
-              }}
-              onSelectRepository={(repo) => setSelectedRepo(repo)}
-            />
-          )}
+          <RepositoryFeedScreen
+            isActive={isFeedVisible}
+            onNavigateToSubmit={handleNavigateToSubmit}
+            onSelectRepository={setSelectedRepo}
+          />
         </FadeInView>
+
+        {/* Other tabs / detail view mount on demand; keyed so each fades in */}
+        {!isFeedVisible && (
+          <FadeInView
+            key={selectedRepo ? `detail-${selectedRepo.id}` : activeTab}
+            offset={6}
+            style={styles.screenTransition}
+          >
+            {selectedRepo ? (
+              <ProjectDetailView
+                repository={selectedRepo}
+                onBack={() => setSelectedRepo(null)}
+              />
+            ) : activeTab === 'submit' ? (
+              <SubmitBlueprintScreen
+                onSuccess={() => {
+                  setSelectedRepo(null);
+                  setActiveTab('discover');
+                }}
+              />
+            ) : (
+              <AuthenticatedPlaceholderScreen
+                onNavigateToSubmitBlueprint={handleNavigateToSubmit}
+                onSelectRepository={setSelectedRepo}
+              />
+            )}
+          </FadeInView>
+        )}
       </View>
 
       {/* Rounded Bottom Navigation Dock (RubberSegment) */}
@@ -175,6 +205,11 @@ const MainNavigator: React.FC = () => {
   const { user, loading } = useAuth();
   const [authScreen, setAuthScreen] = useState<'login' | 'signup'>('login');
 
+  // Fonts are already loaded by the time this renders; hide once auth is ready.
+  useEffect(() => {
+    if (!loading) hideSplash();
+  }, [loading]);
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -205,6 +240,11 @@ const MainNavigator: React.FC = () => {
 
 export default function App() {
   const [fontsLoaded, fontError] = useFonts(FONT_ASSETS);
+
+  useEffect(() => {
+    const timer = setTimeout(hideSplash, SPLASH_MAX_MS);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Hold on a plain black canvas until Geist is ready so text never renders
   // in the fallback font first. If loading fails, continue with system fonts.
@@ -268,6 +308,9 @@ const styles = StyleSheet.create({
   },
   screenTransition: {
     flex: 1,
+  },
+  hiddenScreen: {
+    display: 'none',
   },
   rootBackdrop: {
     flex: 1,

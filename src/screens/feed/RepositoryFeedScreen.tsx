@@ -50,6 +50,89 @@ const getFrameworkBadgeStyle = (_framework: string) => {
   };
 };
 
+interface RepositoryCardProps {
+  item: Repository;
+  index: number;
+  onPress: (repo: Repository) => void;
+}
+
+/**
+ * Memoized so typing in search / toggling filters only re-renders cards
+ * whose data actually changed.
+ */
+const RepositoryCard = React.memo<RepositoryCardProps>(({ item, index, onPress }) => {
+  const studentDisplayName =
+    item.student_name && item.student_name.trim().length > 0
+      ? item.student_name.trim()
+      : item.student_email;
+
+  const creatorSubtitle = item.university
+    ? `${studentDisplayName} · ${item.university}`
+    : studentDisplayName;
+
+  const fwBadge = getFrameworkBadgeStyle(item.framework);
+
+  return (
+    <FadeInView delay={staggerDelay(index)} disabled={index >= ANIMATED_CARD_LIMIT}>
+    <PressableScale
+      style={styles.card}
+      onPress={() => onPress(item)}
+      activeOpacity={0.8}
+      pressedScale={0.98}
+      testID={`repository-card-${item.id}`}
+    >
+      {/* Card Header */}
+      <View style={styles.cardHeader}>
+        <View style={styles.cardTitleCol}>
+          <Text style={styles.cardAppName} numberOfLines={1}>
+            {item.app_name}
+          </Text>
+          <View style={styles.authorRow}>
+            <GraduationCapIcon size={14} color={STITCH_COLORS.primaryContainer} />
+            <Text style={styles.cardAuthor} numberOfLines={1}>
+              {creatorSubtitle}
+            </Text>
+          </View>
+        </View>
+        <View
+          style={[
+            styles.frameworkBadge,
+            {
+              backgroundColor: fwBadge.bg,
+              borderColor: fwBadge.border,
+              borderWidth: 1,
+            },
+          ]}
+        >
+          <Text style={[styles.frameworkBadgeText, { color: fwBadge.text }]}>
+            {item.framework}
+          </Text>
+        </View>
+      </View>
+
+      {/* Description */}
+      <Text style={styles.oneLiner} numberOfLines={2}>
+        {item.one_liner}
+      </Text>
+
+      {/* Card Bottom: Active Status Pill & View Project Button */}
+      <View style={styles.cardFooter}>
+        <View style={styles.activeStatusPill}>
+          <View style={styles.activeDot} />
+          <Text style={styles.activeStatusText}>Active</Text>
+        </View>
+
+        <View style={styles.viewProjectLink}>
+          <Text style={styles.viewProjectText}>View Project</Text>
+          <ArrowRightIcon size={14} color={STITCH_COLORS.primaryContainer} />
+        </View>
+      </View>
+    </PressableScale>
+    </FadeInView>
+  );
+});
+RepositoryCard.displayName = 'RepositoryCard';
+
 export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
   onNavigateToSubmit,
   onSelectRepository,
@@ -103,14 +186,17 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
     setRefreshing(false);
   };
 
-  const handleSelectRepository = (repo: Repository) => {
-    if (onSelectRepository) {
-      onSelectRepository(repo);
-    } else {
-      setSelectedRepository(repo);
-      setIsDetailVisible(true);
-    }
-  };
+  const handleSelectRepository = useCallback(
+    (repo: Repository) => {
+      if (onSelectRepository) {
+        onSelectRepository(repo);
+      } else {
+        setSelectedRepository(repo);
+        setIsDetailVisible(true);
+      }
+    },
+    [onSelectRepository]
+  );
 
   const handleCloseDetail = () => {
     setIsDetailVisible(false);
@@ -137,77 +223,14 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
     });
   }, [repositories, searchQuery, selectedFramework]);
 
-  const renderCard = ({ item, index }: { item: Repository; index: number }) => {
-    const studentDisplayName =
-      item.student_name && item.student_name.trim().length > 0
-        ? item.student_name.trim()
-        : item.student_email;
+  const renderCard = useCallback(
+    ({ item, index }: { item: Repository; index: number }) => (
+      <RepositoryCard item={item} index={index} onPress={handleSelectRepository} />
+    ),
+    [handleSelectRepository]
+  );
 
-    const creatorSubtitle = item.university
-      ? `${studentDisplayName} · ${item.university}`
-      : studentDisplayName;
-
-    const fwBadge = getFrameworkBadgeStyle(item.framework);
-
-    return (
-      <FadeInView delay={staggerDelay(index)} disabled={index >= ANIMATED_CARD_LIMIT}>
-      <PressableScale
-        style={styles.card}
-        onPress={() => handleSelectRepository(item)}
-        activeOpacity={0.8}
-        pressedScale={0.98}
-        testID={`repository-card-${item.id}`}
-      >
-        {/* Card Header */}
-        <View style={styles.cardHeader}>
-          <View style={styles.cardTitleCol}>
-            <Text style={styles.cardAppName} numberOfLines={1}>
-              {item.app_name}
-            </Text>
-            <View style={styles.authorRow}>
-              <GraduationCapIcon size={14} color={STITCH_COLORS.primaryContainer} />
-              <Text style={styles.cardAuthor} numberOfLines={1}>
-                {creatorSubtitle}
-              </Text>
-            </View>
-          </View>
-          <View
-            style={[
-              styles.frameworkBadge,
-              {
-                backgroundColor: fwBadge.bg,
-                borderColor: fwBadge.border,
-                borderWidth: 1,
-              },
-            ]}
-          >
-            <Text style={[styles.frameworkBadgeText, { color: fwBadge.text }]}>
-              {item.framework}
-            </Text>
-          </View>
-        </View>
-
-        {/* Description */}
-        <Text style={styles.oneLiner} numberOfLines={2}>
-          {item.one_liner}
-        </Text>
-
-        {/* Card Bottom: Active Status Pill & View Project Button */}
-        <View style={styles.cardFooter}>
-          <View style={styles.activeStatusPill}>
-            <View style={styles.activeDot} />
-            <Text style={styles.activeStatusText}>Active</Text>
-          </View>
-
-          <View style={styles.viewProjectLink}>
-            <Text style={styles.viewProjectText}>View Project</Text>
-            <ArrowRightIcon size={14} color={STITCH_COLORS.primaryContainer} />
-          </View>
-        </View>
-      </PressableScale>
-      </FadeInView>
-    );
-  };
+  const keyExtractor = useCallback((item: Repository) => item.id, []);
 
   const renderHeader = () => (
     <View style={styles.headerContainer}>
@@ -338,8 +361,12 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
       ) : (
         <FlatList
           data={filteredRepositories}
-          keyExtractor={(item) => item.id}
+          keyExtractor={keyExtractor}
           renderItem={renderCard}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={11}
+          removeClippedSubviews={Platform.OS === 'android'}
           ListHeaderComponent={renderHeader()}
           ListFooterComponent={renderFooter()}
           ListEmptyComponent={

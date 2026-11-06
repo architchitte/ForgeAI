@@ -18,11 +18,16 @@ export interface FadeInViewProps extends Omit<ViewProps, 'style'> {
   offset?: number;
   /** Skip the entrance entirely and render in the final state. */
   disabled?: boolean;
+  /**
+   * Replays the entrance whenever this value changes, without remounting
+   * children (for screens that stay mounted while hidden).
+   */
+  trigger?: string | number | boolean;
 }
 
 /**
- * Fades (and optionally lifts) its children in once, on mount.
- * Remount it with a new `key` to replay the entrance.
+ * Fades (and optionally lifts) its children in on mount.
+ * Replay it by remounting with a new `key`, or by changing `trigger`.
  */
 export const FadeInView: React.FC<FadeInViewProps> = ({
   style,
@@ -30,6 +35,7 @@ export const FadeInView: React.FC<FadeInViewProps> = ({
   delay = 0,
   offset = 8,
   disabled = false,
+  trigger,
   ...rest
 }) => {
   const progress = useSharedValue(disabled ? 1 : 0);
@@ -37,10 +43,12 @@ export const FadeInView: React.FC<FadeInViewProps> = ({
 
   useEffect(() => {
     if (disabled) return;
+    progress.value = 0;
+    translateY.value = offset;
     progress.value = withDelay(delay, withTiming(1, FADE_TIMING));
     translateY.value = withDelay(delay, withSpring(0, ENTER_SPRING));
-    // Entrance runs once per mount by design; remount with a new key to replay.
-  }, []);
+    // Runs on mount, and again only when `trigger` changes.
+  }, [trigger]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: progress.value,

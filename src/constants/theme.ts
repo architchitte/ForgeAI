@@ -73,7 +73,3 @@ export const STITCH_COLORS = {
   placeholder: '#525252',         // Disabled & inactive placeholders
 };
 
-export const STITCH_ASSETS = {
-  singularityLogo: require('../../assets/singularity-logo.png'),
-  defaultAvatar: require('../../assets/elena-avatar.png'),
-};
