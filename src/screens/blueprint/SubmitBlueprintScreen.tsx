@@ -7,15 +7,16 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  TouchableOpacity,
   Alert,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
+import { PressableScale } from '../../components/animation/PressableScale';
 import { BlueprintFormData, BlueprintFormErrors } from '../../types/blueprint';
 import { createRepository } from '../../services/repositories';
 import { STITCH_COLORS } from '../../constants/theme';
+import { FONTS } from '../../constants/typography';
 import { RocketIcon } from '../../components/navigation/NavIcons';
 
 const FRAMEWORK_SUGGESTIONS = [
@@ -300,7 +301,7 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
                     formData.orchestrationFramework.toLowerCase() ===
                     fw.toLowerCase();
                   return (
-                    <TouchableOpacity
+                    <PressableScale
                       key={fw}
                       style={[
                         styles.chip,
@@ -313,6 +314,9 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
                         );
                       }}
                       activeOpacity={0.7}
+                      pressedScale={0.95}
+                      hitSlop={{ top: 6, bottom: 6, left: 2, right: 2 }}
+                      accessibilityState={{ selected: isSelected }}
                     >
                       <Text
                         style={[
@@ -322,7 +326,7 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
                       >
                         {fw}
                       </Text>
-                    </TouchableOpacity>
+                    </PressableScale>
                   );
                 })}
               </View>
@@ -423,17 +427,18 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 11,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
     color: '#EDEDED',
   },
   title: {
     fontSize: 24,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: '#FFFFFF',
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 13,
+    fontFamily: FONTS.sans.regular,
     color: '#A1A1A1',
     marginTop: 4,
     lineHeight: 18,
@@ -456,7 +461,7 @@ const styles = StyleSheet.create({
   successBannerText: {
     color: '#EDEDED',
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
   },
   errorBanner: {
     backgroundColor: '#1F1F1F',
@@ -469,7 +474,7 @@ const styles = StyleSheet.create({
   errorBannerText: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
   },
   formGroup: {
     marginBottom: 16,
@@ -479,7 +484,7 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
     color: '#EDEDED',
     marginBottom: 6,
   },
@@ -492,7 +497,7 @@ const styles = StyleSheet.create({
   terminalPromptTag: {
     fontSize: 10.5,
     color: '#737373',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontFamily: FONTS.mono.regular,
   },
   chipsContainer: {
     flexDirection: 'row',
@@ -513,21 +518,22 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
     color: '#A1A1A1',
   },
   chipTextActive: {
     color: '#000000',
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
   },
   errorText: {
     marginTop: 6,
     fontSize: 12,
     color: '#FFFFFF',
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
   },
   publishIcon: {
     fontSize: 16,
+    fontFamily: FONTS.sans.regular,
     color: '#000000',
   },
   publishBtn: {

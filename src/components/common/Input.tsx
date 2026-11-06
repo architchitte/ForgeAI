@@ -10,6 +10,8 @@ import {
   ViewStyle,
 } from 'react-native';
 import { STITCH_COLORS } from '../../constants/theme';
+import { FONTS } from '../../constants/typography';
+import { FocusBorderView, FIELD_BORDER_IDLE } from '../animation/FocusBorderView';
 
 interface InputProps {
   label?: string;
@@ -63,13 +65,10 @@ export const Input: React.FC<InputProps> = ({
           ) : null}
         </View>
       ) : null}
-      <View
-        style={[
-          styles.inputWrapper,
-          multiline && styles.multilineWrapper,
-          isFocused && styles.inputFocused,
-          error ? styles.inputError : null,
-        ]}
+      <FocusBorderView
+        focused={isFocused}
+        hasError={Boolean(error)}
+        style={[styles.inputWrapper, multiline && styles.multilineWrapper]}
       >
         {leftIcon ? <View style={styles.leftIconContainer}>{leftIcon}</View> : null}
         <TextInput
@@ -95,13 +94,14 @@ export const Input: React.FC<InputProps> = ({
             style={styles.toggleButton}
             onPress={() => setHidePassword((prev) => !prev)}
             activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 6, right: 10 }}
           >
             <Text style={styles.toggleText}>
               {hidePassword ? 'SHOW' : 'HIDE'}
             </Text>
           </TouchableOpacity>
         )}
-      </View>
+      </FocusBorderView>
       {error ? (
         <Text style={styles.errorText}>{error}</Text>
       ) : helperText ? (
@@ -124,21 +124,21 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
     color: '#EDEDED',
     letterSpacing: -0.1,
   },
   rightLabel: {
     fontSize: 11,
     color: '#A1A1A1',
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#000000',
     borderWidth: 1,
-    borderColor: '#262626',
+    borderColor: FIELD_BORDER_IDLE,
     borderRadius: 6,
     paddingHorizontal: 12,
     minHeight: 44,
@@ -148,12 +148,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     paddingVertical: 10,
   },
-  inputFocused: {
-    borderColor: '#FFFFFF',
-  },
-  inputError: {
-    borderColor: '#737373',
-  },
   leftIconContainer: {
     marginRight: 8,
   },
@@ -161,6 +155,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#EDEDED',
     fontSize: 13.5,
+    fontFamily: FONTS.sans.regular,
     paddingVertical: 10,
   },
   multilineInput: {
@@ -172,7 +167,7 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     fontSize: 10,
-    fontWeight: '700',
+    fontFamily: FONTS.sans.semibold,
     color: '#A1A1A1',
     letterSpacing: 0.5,
   },
@@ -180,11 +175,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 12,
     color: '#FFFFFF',
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
   },
   helperText: {
     marginTop: 4,
     fontSize: 11,
+    fontFamily: FONTS.sans.regular,
     color: '#737373',
   },
 });

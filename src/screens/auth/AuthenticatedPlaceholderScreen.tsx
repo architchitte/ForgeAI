@@ -7,7 +7,6 @@ import {
   ScrollView,
   Platform,
   Image,
-  TouchableOpacity,
   TextInput,
   ActivityIndicator,
   Alert,
@@ -17,6 +16,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { STITCH_COLORS } from '../../constants/theme';
+import { FONTS } from '../../constants/typography';
 import { Repository } from '../../types/repository';
 import {
   fetchUserRepositories,
@@ -24,6 +24,9 @@ import {
   deleteRepository,
 } from '../../services/repositories';
 import { PRIVACY_POLICY_URL } from '../../constants/privacy';
+import { PressableScale } from '../../components/animation/PressableScale';
+import { FadeInView } from '../../components/animation/FadeInView';
+import { staggerDelay } from '../../components/animation/motion';
 import {
   UserIcon,
   EditIcon,
@@ -324,13 +327,14 @@ export const AuthenticatedPlaceholderScreen: React.FC<
                   <Text style={styles.userNameText} numberOfLines={1}>
                     {fullName}
                   </Text>
-                  <TouchableOpacity
+                  <PressableScale
                     onPress={() => setIsEditingName(true)}
                     style={styles.editIconBtn}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     activeOpacity={0.7}
                   >
                     <EditIcon size={13} color={STITCH_COLORS.outline} />
-                  </TouchableOpacity>
+                  </PressableScale>
                 </View>
               ) : (
                 <View style={styles.nameEditBox}>
@@ -346,7 +350,7 @@ export const AuthenticatedPlaceholderScreen: React.FC<
                     autoFocus
                   />
                   <View style={styles.nameEditBtnRow}>
-                    <TouchableOpacity
+                    <PressableScale
                       style={styles.saveNameBtn}
                       onPress={handleSaveName}
                       disabled={savingName}
@@ -357,15 +361,15 @@ export const AuthenticatedPlaceholderScreen: React.FC<
                       ) : (
                         <Text style={styles.saveNameBtnText}>✓</Text>
                       )}
-                    </TouchableOpacity>
-                    <TouchableOpacity
+                    </PressableScale>
+                    <PressableScale
                       style={styles.cancelNameBtn}
                       onPress={handleCancelEdit}
                       disabled={savingName}
                       activeOpacity={0.7}
                     >
                       <Text style={styles.cancelNameBtnText}>✕</Text>
-                    </TouchableOpacity>
+                    </PressableScale>
                   </View>
                   {nameError && <Text style={styles.nameErrorText}>{nameError}</Text>}
                 </View>
@@ -408,42 +412,46 @@ export const AuthenticatedPlaceholderScreen: React.FC<
           </View>
 
           {loadingProjects ? (
-            <View style={styles.loaderWrap}>
+            <FadeInView offset={0} style={styles.loaderWrap}>
               <ActivityIndicator size="small" color={STITCH_COLORS.primary} />
               <Text style={styles.loaderText}>Loading your projects...</Text>
-            </View>
+            </FadeInView>
           ) : projectsError ? (
-            <View style={styles.errorCard}>
+            <FadeInView style={styles.errorCard}>
               <Text style={styles.errorText}>{projectsError}</Text>
-              <TouchableOpacity
+              <PressableScale
                 style={styles.retryBtn}
                 onPress={loadUserProjects}
                 activeOpacity={0.7}
               >
                 <Text style={styles.retryBtnText}>Retry</Text>
-              </TouchableOpacity>
-            </View>
+              </PressableScale>
+            </FadeInView>
           ) : myProjects.length === 0 ? (
-            <View style={styles.emptyCard}>
+            <FadeInView style={styles.emptyCard}>
               <Text style={styles.emptyRocketIcon}>🚀</Text>
               <Text style={styles.emptyTitle}>No Projects Submitted Yet</Text>
               <Text style={styles.emptySubtitle}>
                 Publish an AI agent blueprint to share it with the university community.
               </Text>
               {onNavigateToSubmitBlueprint && (
-                <TouchableOpacity
+                <PressableScale
                   style={styles.submitFirstBtn}
                   onPress={onNavigateToSubmitBlueprint}
                   activeOpacity={0.8}
                 >
                   <Text style={styles.submitFirstBtnText}>+ Submit First Project</Text>
-                </TouchableOpacity>
+                </PressableScale>
               )}
-            </View>
+            </FadeInView>
           ) : (
             <View style={styles.projectCardsList}>
               {myProjects.map((project, idx) => (
-                <View key={project.id} style={styles.projectArticleCard}>
+                <FadeInView
+                  key={project.id}
+                  delay={staggerDelay(idx)}
+                  style={styles.projectArticleCard}
+                >
                   {/* Card Header */}
                   <View style={styles.cardHeaderRow}>
                     <View style={styles.chipRow}>
@@ -471,17 +479,19 @@ export const AuthenticatedPlaceholderScreen: React.FC<
                   {/* Card Bottom Actions */}
                   <View style={styles.cardBottomRow}>
                     <View style={styles.projectManageGroup}>
-                      <TouchableOpacity
+                      <PressableScale
                         style={styles.iconActionBtn}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         onPress={() => handleOpenEditProject(project)}
                         activeOpacity={0.7}
                         accessibilityLabel="Edit Project"
                       >
                         <EditIcon size={14} color="#EDEDED" />
-                      </TouchableOpacity>
+                      </PressableScale>
 
-                      <TouchableOpacity
+                      <PressableScale
                         style={[styles.iconActionBtn, styles.deleteActionBtn]}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         onPress={() => handleDeleteProject(project)}
                         activeOpacity={0.7}
                         accessibilityLabel="Delete Project"
@@ -492,42 +502,29 @@ export const AuthenticatedPlaceholderScreen: React.FC<
                         ) : (
                           <TrashIcon size={14} color="#FFFFFF" />
                         )}
-                      </TouchableOpacity>
+                      </PressableScale>
                     </View>
 
                     <View style={styles.actionBtnGroup}>
                       {onSelectRepository && (
-                        <TouchableOpacity
+                        <PressableScale
                           style={styles.viewDetailsBtn}
                           onPress={() => onSelectRepository(project)}
                           activeOpacity={0.8}
                         >
                           <Text style={styles.viewDetailsBtnText}>View Details</Text>
                           <ArrowRightIcon size={14} color="#000000" />
-                        </TouchableOpacity>
+                        </PressableScale>
                       )}
                     </View>
                   </View>
-                </View>
+                </FadeInView>
               ))}
             </View>
           )}
         </View>
 
-        {/* 3. Account Privacy & Policy */}
-        <TouchableOpacity
-          style={styles.privacyCard}
-          onPress={handleOpenPrivacyPolicy}
-          activeOpacity={0.7}
-        >
-          <View style={styles.privacyCardLeft}>
-            <ShieldCheckIcon size={16} color={STITCH_COLORS.primaryContainer} />
-            <Text style={styles.privacyCardText}>Privacy Policy</Text>
-          </View>
-          <Text style={styles.privacyCardArrow}>↗</Text>
-        </TouchableOpacity>
-
-        {/* 4. Signed In & Log Out Card */}
+        {/* 3. Signed In & Log Out Card */}
         <View style={styles.logoutCard}>
           <View style={styles.logoutInfoCol}>
             <Text style={styles.signedInLabel}>Signed In</Text>
@@ -536,7 +533,7 @@ export const AuthenticatedPlaceholderScreen: React.FC<
             </Text>
           </View>
 
-          <TouchableOpacity
+          <PressableScale
             style={styles.logoutButton}
             onPress={handleLogoutPress}
             disabled={authActionLoading}
@@ -551,14 +548,23 @@ export const AuthenticatedPlaceholderScreen: React.FC<
                 <Text style={styles.logoutText}>Log Out</Text>
               </>
             )}
-          </TouchableOpacity>
+          </PressableScale>
         </View>
+
+        {/* 4. Privacy Policy Link */}
+        <PressableScale
+          style={styles.privacyLinkRow}
+          onPress={handleOpenPrivacyPolicy}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.privacyLinkText}>Privacy Policy</Text>
+        </PressableScale>
       </ScrollView>
 
       {/* Edit Project Modal */}
       <Modal
         visible={editingProject !== null}
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         onRequestClose={handleCloseEditModal}
       >
@@ -566,20 +572,21 @@ export const AuthenticatedPlaceholderScreen: React.FC<
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.modalOverlay}
         >
-          <View style={styles.modalContent}>
+          <FadeInView offset={48} style={styles.modalContent}>
             {/* Modal Header */}
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderTitleCol}>
                 <Text style={styles.modalTitle}>Edit Blueprint</Text>
                 <Text style={styles.modalSubtitle}>Update your project specifications</Text>
               </View>
-              <TouchableOpacity
+              <PressableScale
                 onPress={handleCloseEditModal}
                 style={styles.modalCloseBtn}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 activeOpacity={0.7}
               >
                 <Text style={styles.modalCloseBtnText}>✕</Text>
-              </TouchableOpacity>
+              </PressableScale>
             </View>
 
             {projectEditError && (
@@ -643,7 +650,7 @@ export const AuthenticatedPlaceholderScreen: React.FC<
                   {['LangGraph', 'CrewAI', 'DSPy', 'AutoGen'].map((fw) => {
                     const isSelected = editFramework === fw;
                     return (
-                      <TouchableOpacity
+                      <PressableScale
                         key={fw}
                         style={[
                           styles.modalFrameworkChip,
@@ -660,7 +667,7 @@ export const AuthenticatedPlaceholderScreen: React.FC<
                         >
                           {fw}
                         </Text>
-                      </TouchableOpacity>
+                      </PressableScale>
                     );
                   })}
                 </View>
@@ -704,16 +711,16 @@ export const AuthenticatedPlaceholderScreen: React.FC<
 
             {/* Modal Actions */}
             <View style={styles.modalActionsRow}>
-              <TouchableOpacity
+              <PressableScale
                 style={styles.modalCancelBtn}
                 onPress={handleCloseEditModal}
                 disabled={savingProject}
                 activeOpacity={0.7}
               >
                 <Text style={styles.modalCancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
+              </PressableScale>
 
-              <TouchableOpacity
+              <PressableScale
                 style={styles.modalSaveBtn}
                 onPress={handleSaveProjectEdit}
                 disabled={savingProject}
@@ -724,9 +731,9 @@ export const AuthenticatedPlaceholderScreen: React.FC<
                 ) : (
                   <Text style={styles.modalSaveBtnText}>Save Changes</Text>
                 )}
-              </TouchableOpacity>
+              </PressableScale>
             </View>
-          </View>
+          </FadeInView>
         </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
@@ -786,7 +793,7 @@ const styles = StyleSheet.create({
   },
   avatarInitialsText: {
     fontSize: 22,
-    fontWeight: '700',
+    fontFamily: FONTS.sans.semibold,
     color: STITCH_COLORS.primary,
     letterSpacing: 0.5,
   },
@@ -805,7 +812,7 @@ const styles = StyleSheet.create({
   },
   checkIconText: {
     fontSize: 10,
-    fontWeight: '800',
+    fontFamily: FONTS.sans.semibold,
     color: '#ffffff',
   },
   userInfoCol: {
@@ -818,7 +825,7 @@ const styles = StyleSheet.create({
   },
   userNameText: {
     fontSize: 19,
-    fontWeight: '700',
+    fontFamily: FONTS.sans.semibold,
     color: STITCH_COLORS.onSurface, // #131b2e
     letterSpacing: -0.3,
   },
@@ -828,6 +835,7 @@ const styles = StyleSheet.create({
   },
   editIconText: {
     fontSize: 14,
+    fontFamily: FONTS.sans.regular,
     color: STITCH_COLORS.onSurfaceVariant, // #464555
   },
   nameEditBox: {
@@ -836,7 +844,7 @@ const styles = StyleSheet.create({
   nameInput: {
     backgroundColor: STITCH_COLORS.surfaceContainerLow,
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: STITCH_COLORS.onSurface,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -861,7 +869,7 @@ const styles = StyleSheet.create({
   saveNameBtnText: {
     color: '#ffffff',
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: FONTS.sans.semibold,
   },
   cancelNameBtn: {
     backgroundColor: STITCH_COLORS.surfaceContainerHigh,
@@ -874,10 +882,11 @@ const styles = StyleSheet.create({
   cancelNameBtnText: {
     color: STITCH_COLORS.onSurfaceVariant,
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: FONTS.sans.semibold,
   },
   nameErrorText: {
     fontSize: 11,
+    fontFamily: FONTS.sans.regular,
     color: STITCH_COLORS.error,
     marginTop: 4,
   },
@@ -885,7 +894,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: STITCH_COLORS.onSurfaceVariant,
     marginTop: 2,
-    fontWeight: '400',
+    fontFamily: FONTS.sans.regular,
   },
   verifiedEmailPill: {
     flexDirection: 'row',
@@ -900,10 +909,11 @@ const styles = StyleSheet.create({
   },
   verifiedShieldIcon: {
     fontSize: 11,
+    fontFamily: FONTS.sans.regular,
   },
   verifiedEmailText: {
     fontSize: 11,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
     color: STITCH_COLORS.primary, // #3525cd
     maxWidth: 200,
   },
@@ -928,20 +938,21 @@ const styles = StyleSheet.create({
   },
   bentoNumberPrimary: {
     fontSize: 24,
-    fontWeight: '700',
     color: STITCH_COLORS.primary, // #3525cd
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontFamily: FONTS.mono.semibold,
+    letterSpacing: -0.5,
   },
   bentoLabelCol: {
     flex: 1,
   },
   bentoLabelTitle: {
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: STITCH_COLORS.onSurface,
   },
   bentoLabelSub: {
     fontSize: 11,
+    fontFamily: FONTS.sans.regular,
     color: STITCH_COLORS.onSurfaceVariant,
     marginTop: 1,
   },
@@ -964,7 +975,7 @@ const styles = StyleSheet.create({
   },
   sectionHeading: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: STITCH_COLORS.onSurface,
   },
   countBadge: {
@@ -975,7 +986,7 @@ const styles = StyleSheet.create({
   },
   countBadgeText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: FONTS.sans.semibold,
     color: STITCH_COLORS.primary,
   },
   newProjectLink: {
@@ -985,11 +996,12 @@ const styles = StyleSheet.create({
   },
   newProjectIcon: {
     fontSize: 15,
+    fontFamily: FONTS.sans.regular,
     color: STITCH_COLORS.primary,
   },
   newProjectText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: STITCH_COLORS.primary,
   },
 
@@ -999,6 +1011,7 @@ const styles = StyleSheet.create({
   },
   loaderText: {
     fontSize: 12,
+    fontFamily: FONTS.sans.regular,
     color: STITCH_COLORS.outline,
     marginTop: 6,
   },
@@ -1010,6 +1023,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 12,
+    fontFamily: FONTS.sans.regular,
     color: STITCH_COLORS.onErrorContainer,
   },
   retryBtn: {
@@ -1021,7 +1035,7 @@ const styles = StyleSheet.create({
   },
   retryBtnText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: STITCH_COLORS.onSurface,
   },
   emptyCard: {
@@ -1034,15 +1048,17 @@ const styles = StyleSheet.create({
   },
   emptyRocketIcon: {
     fontSize: 26,
+    fontFamily: FONTS.sans.regular,
     marginBottom: 6,
   },
   emptyTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: STITCH_COLORS.onSurface,
   },
   emptySubtitle: {
     fontSize: 12,
+    fontFamily: FONTS.sans.regular,
     color: STITCH_COLORS.onSurfaceVariant,
     textAlign: 'center',
     marginTop: 4,
@@ -1057,7 +1073,7 @@ const styles = StyleSheet.create({
   submitFirstBtnText: {
     color: '#ffffff',
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
   },
 
   projectCardsList: {
@@ -1091,7 +1107,7 @@ const styles = StyleSheet.create({
   },
   frameworkPillText: {
     fontSize: 11,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
     color: '#A1A1A1',
   },
   activeStatusPill: {
@@ -1113,22 +1129,24 @@ const styles = StyleSheet.create({
   },
   activeStatusText: {
     fontSize: 10,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
     color: '#EDEDED',
   },
   relativeTimeText: {
     fontSize: 11,
     color: '#737373',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontFamily: FONTS.mono.regular,
   },
   projectCardTitle: {
     fontSize: 17,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
+    letterSpacing: -0.3,
     color: '#FFFFFF',
     marginBottom: 4,
   },
   projectCardDesc: {
     fontSize: 13,
+    fontFamily: FONTS.sans.regular,
     color: '#A1A1A1',
     lineHeight: 18,
     marginBottom: 12,
@@ -1177,42 +1195,15 @@ const styles = StyleSheet.create({
   viewDetailsBtnText: {
     color: '#000000',
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
   },
   arrowIcon: {
     color: '#000000',
     fontSize: 12,
+    fontFamily: FONTS.sans.regular,
   },
 
-  // 3. Privacy Policy Card
-  privacyCard: {
-    backgroundColor: '#0A0A0A',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#262626',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  privacyCardLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  privacyCardText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: STITCH_COLORS.onSurface,
-  },
-  privacyCardArrow: {
-    fontSize: 14,
-    color: STITCH_COLORS.outline,
-    fontWeight: '600',
-  },
-
-  // 4. Signed In & Logout Card
+  // 3. Signed In & Logout Card
   logoutCard: {
     backgroundColor: '#0A0A0A',
     borderRadius: 12,
@@ -1229,14 +1220,14 @@ const styles = StyleSheet.create({
   },
   signedInLabel: {
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
     color: '#FFFFFF',
   },
   signedInEmail: {
     fontSize: 12,
     color: '#A1A1A1',
     marginTop: 2,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontFamily: FONTS.mono.regular,
   },
   logoutButton: {
     flexDirection: 'row',
@@ -1251,11 +1242,25 @@ const styles = StyleSheet.create({
   },
   logoutIcon: {
     fontSize: 13,
+    fontFamily: FONTS.sans.regular,
   },
   logoutText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
     color: '#FFFFFF',
+  },
+
+  // 4. Privacy Policy Link
+  privacyLinkRow: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    marginTop: 8,
+  },
+  privacyLinkText: {
+    fontSize: 12,
+    color: 'grey',
+    fontFamily: FONTS.sans.medium,
   },
 
   // Edit Project Modal
@@ -1288,11 +1293,13 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
+    letterSpacing: -0.3,
     color: '#FFFFFF',
   },
   modalSubtitle: {
     fontSize: 12,
+    fontFamily: FONTS.sans.regular,
     color: '#A1A1A1',
     marginTop: 2,
   },
@@ -1308,7 +1315,7 @@ const styles = StyleSheet.create({
   },
   modalCloseBtnText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: '#A1A1A1',
   },
   modalErrorBox: {
@@ -1322,7 +1329,7 @@ const styles = StyleSheet.create({
   modalErrorText: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
   },
   modalFormScroll: {
     marginTop: 10,
@@ -1342,18 +1349,18 @@ const styles = StyleSheet.create({
   },
   modalFieldLabel: {
     fontSize: 11,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     letterSpacing: 0.5,
     color: '#EDEDED',
   },
   modalCharCount: {
     fontSize: 11,
     color: '#737373',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontFamily: FONTS.mono.regular,
   },
   modalCharCountError: {
     color: '#FFFFFF',
-    fontWeight: '700',
+    fontFamily: FONTS.sans.semibold,
   },
   modalInput: {
     backgroundColor: '#000000',
@@ -1363,6 +1370,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 13.5,
+    fontFamily: FONTS.sans.regular,
     color: '#EDEDED',
   },
   modalInputMultiline: {
@@ -1371,7 +1379,7 @@ const styles = StyleSheet.create({
   },
   modalPromptInput: {
     minHeight: 100,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontFamily: FONTS.mono.regular,
     fontSize: 12,
     lineHeight: 18,
   },
@@ -1394,12 +1402,12 @@ const styles = StyleSheet.create({
   },
   modalFrameworkChipText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
     color: '#A1A1A1',
   },
   modalFrameworkChipTextSelected: {
     color: '#000000',
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
   },
   modalActionsRow: {
     flexDirection: 'row',
@@ -1420,7 +1428,7 @@ const styles = StyleSheet.create({
   },
   modalCancelBtnText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
     color: '#EDEDED',
   },
   modalSaveBtn: {
@@ -1433,7 +1441,7 @@ const styles = StyleSheet.create({
   },
   modalSaveBtnText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: '#000000',
   },
 });

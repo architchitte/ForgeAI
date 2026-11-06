@@ -31,7 +31,8 @@
     "owner": "architchittes-team",
     "plugins": [
       "expo-sqlite",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-font"
     ]
   }
 }

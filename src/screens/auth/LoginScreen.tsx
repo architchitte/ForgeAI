@@ -15,6 +15,8 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/common/Button';
 import { STITCH_COLORS } from '../../constants/theme';
+import { FONTS } from '../../constants/typography';
+import { FocusBorderView } from '../../components/animation/FocusBorderView';
 import { PRIVACY_POLICY_URL } from '../../constants/privacy';
 import {
   MailIcon,
@@ -37,6 +39,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToSignUp }) 
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [rememberMe, setRememberMe] = useState<boolean>(true);
   const [localError, setLocalError] = useState<string | null>(null);
+  // Index of the currently focused field (for border focus feedback).
+  const [focusedField, setFocusedField] = useState<number | null>(null);
 
   const handleLogin = async () => {
     clearError();
@@ -137,11 +141,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToSignUp }) 
                 <Text style={styles.fieldLabel}>Email</Text>
                 <Text style={styles.fieldLabelHint}>Student / Academic</Text>
               </View>
-              <View style={styles.inputContainer}>
+              <FocusBorderView focused={focusedField === 0} style={styles.inputContainer}>
                 <View style={styles.inputIconWrapper}>
                   <MailIcon size={18} color={STITCH_COLORS.outline} />
                 </View>
                 <TextInput
+                  onFocus={() => setFocusedField(0)}
+                  onBlur={() => setFocusedField((f) => (f === 0 ? null : f))}
                   style={styles.textInput}
                   value={email}
                   onChangeText={(text) => {
@@ -155,7 +161,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToSignUp }) 
                   autoCorrect={false}
                   testID="login-email-input"
                 />
-              </View>
+              </FocusBorderView>
             </View>
 
             {/* Password Field */}
@@ -166,11 +172,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToSignUp }) 
                   <Text style={styles.forgotPasswordText}>Forgot password?</Text>
                 </TouchableOpacity>
               </View>
-              <View style={styles.inputContainer}>
+              <FocusBorderView focused={focusedField === 1} style={styles.inputContainer}>
                 <View style={styles.inputIconWrapper}>
                   <LockIcon size={18} color={STITCH_COLORS.outline} />
                 </View>
                 <TextInput
+                  onFocus={() => setFocusedField(1)}
+                  onBlur={() => setFocusedField((f) => (f === 1 ? null : f))}
                   style={styles.textInput}
                   value={password}
                   onChangeText={(text) => {
@@ -185,6 +193,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToSignUp }) 
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.eyeToggleBtn}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   activeOpacity={0.7}
                 >
                   {showPassword ? (
@@ -193,7 +202,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToSignUp }) 
                     <EyeOffIcon size={18} color={STITCH_COLORS.outline} />
                   )}
                 </TouchableOpacity>
-              </View>
+              </FocusBorderView>
             </View>
 
             {/* Utility Row: Remember Me & SSL Secured */}
@@ -285,7 +294,7 @@ const styles = StyleSheet.create({
   },
   plaintextLogo: {
     fontSize: 32,
-    fontWeight: '800',
+    fontFamily: FONTS.sans.semibold,
     color: STITCH_COLORS.onSurface, // #131b2e
     letterSpacing: -0.6,
   },
@@ -310,17 +319,18 @@ const styles = StyleSheet.create({
   },
   workspacePillText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: STITCH_COLORS.onSurfaceVariant,
   },
   heroTitle: {
     fontSize: 26,
-    fontWeight: '700',
+    fontFamily: FONTS.sans.semibold,
     color: STITCH_COLORS.onSurface, // #131b2e
     letterSpacing: -0.4,
   },
   heroSubtitle: {
     fontSize: 14,
+    fontFamily: FONTS.sans.regular,
     color: STITCH_COLORS.onSurfaceVariant, // #464555
     marginTop: 3,
     textAlign: 'center',
@@ -345,7 +355,7 @@ const styles = StyleSheet.create({
   errorBannerText: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
   },
   fieldGroup: {
     gap: 6,
@@ -357,16 +367,17 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 13,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
     color: '#EDEDED',
   },
   fieldLabelHint: {
     fontSize: 11,
+    fontFamily: FONTS.sans.regular,
     color: '#737373',
   },
   forgotPasswordText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
     color: '#A1A1A1',
   },
   inputContainer: {
@@ -388,6 +399,7 @@ const styles = StyleSheet.create({
   textInput: {
     flex: 1,
     fontSize: 14,
+    fontFamily: FONTS.sans.regular,
     color: '#EDEDED',
   },
   eyeToggleBtn: {
@@ -395,6 +407,7 @@ const styles = StyleSheet.create({
   },
   eyeToggleIcon: {
     fontSize: 14,
+    fontFamily: FONTS.sans.regular,
   },
   utilityRow: {
     flexDirection: 'row',
@@ -423,11 +436,12 @@ const styles = StyleSheet.create({
   },
   checkmarkIcon: {
     fontSize: 10,
-    fontWeight: '800',
+    fontFamily: FONTS.sans.semibold,
     color: '#000000',
   },
   rememberMeText: {
     fontSize: 12,
+    fontFamily: FONTS.sans.regular,
     color: '#A1A1A1',
   },
   sslBadge: {
@@ -443,7 +457,7 @@ const styles = StyleSheet.create({
   },
   sslText: {
     fontSize: 11,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
     color: '#EDEDED',
   },
   submitBtn: {
@@ -455,6 +469,7 @@ const styles = StyleSheet.create({
   buttonArrow: {
     color: '#000000',
     fontSize: 14,
+    fontFamily: FONTS.sans.regular,
     marginLeft: 4,
   },
   dividerRow: {
@@ -473,7 +488,7 @@ const styles = StyleSheet.create({
     color: '#737373',
     textTransform: 'uppercase',
     letterSpacing: 0.6,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
   },
   ssoInfoCard: {
     backgroundColor: '#111111',
@@ -488,11 +503,13 @@ const styles = StyleSheet.create({
   },
   ssoShieldIcon: {
     fontSize: 14,
+    fontFamily: FONTS.sans.regular,
     marginTop: 1,
   },
   ssoInfoText: {
     flex: 1,
     fontSize: 11.5,
+    fontFamily: FONTS.sans.regular,
     color: STITCH_COLORS.onSurfaceVariant,
     lineHeight: 16,
   },
@@ -507,12 +524,13 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 13,
+    fontFamily: FONTS.sans.regular,
     color: STITCH_COLORS.onSurfaceVariant,
   },
   footerLink: {
     fontSize: 13,
     color: STITCH_COLORS.primaryContainer,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
   },
   legalLinksRow: {
     flexDirection: 'row',
@@ -522,10 +540,12 @@ const styles = StyleSheet.create({
   },
   legalLinkText: {
     fontSize: 11,
+    fontFamily: FONTS.sans.regular,
     color: STITCH_COLORS.outline,
   },
   legalDot: {
     fontSize: 11,
+    fontFamily: FONTS.sans.regular,
     color: STITCH_COLORS.outline,
   },
 });

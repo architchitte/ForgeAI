@@ -1,7 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   Animated,
@@ -14,7 +13,78 @@ import {
   GestureResponderEvent,
   PanResponderGestureState,
 } from 'react-native';
+import Reanimated, {
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { STITCH_COLORS } from '../../constants/theme';
+import { FONTS } from '../../constants/typography';
+import { PRESS_SPRING, QUICK_TIMING } from '../animation/motion';
+
+/**
+ * Icon wrapper: gives a small one-off "pop" when its tab becomes active.
+ * The resting scale is always 1, so the dock's static look is unchanged.
+ */
+const SlotIcon: React.FC<{ isActive: boolean; children: React.ReactNode }> = ({
+  isActive,
+  children,
+}) => {
+  const scale = useSharedValue(1);
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (isActive) {
+      scale.value = withSequence(
+        withTiming(1.08, QUICK_TIMING),
+        withSpring(1, PRESS_SPRING)
+      );
+    }
+  }, [isActive, scale]);
+
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  return <Reanimated.View style={[styles.iconContainer, style]}>{children}</Reanimated.View>;
+};
+
+/** Label whose colour cross-fades between the existing inactive/active colours. */
+const SlotLabel: React.FC<{
+  isActive: boolean;
+  textColor: string;
+  activeTextColor: string;
+  fontSize: number;
+  children: React.ReactNode;
+}> = ({ isActive, textColor, activeTextColor, fontSize, children }) => {
+  const progress = useSharedValue(isActive ? 1 : 0);
+
+  useEffect(() => {
+    progress.value = withTiming(isActive ? 1 : 0, QUICK_TIMING);
+  }, [isActive, progress]);
+
+  const colorStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(progress.value, [0, 1], [textColor, activeTextColor]),
+  }));
+
+  return (
+    <Reanimated.Text
+      style={[
+        styles.slotLabel,
+        { fontSize, fontFamily: isActive ? FONTS.sans.semibold : FONTS.sans.medium },
+        colorStyle,
+      ]}
+      numberOfLines={1}
+    >
+      {children}
+    </Reanimated.Text>
+  );
+};
 
 export interface RubberSegmentItemObject {
   value: string;
@@ -422,26 +492,21 @@ export const RubberSegment: React.FC<RubberSegmentProps> = ({
               disabled={disabled}
             >
               {item.icon && (
-                <View style={styles.iconContainer}>
+                <SlotIcon isActive={isActive}>
                   {typeof item.icon === 'function'
                     ? item.icon(isActive)
                     : item.icon}
-                </View>
+                </SlotIcon>
               )}
               {item.label && (
-                <Text
-                  style={[
-                    styles.slotLabel,
-                    {
-                      fontSize: preset.font,
-                      color: isActive ? activeTextColor : textColor,
-                      fontWeight: isActive ? '700' : '500',
-                    },
-                  ]}
-                  numberOfLines={1}
+                <SlotLabel
+                  isActive={isActive}
+                  textColor={textColor}
+                  activeTextColor={activeTextColor}
+                  fontSize={preset.font}
                 >
                   {item.label}
-                </Text>
+                </SlotLabel>
               )}
             </TouchableOpacity>
           );

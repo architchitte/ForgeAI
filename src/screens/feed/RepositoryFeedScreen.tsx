@@ -14,12 +14,19 @@ import { Repository } from '../../types/repository';
 import { fetchRepositories } from '../../services/repositories';
 import { ProjectDetailSheet } from '../../components/detail/ProjectDetailSheet';
 import { STITCH_COLORS } from '../../constants/theme';
+import { FONTS } from '../../constants/typography';
 import {
   GraduationCapIcon,
   ArrowRightIcon,
   SearchIcon,
   RocketIcon,
 } from '../../components/common/AppIcons';
+import { PressableScale } from '../../components/animation/PressableScale';
+import { FadeInView } from '../../components/animation/FadeInView';
+import { staggerDelay } from '../../components/animation/motion';
+
+// Only the first screenful of cards gets an entrance animation.
+const ANIMATED_CARD_LIMIT = 8;
 
 interface RepositoryFeedScreenProps {
   onNavigateToSubmit?: () => void;
@@ -130,7 +137,7 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
     });
   }, [repositories, searchQuery, selectedFramework]);
 
-  const renderCard = ({ item }: { item: Repository }) => {
+  const renderCard = ({ item, index }: { item: Repository; index: number }) => {
     const studentDisplayName =
       item.student_name && item.student_name.trim().length > 0
         ? item.student_name.trim()
@@ -143,10 +150,12 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
     const fwBadge = getFrameworkBadgeStyle(item.framework);
 
     return (
-      <TouchableOpacity
+      <FadeInView delay={staggerDelay(index)} disabled={index >= ANIMATED_CARD_LIMIT}>
+      <PressableScale
         style={styles.card}
         onPress={() => handleSelectRepository(item)}
         activeOpacity={0.8}
+        pressedScale={0.98}
         testID={`repository-card-${item.id}`}
       >
         {/* Card Header */}
@@ -195,7 +204,8 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
             <ArrowRightIcon size={14} color={STITCH_COLORS.primaryContainer} />
           </View>
         </View>
-      </TouchableOpacity>
+      </PressableScale>
+      </FadeInView>
     );
   };
 
@@ -225,6 +235,7 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
           <TouchableOpacity
             onPress={() => setSearchQuery('')}
             style={styles.clearSearchBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Text style={styles.clearSearchText}>✕</Text>
           </TouchableOpacity>
@@ -236,7 +247,7 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
         {FRAMEWORK_FILTERS.map((chip) => {
           const isSelected = selectedFramework.toLowerCase() === chip.id.toLowerCase();
           return (
-            <TouchableOpacity
+            <PressableScale
               key={chip.id}
               style={[
                 styles.filterChip,
@@ -244,6 +255,8 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
               ]}
               onPress={() => setSelectedFramework(chip.id)}
               activeOpacity={0.7}
+              pressedScale={0.95}
+              accessibilityState={{ selected: isSelected }}
             >
               <Text
                 style={[
@@ -270,7 +283,7 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
                   </Text>
                 </View>
               )}
-            </TouchableOpacity>
+            </PressableScale>
           );
         })}
       </View>
@@ -291,14 +304,14 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
           Share your AI project with student builders and get feedback.
         </Text>
 
-        <TouchableOpacity
+        <PressableScale
           style={styles.cohortButton}
           onPress={onNavigateToSubmit}
           activeOpacity={0.8}
         >
           <Text style={styles.cohortButtonText}>Submit a Project</Text>
           <ArrowRightIcon size={14} color={STITCH_COLORS.primary} />
-        </TouchableOpacity>
+        </PressableScale>
       </View>
     </View>
   );
@@ -307,30 +320,30 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
     <View style={styles.safeArea}>
       {/* Main Stream */}
       {loading && !refreshing ? (
-        <View style={styles.loadingContainer}>
+        <FadeInView offset={0} style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={STITCH_COLORS.primary} />
           <Text style={styles.loadingText}>Loading student blueprints...</Text>
-        </View>
+        </FadeInView>
       ) : error ? (
-        <View style={styles.errorContainer}>
+        <FadeInView style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity
+          <PressableScale
             style={styles.retryButton}
             onPress={handleRefresh}
             activeOpacity={0.7}
           >
             <Text style={styles.retryButtonText}>Retry Sync</Text>
-          </TouchableOpacity>
-        </View>
+          </PressableScale>
+        </FadeInView>
       ) : (
         <FlatList
           data={filteredRepositories}
           keyExtractor={(item) => item.id}
           renderItem={renderCard}
-          ListHeaderComponent={renderHeader}
-          ListFooterComponent={renderFooter}
+          ListHeaderComponent={renderHeader()}
+          ListFooterComponent={renderFooter()}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
+            <FadeInView style={styles.emptyContainer}>
               <View style={styles.emptyIcon}>
                 <SearchIcon size={28} color={STITCH_COLORS.outline} />
               </View>
@@ -339,17 +352,18 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
                 No student AI projects matched your search query or filter.
               </Text>
               {(searchQuery !== '' || selectedFramework !== 'all') && (
-                <TouchableOpacity
+                <PressableScale
                   style={styles.resetBtn}
                   onPress={() => {
                     setSearchQuery('');
                     setSelectedFramework('all');
                   }}
+                  activeOpacity={0.7}
                 >
                   <Text style={styles.resetBtnText}>Reset Filters</Text>
-                </TouchableOpacity>
+                </PressableScale>
               )}
-            </View>
+            </FadeInView>
           }
           contentContainerStyle={styles.listContent}
           refreshControl={
@@ -408,17 +422,18 @@ const styles = StyleSheet.create({
   },
   beaconText: {
     fontSize: 11,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
     color: '#EDEDED',
   },
   heroTitle: {
     fontSize: 26,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: '#FFFFFF',
     letterSpacing: -0.5,
   },
   heroSubtitle: {
     fontSize: 14,
+    fontFamily: FONTS.sans.regular,
     color: '#A1A1A1',
     marginTop: 4,
     lineHeight: 20,
@@ -444,6 +459,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#EDEDED',
     fontSize: 14,
+    fontFamily: FONTS.sans.regular,
   },
   clearSearchBtn: {
     padding: 6,
@@ -451,6 +467,7 @@ const styles = StyleSheet.create({
   clearSearchText: {
     color: '#737373',
     fontSize: 12,
+    fontFamily: FONTS.sans.regular,
   },
   chipsScroll: {
     flexDirection: 'row',
@@ -475,12 +492,12 @@ const styles = StyleSheet.create({
   },
   chipLabel: {
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
     color: '#A1A1A1',
   },
   chipLabelActive: {
     color: '#000000',
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
   },
   chipCountBadge: {
     backgroundColor: '#171717',
@@ -493,7 +510,7 @@ const styles = StyleSheet.create({
   },
   chipCountText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: '#EDEDED',
   },
   chipCountTextActive: {
@@ -521,7 +538,7 @@ const styles = StyleSheet.create({
   },
   cardAppName: {
     fontSize: 18,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: '#FFFFFF',
     letterSpacing: -0.3,
   },
@@ -533,9 +550,11 @@ const styles = StyleSheet.create({
   },
   schoolIcon: {
     fontSize: 12,
+    fontFamily: FONTS.sans.regular,
   },
   cardAuthor: {
     fontSize: 12,
+    fontFamily: FONTS.sans.regular,
     color: '#A1A1A1',
   },
   frameworkBadge: {
@@ -546,10 +565,11 @@ const styles = StyleSheet.create({
   },
   frameworkBadgeText: {
     fontSize: 11,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
   },
   oneLiner: {
     fontSize: 13.5,
+    fontFamily: FONTS.sans.regular,
     color: '#A1A1A1',
     lineHeight: 19,
     marginBottom: 12,
@@ -581,7 +601,7 @@ const styles = StyleSheet.create({
   },
   activeStatusText: {
     fontSize: 11,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
     color: '#EDEDED',
   },
   viewProjectLink: {
@@ -591,11 +611,12 @@ const styles = StyleSheet.create({
   },
   viewProjectText: {
     fontSize: 13,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
     color: '#FFFFFF',
   },
   viewProjectIcon: {
     fontSize: 14,
+    fontFamily: FONTS.sans.regular,
     color: '#FFFFFF',
   },
 
@@ -619,20 +640,23 @@ const styles = StyleSheet.create({
   },
   rocketIcon: {
     fontSize: 14,
+    fontFamily: FONTS.sans.regular,
   },
   cohortBadgeText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: '#A1A1A1',
     letterSpacing: 0.8,
   },
   cohortTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
+    letterSpacing: -0.3,
     color: '#FFFFFF',
   },
   cohortDesc: {
     fontSize: 13,
+    fontFamily: FONTS.sans.regular,
     color: '#A1A1A1',
     marginVertical: 8,
     lineHeight: 18,
@@ -650,7 +674,7 @@ const styles = StyleSheet.create({
   cohortButtonText: {
     color: '#000000',
     fontSize: 13.5,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
   },
 
   loadingContainer: {
@@ -662,6 +686,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 13,
+    fontFamily: FONTS.sans.regular,
     color: STITCH_COLORS.outline,
   },
   errorContainer: {
@@ -673,6 +698,7 @@ const styles = StyleSheet.create({
   errorText: {
     color: STITCH_COLORS.error,
     fontSize: 14,
+    fontFamily: FONTS.sans.regular,
     textAlign: 'center',
     marginBottom: 16,
   },
@@ -684,7 +710,7 @@ const styles = StyleSheet.create({
   },
   retryButtonText: {
     color: STITCH_COLORS.primary,
-    fontWeight: '700',
+    fontFamily: FONTS.sans.semibold,
     fontSize: 13,
   },
   emptyContainer: {
@@ -694,15 +720,18 @@ const styles = StyleSheet.create({
   },
   emptyIcon: {
     fontSize: 28,
+    fontFamily: FONTS.sans.regular,
     marginBottom: 10,
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontFamily: FONTS.sans.semibold,
+    letterSpacing: -0.3,
     color: STITCH_COLORS.onSurface,
   },
   emptySubtitle: {
     fontSize: 13,
+    fontFamily: FONTS.sans.regular,
     color: STITCH_COLORS.outline,
     textAlign: 'center',
     marginTop: 6,
@@ -717,7 +746,7 @@ const styles = StyleSheet.create({
   },
   resetBtnText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: FONTS.sans.semibold,
     color: STITCH_COLORS.primary,
   },
 });

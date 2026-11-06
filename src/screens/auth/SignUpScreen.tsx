@@ -15,6 +15,8 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/common/Button';
 import { STITCH_COLORS } from '../../constants/theme';
+import { FONTS } from '../../constants/typography';
+import { FocusBorderView } from '../../components/animation/FocusBorderView';
 import { PRIVACY_POLICY_URL } from '../../constants/privacy';
 import {
   UserIcon,
@@ -43,6 +45,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
 
   const [fullName, setFullName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
+  // Index of the currently focused field (for border focus feedback).
+  const [focusedField, setFocusedField] = useState<number | null>(null);
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -188,11 +192,13 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
             {/* Full Name Field */}
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Full Name</Text>
-              <View style={styles.inputContainer}>
+              <FocusBorderView focused={focusedField === 0} style={styles.inputContainer}>
                 <View style={styles.inputIconWrap}>
                   <UserIcon size={18} color={STITCH_COLORS.outline} />
                 </View>
                 <TextInput
+                  onFocus={() => setFocusedField(0)}
+                  onBlur={() => setFocusedField((f) => (f === 0 ? null : f))}
                   style={styles.textInput}
                   value={fullName}
                   onChangeText={(text) => setFullName(text)}
@@ -202,17 +208,19 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                   autoCorrect={false}
                   testID="signup-name-input"
                 />
-              </View>
+              </FocusBorderView>
             </View>
 
             {/* Student Email Field */}
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Student Email</Text>
-              <View style={styles.inputContainer}>
+              <FocusBorderView focused={focusedField === 1} style={styles.inputContainer}>
                 <View style={styles.inputIconWrap}>
                   <GraduationCapIcon size={18} color={STITCH_COLORS.outline} />
                 </View>
                 <TextInput
+                  onFocus={() => setFocusedField(1)}
+                  onBlur={() => setFocusedField((f) => (f === 1 ? null : f))}
                   style={styles.textInput}
                   value={email}
                   onChangeText={(text) => {
@@ -226,17 +234,19 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                   autoCorrect={false}
                   testID="signup-email-input"
                 />
-              </View>
+              </FocusBorderView>
             </View>
 
             {/* Password Field */}
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Password</Text>
-              <View style={styles.inputContainer}>
+              <FocusBorderView focused={focusedField === 2} style={styles.inputContainer}>
                 <View style={styles.inputIconWrap}>
                   <LockIcon size={18} color={STITCH_COLORS.outline} />
                 </View>
                 <TextInput
+                  onFocus={() => setFocusedField(2)}
+                  onBlur={() => setFocusedField((f) => (f === 2 ? null : f))}
                   style={styles.textInput}
                   value={password}
                   onChangeText={(text) => {
@@ -251,6 +261,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.eyeToggleBtn}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   activeOpacity={0.7}
                 >
                   {showPassword ? (
@@ -259,7 +270,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                     <EyeOffIcon size={18} color={STITCH_COLORS.outline} />
                   )}
                 </TouchableOpacity>
-              </View>
+              </FocusBorderView>
 
               {/* Dynamic Password Requirements Box (only shown when user entered text and conditions are missing) */}
               {unmetRequirements.length > 0 && (
@@ -278,11 +289,13 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
             {/* Confirm Password Field */}
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Confirm Password</Text>
-              <View style={styles.inputContainer}>
+              <FocusBorderView focused={focusedField === 3} style={styles.inputContainer}>
                 <View style={styles.inputIconWrap}>
                   <ShieldCheckIcon size={18} color={STITCH_COLORS.outline} />
                 </View>
                 <TextInput
+                  onFocus={() => setFocusedField(3)}
+                  onBlur={() => setFocusedField((f) => (f === 3 ? null : f))}
                   style={styles.textInput}
                   value={confirmPassword}
                   onChangeText={(text) => {
@@ -297,6 +310,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                 <TouchableOpacity
                   onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                   style={styles.eyeToggleBtn}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   activeOpacity={0.7}
                 >
                   {showConfirmPassword ? (
@@ -305,7 +319,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                     <EyeOffIcon size={18} color={STITCH_COLORS.outline} />
                   )}
                 </TouchableOpacity>
-              </View>
+              </FocusBorderView>
             </View>
 
             {/* Privacy Policy Agreement Checkbox */}
@@ -399,7 +413,7 @@ const styles = StyleSheet.create({
   },
   plaintextLogo: {
     fontSize: 32,
-    fontWeight: '800',
+    fontFamily: FONTS.sans.semibold,
     color: STITCH_COLORS.onSurface, // #131b2e
     letterSpacing: -0.6,
   },
@@ -426,17 +440,18 @@ const styles = StyleSheet.create({
   },
   badgePillText: {
     fontSize: 11,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
     color: '#EDEDED',
   },
   heroTitle: {
     fontSize: 24,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: '#FFFFFF',
     letterSpacing: -0.5,
   },
   heroSubtitle: {
     fontSize: 13,
+    fontFamily: FONTS.sans.regular,
     color: '#A1A1A1',
     textAlign: 'center',
     marginTop: 4,
@@ -460,12 +475,13 @@ const styles = StyleSheet.create({
   verificationTitle: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     marginBottom: 2,
   },
   verificationText: {
     color: '#EDEDED',
     fontSize: 12,
+    fontFamily: FONTS.sans.regular,
   },
   errorBanner: {
     backgroundColor: '#1F1F1F',
@@ -478,14 +494,14 @@ const styles = StyleSheet.create({
   errorBannerText: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
   },
   fieldGroup: {
     marginBottom: 12,
   },
   fieldLabel: {
     fontSize: 12,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
     color: '#EDEDED',
     marginBottom: 6,
   },
@@ -508,6 +524,7 @@ const styles = StyleSheet.create({
   textInput: {
     flex: 1,
     fontSize: 13.5,
+    fontFamily: FONTS.sans.regular,
     color: '#EDEDED',
     paddingVertical: 0,
   },
@@ -517,6 +534,7 @@ const styles = StyleSheet.create({
   },
   eyeToggleIcon: {
     fontSize: 16,
+    fontFamily: FONTS.sans.regular,
   },
   requirementsBox: {
     backgroundColor: '#111111',
@@ -529,7 +547,7 @@ const styles = StyleSheet.create({
   },
   requirementsHeader: {
     fontSize: 11,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: '#A1A1A1',
     marginBottom: 2,
     textTransform: 'uppercase',
@@ -548,6 +566,7 @@ const styles = StyleSheet.create({
   },
   requirementLabel: {
     fontSize: 12,
+    fontFamily: FONTS.sans.regular,
     color: '#EDEDED',
   },
   termsRow: {
@@ -573,22 +592,24 @@ const styles = StyleSheet.create({
   },
   checkboxTick: {
     fontSize: 10,
-    fontWeight: '800',
+    fontFamily: FONTS.sans.semibold,
     color: '#000000',
   },
   termsText: {
     flex: 1,
     fontSize: 12,
+    fontFamily: FONTS.sans.regular,
     color: '#A1A1A1',
     lineHeight: 18,
   },
   termsHighlight: {
     color: '#EDEDED',
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
     textDecorationLine: 'underline',
   },
   buttonArrow: {
     fontSize: 16,
+    fontFamily: FONTS.sans.regular,
     color: '#000000',
   },
   submitBtn: {
@@ -612,6 +633,7 @@ const styles = StyleSheet.create({
   },
   dividerText: {
     fontSize: 11,
+    fontFamily: FONTS.sans.regular,
     color: '#737373',
     textTransform: 'uppercase',
   },
@@ -623,11 +645,12 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 13,
+    fontFamily: FONTS.sans.regular,
     color: '#A1A1A1',
   },
   footerLink: {
     fontSize: 13,
     color: '#FFFFFF',
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
   },
 });

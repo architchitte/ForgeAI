@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import * as WebBrowser from 'expo-web-browser';
+import { useFonts } from 'expo-font';
 import {
   StyleSheet,
   View,
@@ -23,12 +24,14 @@ import { RepositoryFeedScreen } from './src/screens/feed/RepositoryFeedScreen';
 import { ProjectDetailView } from './src/components/detail/ProjectDetailSheet';
 import { Repository } from './src/types/repository';
 import { STITCH_COLORS, STITCH_ASSETS } from './src/constants/theme';
+import { FONTS, FONT_ASSETS } from './src/constants/typography';
 import {
   TargetIcon,
   RocketIcon,
   SlidersIcon,
 } from './src/components/navigation/NavIcons';
 import RubberSegment from './src/components/navigation/RubberSegment';
+import { FadeInView } from './src/components/animation/FadeInView';
 
 type AuthenticatedTab = 'discover' | 'submit' | 'account';
 
@@ -58,36 +61,43 @@ const AuthenticatedView: React.FC = () => {
 
       {/* Active Screen View */}
       <View style={styles.screenContainer}>
-        {selectedRepo ? (
-          <ProjectDetailView
-            repository={selectedRepo}
-            onBack={() => setSelectedRepo(null)}
-          />
-        ) : activeTab === 'discover' ? (
-          <RepositoryFeedScreen
-            isActive={activeTab === 'discover'}
-            onNavigateToSubmit={() => {
-              setSelectedRepo(null);
-              setActiveTab('submit');
-            }}
-            onSelectRepository={(repo) => setSelectedRepo(repo)}
-          />
-        ) : activeTab === 'submit' ? (
-          <SubmitBlueprintScreen
-            onSuccess={() => {
-              setSelectedRepo(null);
-              setActiveTab('discover');
-            }}
-          />
-        ) : (
-          <AuthenticatedPlaceholderScreen
-            onNavigateToSubmitBlueprint={() => {
-              setSelectedRepo(null);
-              setActiveTab('submit');
-            }}
-            onSelectRepository={(repo) => setSelectedRepo(repo)}
-          />
-        )}
+        {/* Keyed so each tab / detail view fades in when it is shown */}
+        <FadeInView
+          key={selectedRepo ? `detail-${selectedRepo.id}` : activeTab}
+          offset={6}
+          style={styles.screenTransition}
+        >
+          {selectedRepo ? (
+            <ProjectDetailView
+              repository={selectedRepo}
+              onBack={() => setSelectedRepo(null)}
+            />
+          ) : activeTab === 'discover' ? (
+            <RepositoryFeedScreen
+              isActive={activeTab === 'discover'}
+              onNavigateToSubmit={() => {
+                setSelectedRepo(null);
+                setActiveTab('submit');
+              }}
+              onSelectRepository={(repo) => setSelectedRepo(repo)}
+            />
+          ) : activeTab === 'submit' ? (
+            <SubmitBlueprintScreen
+              onSuccess={() => {
+                setSelectedRepo(null);
+                setActiveTab('discover');
+              }}
+            />
+          ) : (
+            <AuthenticatedPlaceholderScreen
+              onNavigateToSubmitBlueprint={() => {
+                setSelectedRepo(null);
+                setActiveTab('submit');
+              }}
+              onSelectRepository={(repo) => setSelectedRepo(repo)}
+            />
+          )}
+        </FadeInView>
       </View>
 
       {/* Rounded Bottom Navigation Dock (RubberSegment) */}
@@ -174,18 +184,34 @@ const MainNavigator: React.FC = () => {
     );
   }
 
-  if (user) {
-    return <AuthenticatedView />;
-  }
+  // Keyed fade so moving between Login, Sign Up and the app feels continuous.
+  const screenKey = user ? 'app' : authScreen;
 
-  if (authScreen === 'signup') {
-    return <SignUpScreen onNavigateToLogin={() => setAuthScreen('login')} />;
-  }
-
-  return <LoginScreen onNavigateToSignUp={() => setAuthScreen('signup')} />;
+  return (
+    // Static dark backdrop so the fade never reveals the default window colour.
+    <View style={styles.rootBackdrop}>
+      <FadeInView key={screenKey} offset={0} style={styles.rootTransition}>
+        {user ? (
+          <AuthenticatedView />
+        ) : authScreen === 'signup' ? (
+          <SignUpScreen onNavigateToLogin={() => setAuthScreen('login')} />
+        ) : (
+          <LoginScreen onNavigateToSignUp={() => setAuthScreen('signup')} />
+        )}
+      </FadeInView>
+    </View>
+  );
 };
 
 export default function App() {
+  const [fontsLoaded, fontError] = useFonts(FONT_ASSETS);
+
+  // Hold on a plain black canvas until Geist is ready so text never renders
+  // in the fallback font first. If loading fails, continue with system fonts.
+  if (!fontsLoaded && !fontError) {
+    return <View style={styles.rootBackdrop} />;
+  }
+
   return (
     <AuthProvider>
       <MainNavigator />
@@ -205,7 +231,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
     fontSize: 13,
     color: STITCH_COLORS.onSurfaceVariant,
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
     letterSpacing: 0.5,
   },
   authSafeArea: {
@@ -228,7 +254,7 @@ const styles = StyleSheet.create({
   },
   appBarTitle: {
     fontSize: 20,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: '#ffffff',
     letterSpacing: -0.6,
     textAlign: 'center',
@@ -239,6 +265,16 @@ const styles = StyleSheet.create({
   screenContainer: {
     flex: 1,
     backgroundColor: STITCH_COLORS.background,
+  },
+  screenTransition: {
+    flex: 1,
+  },
+  rootBackdrop: {
+    flex: 1,
+    backgroundColor: STITCH_COLORS.background,
+  },
+  rootTransition: {
+    flex: 1,
   },
   bottomDockContainer: {
     paddingHorizontal: 12,

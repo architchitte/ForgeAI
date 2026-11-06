@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
-  TouchableOpacity,
   Text,
   StyleSheet,
   ActivityIndicator,
@@ -10,6 +9,9 @@ import {
   TextStyle,
 } from 'react-native';
 import { STITCH_COLORS } from '../../constants/theme';
+import { FONTS } from '../../constants/typography';
+import { PressableScale } from '../animation/PressableScale';
+import { FadeInView } from '../animation/FadeInView';
 
 interface ButtonProps {
   title: string;
@@ -42,8 +44,15 @@ export const Button: React.FC<ButtonProps> = ({
 
   const isDisabled = disabled || loading;
 
+  // Only cross-fade on loading changes, not on the button's first render.
+  const hasMounted = useRef(false);
+  useEffect(() => {
+    hasMounted.current = true;
+  }, []);
+  const skipFade = !hasMounted.current;
+
   return (
-    <TouchableOpacity
+    <PressableScale
       style={[
         styles.base,
         isGoogle && styles.googleButton,
@@ -56,14 +65,17 @@ export const Button: React.FC<ButtonProps> = ({
       disabled={isDisabled}
       activeOpacity={0.8}
       testID={testID}
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
     >
       {loading ? (
-        <ActivityIndicator
-          size="small"
-          color={isOutline || isGoogle || isSecondary ? '#FFFFFF' : '#000000'}
-        />
+        <FadeInView key="loading" offset={0} disabled={skipFade}>
+          <ActivityIndicator
+            size="small"
+            color={isOutline || isGoogle || isSecondary ? '#FFFFFF' : '#000000'}
+          />
+        </FadeInView>
       ) : (
-        <View style={styles.contentRow}>
+        <FadeInView key="content" offset={0} disabled={skipFade} style={styles.contentRow}>
           {icon ? <View style={styles.iconContainer}>{icon}</View> : null}
           {isGoogle && (
             <View style={styles.googleIconContainer}>
@@ -84,9 +96,9 @@ export const Button: React.FC<ButtonProps> = ({
             {title}
           </Text>
           {rightIcon ? <View style={styles.rightIconContainer}>{rightIcon}</View> : null}
-        </View>
+        </FadeInView>
       )}
-    </TouchableOpacity>
+    </PressableScale>
   );
 };
 
@@ -146,25 +158,25 @@ const styles = StyleSheet.create({
   },
   googleLetter: {
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: FONTS.sans.semibold,
     color: '#FFFFFF',
   },
   text: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: '#000000',
     letterSpacing: -0.2,
   },
   googleText: {
     color: '#EDEDED',
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
   },
   secondaryText: {
     color: '#EDEDED',
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
   },
   outlineText: {
     color: '#EDEDED',
-    fontWeight: '500',
+    fontFamily: FONTS.sans.medium,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,14 @@ import {
   Modal,
   SafeAreaView,
   ScrollView,
-  TouchableOpacity,
   Alert,
   Platform,
   Linking,
+  BackHandler,
 } from 'react-native';
 import { Repository } from '../../types/repository';
 import { STITCH_COLORS } from '../../constants/theme';
+import { FONTS } from '../../constants/typography';
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -21,6 +22,7 @@ import {
   AccountTreeIcon,
   CloudIcon,
 } from '../common/AppIcons';
+import { PressableScale } from '../animation/PressableScale';
 
 interface ProjectDetailViewProps {
   repository: Repository;
@@ -33,6 +35,16 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
 }) => {
   const [isLaunching, setIsLaunching] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
+
+  // Android hardware back returns to the previous view instead of exiting the app.
+  useEffect(() => {
+    if (!onBack) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      onBack();
+      return true;
+    });
+    return () => sub.remove();
+  }, [onBack]);
 
   const studentDisplayName =
     repository.student_name && repository.student_name.trim().length > 0
@@ -123,6 +135,24 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
 
   return (
     <View style={styles.container}>
+      {/* Back Navigation Bar (restored from eba1059) */}
+      {onBack && (
+        <View style={styles.backRow}>
+          <PressableScale
+            onPress={onBack}
+            style={styles.backButton}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel="Back to Projects"
+          >
+            <View style={styles.backIcon}>
+              <ArrowLeftIcon size={18} color={STITCH_COLORS.primary} />
+            </View>
+            <Text style={styles.backText}>Back to Projects</Text>
+          </PressableScale>
+        </View>
+      )}
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -197,16 +227,17 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
                 {repository.agent_execution_url}
               </Text>
             </View>
-            <TouchableOpacity
+            <PressableScale
               style={styles.copyButton}
               onPress={handleCopyEndpoint}
               activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <CopyIcon size={13} color={STITCH_COLORS.primaryContainer} />
               <Text style={styles.copyButtonText}>
                 {copied ? 'COPIED' : 'COPY'}
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           </View>
         </View>
 
@@ -256,17 +287,19 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
 
       {/* Docked Bottom Action Bar */}
       <View style={styles.dockedActionBar}>
-        <TouchableOpacity
+        <PressableScale
           style={styles.launchButton}
           onPress={handleLaunchAgent}
           disabled={isLaunching}
           activeOpacity={0.8}
+          pressedScale={0.98}
+          accessibilityState={{ busy: isLaunching, disabled: isLaunching }}
         >
           <Text style={styles.launchButtonText}>
             {isLaunching ? 'Opening Runtime...' : 'Launch App'}
           </Text>
           <ArrowRightIcon size={16} color="#000000" strokeWidth={2.2} />
-        </TouchableOpacity>
+        </PressableScale>
       </View>
     </View>
   );
@@ -308,6 +341,29 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: STITCH_COLORS.background,
   },
+  backRow: {
+    height: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    backgroundColor: STITCH_COLORS.surfaceContainerLowest,
+    borderBottomWidth: 1,
+    borderBottomColor: STITCH_COLORS.surfaceContainerHighest + '40',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  backIcon: {
+    marginRight: 6,
+  },
+  backText: {
+    fontSize: 13,
+    color: STITCH_COLORS.onSurface,
+    fontFamily: FONTS.sans.semibold,
+  },
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
@@ -330,7 +386,7 @@ const styles = StyleSheet.create({
   },
   frameworkChipText: {
     fontSize: 10,
-    fontWeight: '800',
+    fontFamily: FONTS.sans.semibold,
     color: STITCH_COLORS.onPrimaryFixedVariant, // #3323cc
     letterSpacing: 0.6,
   },
@@ -342,18 +398,19 @@ const styles = StyleSheet.create({
   },
   envChipText: {
     fontSize: 10,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: STITCH_COLORS.onSurfaceVariant,
   },
   appName: {
     fontSize: 24,
-    fontWeight: '700',
+    fontFamily: FONTS.sans.semibold,
     color: STITCH_COLORS.onSurface,
     letterSpacing: -0.5,
     marginBottom: 6,
   },
   oneLinerText: {
     fontSize: 14,
+    fontFamily: FONTS.sans.regular,
     color: STITCH_COLORS.onSurfaceVariant,
     lineHeight: 22,
   },
@@ -383,7 +440,7 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: '#FFFFFF',
   },
   creatorInfo: {
@@ -396,7 +453,7 @@ const styles = StyleSheet.create({
   },
   creatorName: {
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: '#FFFFFF',
   },
   verifiedIconWrap: {
@@ -409,11 +466,12 @@ const styles = StyleSheet.create({
   },
   verifiedIcon: {
     fontSize: 9,
-    fontWeight: '800',
+    fontFamily: FONTS.sans.semibold,
     color: '#000000',
   },
   creatorSub: {
     fontSize: 12,
+    fontFamily: FONTS.sans.regular,
     color: '#A1A1A1',
     marginTop: 2,
   },
@@ -430,17 +488,18 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontSize: 11,
+    fontFamily: FONTS.sans.regular,
     color: '#A1A1A1',
     marginBottom: 2,
   },
   metricValue: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: '#EDEDED',
   },
   metricValuePrimary: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: '#FFFFFF',
   },
   sectionBlock: {
@@ -448,7 +507,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: '#FFFFFF',
     marginBottom: 8,
     letterSpacing: -0.2,
@@ -474,14 +533,16 @@ const styles = StyleSheet.create({
   },
   specIcon: {
     fontSize: 13,
+    fontFamily: FONTS.sans.regular,
   },
   specLabel: {
     fontSize: 11,
+    fontFamily: FONTS.sans.regular,
     color: '#A1A1A1',
   },
   specValue: {
     fontSize: 13.5,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: '#EDEDED',
   },
   endpointBox: {
@@ -509,14 +570,14 @@ const styles = StyleSheet.create({
   },
   httpMethodText: {
     fontSize: 10,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: '#EDEDED',
   },
   endpointUrlText: {
     flex: 1,
     fontSize: 12,
     color: '#EDEDED',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontFamily: FONTS.mono.regular,
   },
   copyButton: {
     backgroundColor: '#171717',
@@ -531,9 +592,8 @@ const styles = StyleSheet.create({
   },
   copyButtonText: {
     fontSize: 10.5,
-    fontWeight: '600',
     color: '#FFFFFF',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontFamily: FONTS.mono.semibold,
   },
   promptHeaderRow: {
     flexDirection: 'row',
@@ -552,7 +612,7 @@ const styles = StyleSheet.create({
   promptFileBadgeText: {
     fontSize: 10.5,
     color: '#A1A1A1',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontFamily: FONTS.mono.regular,
   },
   terminalWindow: {
     backgroundColor: '#0A0A0A',
@@ -585,12 +645,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#A1A1A1',
     marginLeft: 4,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontFamily: FONTS.mono.regular,
   },
   encodingLabel: {
     fontSize: 10,
     color: '#737373',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontFamily: FONTS.mono.regular,
   },
   codeBody: {
     padding: 12,
@@ -603,17 +663,18 @@ const styles = StyleSheet.create({
     width: 26,
     fontSize: 11,
     color: '#737373',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontFamily: FONTS.mono.regular,
   },
   codeLineText: {
     flex: 1,
     fontSize: 12,
     color: '#EDEDED',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontFamily: FONTS.mono.regular,
     lineHeight: 18,
   },
   emptyPromptText: {
     fontSize: 12,
+    fontFamily: FONTS.sans.regular,
     color: '#737373',
     fontStyle: 'italic',
   },
@@ -640,11 +701,12 @@ const styles = StyleSheet.create({
   },
   launchButtonIcon: {
     fontSize: 16,
+    fontFamily: FONTS.sans.regular,
     marginRight: 6,
   },
   launchButtonText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: FONTS.sans.semibold,
     color: '#000000',
   },
 });
