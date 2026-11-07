@@ -389,7 +389,6 @@ export const AuthenticatedPlaceholderScreen: React.FC<
                 </View>
                 <Text
                   style={[styles.universityText, !university && styles.universityPlaceholder]}
-                  numberOfLines={1}
                 >
                   {university || 'Add your university'}
                 </Text>
@@ -976,6 +975,7 @@ const styles = StyleSheet.create({
   },
   universityText: {
     fontSize: 12,
+    lineHeight: 17,
     color: STITCH_COLORS.onSurfaceVariant,
     marginTop: 2,
     fontFamily: FONTS.sans.regular,

@@ -2,7 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Alert, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { STITCH_COLORS } from '../../constants/theme';
 import { FONTS } from '../../constants/typography';
-import { ImageIcon, MonitorIcon, SmartphoneIcon } from '../common/AppIcons';
+import {
+  ImageIcon,
+  MonitorIcon,
+  RefreshIcon,
+  SmartphoneIcon,
+  TrashIcon,
+} from '../common/AppIcons';
 import { PressableScale } from '../animation/PressableScale';
 import { DesktopFrame, PhoneFrame } from './ScreenshotFrames';
 import { ScreenshotViewer } from './ScreenshotViewer';
@@ -33,9 +39,18 @@ export const ProjectScreenshotShowcase: React.FC<ProjectScreenshotShowcaseProps>
   const [viewerOpen, setViewerOpen] = useState<boolean>(false);
   const [managerOpen, setManagerOpen] = useState<boolean>(false);
   const [failed, setFailed] = useState<boolean>(false);
+  // Owner controls stay hidden until the owner holds the image.
+  const [actionsVisible, setActionsVisible] = useState<boolean>(false);
 
   const uri = screenshot ? getScreenshotUrl(screenshot.storage_path) : null;
   useEffect(() => setFailed(false), [uri]);
+
+  // Revealed controls tuck away again after a few idle seconds (not while busy).
+  useEffect(() => {
+    if (!actionsVisible || busy) return;
+    const t = setTimeout(() => setActionsVisible(false), ACTIONS_AUTO_HIDE_MS);
+    return () => clearTimeout(t);
+  }, [actionsVisible, busy]);
 
   if (loading) return null; // no placeholder flash for the many projects without one
   if (!screenshot && !isOwner) return null;
@@ -46,6 +61,7 @@ export const ProjectScreenshotShowcase: React.FC<ProjectScreenshotShowcaseProps>
     const { error, warning } = await save(...args);
     if (error) return error;
     setManagerOpen(false);
+    setActionsVisible(false);
     if (warning) Alert.alert('Screenshot updated', warning);
     return null;
   };
@@ -62,6 +78,7 @@ export const ProjectScreenshotShowcase: React.FC<ProjectScreenshotShowcaseProps>
           style: 'destructive',
           onPress: async () => {
             const { error, warning } = await remove();
+            setActionsVisible(false);
             if (error) Alert.alert('Could not remove screenshot', error);
             else if (warning) Alert.alert('Screenshot removed', warning);
           },
@@ -105,33 +122,54 @@ export const ProjectScreenshotShowcase: React.FC<ProjectScreenshotShowcaseProps>
   const isDesktop = screenshot.screenshot_type === 'desktop';
   const phoneWidth = Math.min(240, Math.round(windowWidth * 0.58));
 
-  const ownerActions = isOwner && (
+  const ownerActions = (
     <View style={styles.ownerActions}>
       {busy ? (
         <ActivityIndicator size="small" color={STITCH_COLORS.onSurfaceVariant} />
       ) : (
         <>
           <PressableScale
-            onPress={() => setManagerOpen(true)}
+            style={styles.ownerIconButton}
+            onPress={() => {
+              setActionsVisible(false);
+              setManagerOpen(true);
+            }}
             activeOpacity={0.6}
-            hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+            pressedScale={0.9}
+            hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
             accessibilityLabel="Replace screenshot"
           >
-            <Text style={styles.ownerActionText}>Replace</Text>
+            <RefreshIcon size={14} color="#EDEDED" />
           </PressableScale>
-          <Text style={styles.ownerActionDivider}>·</Text>
           <PressableScale
+            style={styles.ownerIconButton}
             onPress={confirmRemove}
             activeOpacity={0.6}
-            hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+            pressedScale={0.9}
+            hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
             accessibilityLabel="Remove screenshot"
           >
-            <Text style={styles.ownerActionText}>Remove</Text>
+            <TrashIcon size={14} color="#EDEDED" />
           </PressableScale>
         </>
       )}
     </View>
   );
+
+  // Tap opens the viewer (or dismisses revealed controls); owners hold to
+  // reveal Replace / Remove over the image.
+  const frameHandlers = {
+    onPress: () => (actionsVisible ? setActionsVisible(false) : setViewerOpen(true)),
+    onLongPress: isOwner && !busy ? () => setActionsVisible(true) : undefined,
+    longPressLabel: 'Show replace and remove options',
+    onError: () => setFailed(true),
+    overlay:
+      isOwner && (actionsVisible || busy) ? (
+        <View style={styles.actionsOverlay} pointerEvents="box-none">
+          {ownerActions}
+        </View>
+      ) : undefined,
+  };
 
   return (
     <View style={styles.block}>
@@ -144,19 +182,22 @@ export const ProjectScreenshotShowcase: React.FC<ProjectScreenshotShowcaseProps>
           )}
           <Text style={styles.previewChipText}>{spec.previewLabel}</Text>
         </View>
-        {ownerActions}
+          {/* A broken image can't be held, so owners get the buttons directly. */}
+        {isOwner && failed && ownerActions}
+        {isOwner && !failed && !actionsVisible && (
+          <Text style={styles.holdHint}>Hold image to edit</Text>
+        )}
       </View>
 
       {failed ? (
-        // Never show a broken image; owners still get the actions above.
+        // Never show a broken image.
         isOwner ? (
           <Text style={styles.failedText}>The screenshot could not be loaded. Try replacing it.</Text>
         ) : null
       ) : isDesktop ? (
         <DesktopFrame
           uri={uri!}
-          onPress={() => setViewerOpen(true)}
-          onError={() => setFailed(true)}
+          {...frameHandlers}
           accessibilityLabel={`${appName} desktop screenshot`}
         />
       ) : (
@@ -164,8 +205,7 @@ export const ProjectScreenshotShowcase: React.FC<ProjectScreenshotShowcaseProps>
           <PhoneFrame
             uri={uri!}
             width={phoneWidth}
-            onPress={() => setViewerOpen(true)}
-            onError={() => setFailed(true)}
+            {...frameHandlers}
             accessibilityLabel={`${appName} mobile screenshot`}
           />
         </View>
@@ -181,6 +221,8 @@ export const ProjectScreenshotShowcase: React.FC<ProjectScreenshotShowcaseProps>
     </View>
   );
 };
+
+const ACTIONS_AUTO_HIDE_MS = 5000;
 
 const styles = StyleSheet.create({
   block: {
@@ -212,17 +254,33 @@ const styles = StyleSheet.create({
   ownerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
-  ownerActionText: {
-    fontSize: 12,
-    fontFamily: FONTS.sans.medium,
-    color: '#EDEDED',
-  },
-  ownerActionDivider: {
-    fontSize: 12,
+  holdHint: {
+    fontSize: 11,
     fontFamily: FONTS.sans.regular,
-    color: '#454545',
+    color: '#525252',
+  },
+  actionsOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    alignItems: 'flex-end',
+    justifyContent: 'flex-start',
+    padding: 8,
+  },
+  ownerIconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#333333',
+    backgroundColor: '#111111',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   phoneStage: {
     alignItems: 'center',

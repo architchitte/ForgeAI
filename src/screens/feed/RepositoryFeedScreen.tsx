@@ -128,10 +128,11 @@ const RepositoryCard = React.memo<RepositoryCardProps>(({
             {item.app_name}
           </Text>
           <View style={styles.authorRow}>
-            <GraduationCapIcon size={14} color={STITCH_COLORS.primaryContainer} />
-            <Text style={styles.cardAuthor} numberOfLines={1}>
-              {creatorSubtitle}
-            </Text>
+            <View style={styles.authorIcon}>
+              <GraduationCapIcon size={14} color={STITCH_COLORS.primaryContainer} />
+            </View>
+            {/* Wraps onto more lines so long university names stay fully visible */}
+            <Text style={styles.cardAuthor}>{creatorSubtitle}</Text>
           </View>
         </View>
         <View
@@ -690,16 +691,21 @@ const styles = StyleSheet.create({
   },
   authorRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 4,
     marginTop: 3,
+  },
+  authorIcon: {
+    marginTop: 1, // align with the first text line
   },
   schoolIcon: {
     fontSize: 12,
     fontFamily: FONTS.sans.regular,
   },
   cardAuthor: {
+    flexShrink: 1,
     fontSize: 12,
+    lineHeight: 16,
     fontFamily: FONTS.sans.regular,
     color: '#A1A1A1',
   },

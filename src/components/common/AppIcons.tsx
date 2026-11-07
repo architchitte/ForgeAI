@@ -221,3 +221,19 @@ export const CloseIcon: React.FC<IconProps> = ({
   size = 18,
   color = STITCH_COLORS.onSurface,
 }) => <Feather name="x" size={size} color={color} />;
+
+/**
+ * 26. Refresh / Replace Icon
+ */
+export const RefreshIcon: React.FC<IconProps> = ({
+  size = 14,
+  color = STITCH_COLORS.onSurface,
+}) => <Feather name="refresh-cw" size={size} color={color} />;
+
+/**
+ * 27. File Text / Description Icon
+ */
+export const FileTextIcon: React.FC<IconProps> = ({
+  size = 15,
+  color = STITCH_COLORS.onSurface,
+}) => <Feather name="file-text" size={size} color={color} />;

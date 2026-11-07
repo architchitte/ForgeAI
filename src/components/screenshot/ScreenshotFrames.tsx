@@ -57,26 +57,53 @@ const ScreenshotImage: React.FC<ScreenshotImageProps> = ({
 interface FrameProps {
   uri: string;
   onPress?: () => void;
+  /** Hold-press handler (also exposed as an accessibility action). */
+  onLongPress?: () => void;
+  /** Screen-reader name for the hold-press action. */
+  longPressLabel?: string;
+  /** Rendered on top of the screenshot area (e.g. owner controls). */
+  overlay?: React.ReactNode;
   onError?: () => void;
   thumbnail?: boolean;
   style?: StyleProp<ViewStyle>;
   accessibilityLabel?: string;
 }
 
-const FramePressable: React.FC<{ onPress?: () => void; style?: StyleProp<ViewStyle>; label?: string; children: React.ReactNode }> = ({
+interface FramePressableProps {
+  onPress?: () => void;
+  onLongPress?: () => void;
+  longPressLabel?: string;
+  style?: StyleProp<ViewStyle>;
+  label?: string;
+  children: React.ReactNode;
+}
+
+const LONG_PRESS_MS = 450;
+
+const FramePressable: React.FC<FramePressableProps> = ({
   onPress,
+  onLongPress,
+  longPressLabel,
   style,
   label,
   children,
 }) =>
-  onPress ? (
+  onPress || onLongPress ? (
     <PressableScale
       style={style}
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={LONG_PRESS_MS}
       activeOpacity={0.9}
       pressedScale={0.985}
       accessibilityRole="imagebutton"
       accessibilityLabel={label ? `${label}, open larger` : 'Open screenshot'}
+      accessibilityActions={
+        onLongPress ? [{ name: 'longpress', label: longPressLabel || 'More options' }] : undefined
+      }
+      onAccessibilityAction={(e) => {
+        if (e.nativeEvent.actionName === 'longpress') onLongPress?.();
+      }}
     >
       {children}
     </PressableScale>
@@ -91,13 +118,22 @@ const FramePressable: React.FC<{ onPress?: () => void; style?: StyleProp<ViewSty
 export const DesktopFrame: React.FC<FrameProps & { compact?: boolean }> = ({
   uri,
   onPress,
+  onLongPress,
+  longPressLabel,
+  overlay,
   onError,
   thumbnail,
   style,
   compact,
   accessibilityLabel = 'Desktop screenshot',
 }) => (
-  <FramePressable onPress={onPress} style={[styles.desktop, style]} label={accessibilityLabel}>
+  <FramePressable
+    onPress={onPress}
+    onLongPress={onLongPress}
+    longPressLabel={longPressLabel}
+    style={[styles.desktop, style]}
+    label={accessibilityLabel}
+  >
     <View style={[styles.chrome, compact && styles.chromeCompact]}>
       <View style={[styles.dot, { backgroundColor: '#262626' }]} />
       <View style={[styles.dot, { backgroundColor: '#333333' }]} />
@@ -111,6 +147,7 @@ export const DesktopFrame: React.FC<FrameProps & { compact?: boolean }> = ({
         thumbnail={thumbnail}
         accessibilityLabel={accessibilityLabel}
       />
+      {overlay}
     </View>
   </FramePressable>
 );
@@ -122,6 +159,9 @@ export const DesktopFrame: React.FC<FrameProps & { compact?: boolean }> = ({
 export const PhoneFrame: React.FC<FrameProps & { width: number }> = ({
   uri,
   onPress,
+  onLongPress,
+  longPressLabel,
+  overlay,
   onError,
   thumbnail,
   style,
@@ -133,6 +173,8 @@ export const PhoneFrame: React.FC<FrameProps & { width: number }> = ({
   return (
     <FramePressable
       onPress={onPress}
+      onLongPress={onLongPress}
+      longPressLabel={longPressLabel}
       style={[
         styles.phone,
         { width, borderRadius: radius, padding: bezel, paddingTop: bezel * 2.2 },
@@ -158,6 +200,7 @@ export const PhoneFrame: React.FC<FrameProps & { width: number }> = ({
           thumbnail={thumbnail}
           accessibilityLabel={accessibilityLabel}
         />
+        {overlay}
       </View>
     </FramePressable>
   );

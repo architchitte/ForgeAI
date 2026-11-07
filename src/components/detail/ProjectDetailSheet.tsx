@@ -24,6 +24,7 @@ import {
   CopyIcon,
   AccountTreeIcon,
   CloudIcon,
+  FileTextIcon,
 } from '../common/AppIcons';
 import { PressableScale } from '../animation/PressableScale';
 import { CommentsSection } from './CommentsSection';
@@ -124,13 +125,6 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
       ? repository.university.trim()
       : 'Student Builder';
 
-  const promptFileName = `${
-    repository.app_name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '_')
-      .replace(/^_+|_+$/g, '') || 'agent_system'
-  }.prompt`;
-
   const isValidHttpUrl = (urlStr: string): boolean => {
     const trimmed = urlStr.trim();
     if (!trimmed) return false;
@@ -208,11 +202,14 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
     }
   };
 
-  // Split prompt lines for the terminal window
-  const promptLines = (repository.system_prompt || '')
+  // Project description (stored in system_prompt): blank lines separate
+  // paragraphs; single line breaks are kept within a paragraph.
+  const descriptionParagraphs = (repository.system_prompt || '')
+    .replace(/\r\n?/g, '\n')
     .trim()
-    .split('\n')
-    .filter((line) => line.length > 0);
+    .split(/\n\s*\n+/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
 
   // Student Initials
   // No initials for the neutral fallback; the avatar shows a user icon instead.
@@ -340,43 +337,30 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           </View>
         </View>
 
-        {/* System Prompt Template Section */}
+        {/* Project Description */}
         <View style={styles.sectionBlock}>
-          <View style={styles.promptHeaderRow}>
-            <Text style={styles.sectionTitle}>System Prompt Template</Text>
-            <View style={styles.promptFileBadge}>
-              <Text style={styles.promptFileBadgeText}>{promptFileName}</Text>
-            </View>
+          <View style={styles.descriptionHeader}>
+            <FileTextIcon size={15} color={STITCH_COLORS.onSurface} />
+            <Text style={styles.descriptionTitle}>Project Description</Text>
           </View>
 
-          <View style={styles.terminalWindow}>
-            {/* macOS-style Window Header */}
-            <View style={styles.windowHeader}>
-              <View style={styles.windowControls}>
-                <View style={[styles.controlDot, { backgroundColor: '#262626' }]} />
-                <View style={[styles.controlDot, { backgroundColor: '#333333' }]} />
-                <View style={[styles.controlDot, { backgroundColor: '#454545' }]} />
-                <Text style={styles.windowLabel}>system_instructions</Text>
-              </View>
-              <Text style={styles.encodingLabel}>UTF-8</Text>
-            </View>
-
-            {/* Code Body */}
-            <View style={styles.codeBody}>
-              {promptLines.length === 0 ? (
-                <Text style={styles.emptyPromptText}>[Empty System Prompt]</Text>
-              ) : (
-                promptLines.map((line, index) => {
-                  const lineNum = String(index + 1).padStart(2, '0');
-                  return (
-                    <View key={index} style={styles.codeLineRow}>
-                      <Text style={styles.codeLineNumber}>{lineNum}</Text>
-                      <Text style={styles.codeLineText}>{line}</Text>
-                    </View>
-                  );
-                })
-              )}
-            </View>
+          <View style={styles.descriptionCard}>
+            {descriptionParagraphs.length === 0 ? (
+              <Text style={styles.descriptionEmpty}>No description provided.</Text>
+            ) : (
+              descriptionParagraphs.map((paragraph, index) => (
+                <Text
+                  key={index}
+                  selectable
+                  style={[
+                    styles.descriptionText,
+                    index < descriptionParagraphs.length - 1 && styles.descriptionParagraphGap,
+                  ]}
+                >
+                  {paragraph}
+                </Text>
+              ))
+            )}
           </View>
         </View>
 
@@ -717,88 +701,39 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontFamily: FONTS.mono.semibold,
   },
-  promptHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  promptFileBadge: {
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#262626',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  promptFileBadgeText: {
-    fontSize: 10.5,
-    color: '#A1A1A1',
-    fontFamily: FONTS.mono.regular,
-  },
-  terminalWindow: {
-    backgroundColor: '#0A0A0A',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#262626',
-    overflow: 'hidden',
-  },
-  windowHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#111111',
-    borderBottomWidth: 1,
-    borderBottomColor: '#262626',
-  },
-  windowControls: {
+  descriptionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    marginBottom: 10,
   },
-  controlDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  descriptionTitle: {
+    fontSize: 14,
+    fontFamily: FONTS.sans.semibold,
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
   },
-  windowLabel: {
-    fontSize: 11,
-    color: '#A1A1A1',
-    marginLeft: 4,
-    fontFamily: FONTS.mono.regular,
+  descriptionCard: {
+    backgroundColor: '#0A0A0A',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#262626',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  encodingLabel: {
-    fontSize: 10,
-    color: '#737373',
-    fontFamily: FONTS.mono.regular,
+  descriptionText: {
+    fontSize: 14,
+    lineHeight: 22,
+    fontFamily: FONTS.sans.regular,
+    color: '#D4D4D4',
   },
-  codeBody: {
-    padding: 12,
+  descriptionParagraphGap: {
+    marginBottom: 12,
   },
-  codeLineRow: {
-    flexDirection: 'row',
-    marginBottom: 3,
-  },
-  codeLineNumber: {
-    width: 26,
-    fontSize: 11,
-    color: '#737373',
-    fontFamily: FONTS.mono.regular,
-  },
-  codeLineText: {
-    flex: 1,
-    fontSize: 12,
-    color: '#EDEDED',
-    fontFamily: FONTS.mono.regular,
-    lineHeight: 18,
-  },
-  emptyPromptText: {
-    fontSize: 12,
+  descriptionEmpty: {
+    fontSize: 13,
     fontFamily: FONTS.sans.regular,
     color: '#737373',
-    fontStyle: 'italic',
   },
   dockedActionBar: {
     position: 'absolute',
