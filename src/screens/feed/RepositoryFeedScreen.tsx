@@ -21,6 +21,10 @@ import {
   SearchIcon,
   RocketIcon,
 } from '../../components/common/AppIcons';
+import { LikeButton } from '../../components/common/LikeButton';
+import { useLikes } from '../../context/LikesContext';
+import { useLikesLiveSync } from '../../hooks/useLikesLiveSync';
+import { COMMUNITY_MEMBER_LABEL } from '../../constants/identity';
 import { PressableScale } from '../../components/animation/PressableScale';
 import { FadeInView } from '../../components/animation/FadeInView';
 import { staggerDelay } from '../../components/animation/motion';
@@ -54,17 +58,31 @@ interface RepositoryCardProps {
   item: Repository;
   index: number;
   onPress: (repo: Repository) => void;
+  /** Undefined until like state has loaded for this card. */
+  likeCount?: number;
+  liked: boolean;
+  likePending: boolean;
+  onToggleLike: (repositoryId: string) => void;
 }
 
 /**
  * Memoized so typing in search / toggling filters only re-renders cards
  * whose data actually changed.
  */
-const RepositoryCard = React.memo<RepositoryCardProps>(({ item, index, onPress }) => {
+const RepositoryCard = React.memo<RepositoryCardProps>(({
+  item,
+  index,
+  onPress,
+  likeCount,
+  liked,
+  likePending,
+  onToggleLike,
+}) => {
+  // Never fall back to the submitter's email — it is private.
   const studentDisplayName =
     item.student_name && item.student_name.trim().length > 0
       ? item.student_name.trim()
-      : item.student_email;
+      : COMMUNITY_MEMBER_LABEL;
 
   const creatorSubtitle = item.university
     ? `${studentDisplayName} · ${item.university}`
@@ -115,11 +133,20 @@ const RepositoryCard = React.memo<RepositoryCardProps>(({ item, index, onPress }
         {item.one_liner}
       </Text>
 
-      {/* Card Bottom: Active Status Pill & View Project Button */}
+      {/* Card Bottom: Active Status Pill, Like & View Project Button */}
       <View style={styles.cardFooter}>
-        <View style={styles.activeStatusPill}>
-          <View style={styles.activeDot} />
-          <Text style={styles.activeStatusText}>Active</Text>
+        <View style={styles.footerLeft}>
+          <View style={styles.activeStatusPill}>
+            <View style={styles.activeDot} />
+            <Text style={styles.activeStatusText}>Active</Text>
+          </View>
+          <LikeButton
+            repositoryId={item.id}
+            count={likeCount}
+            liked={liked}
+            pending={likePending}
+            onToggle={onToggleLike}
+          />
         </View>
 
         <View style={styles.viewProjectLink}>
@@ -153,15 +180,21 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
 
   const isInitialMount = useRef(true);
 
+  const { likes, pendingIds, refreshLikes, toggleLike } = useLikes();
+
+  // Repositories first, then one batched like query for every loaded card.
+  // A likes failure doesn't block the feed; counts just stay unknown.
   const loadData = useCallback(async () => {
     setError(null);
     const result = await fetchRepositories();
     if (result.error) {
       setError(result.error);
     } else {
-      setRepositories(result.data || []);
+      const repos = result.data || [];
+      setRepositories(repos);
+      await refreshLikes(repos.map((r) => r.id));
     }
-  }, []);
+  }, [refreshLikes]);
 
   // Initial load
   useEffect(() => {
@@ -179,6 +212,15 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
       loadData();
     }
   }, [isActive, loadData]);
+
+  // Live like counts while the feed is visible (realtime + app foreground).
+  const repositoriesRef = useRef(repositories);
+  repositoriesRef.current = repositories;
+  const refreshVisibleLikes = useCallback(() => {
+    const ids = repositoriesRef.current.map((r) => r.id);
+    if (ids.length > 0) refreshLikes(ids);
+  }, [refreshLikes]);
+  useLikesLiveSync(isActive && !loading, refreshVisibleLikes);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -224,10 +266,21 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
   }, [repositories, searchQuery, selectedFramework]);
 
   const renderCard = useCallback(
-    ({ item, index }: { item: Repository; index: number }) => (
-      <RepositoryCard item={item} index={index} onPress={handleSelectRepository} />
-    ),
-    [handleSelectRepository]
+    ({ item, index }: { item: Repository; index: number }) => {
+      const summary = likes[item.id];
+      return (
+        <RepositoryCard
+          item={item}
+          index={index}
+          onPress={handleSelectRepository}
+          likeCount={summary?.count}
+          liked={summary?.likedByMe ?? false}
+          likePending={pendingIds[item.id] === true}
+          onToggleLike={toggleLike}
+        />
+      );
+    },
+    [handleSelectRepository, likes, pendingIds, toggleLike]
   );
 
   const keyExtractor = useCallback((item: Repository) => item.id, []);
@@ -363,6 +416,7 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
           data={filteredRepositories}
           keyExtractor={keyExtractor}
           renderItem={renderCard}
+          extraData={likes}
           initialNumToRender={8}
           maxToRenderPerBatch={8}
           windowSize={11}
@@ -608,6 +662,11 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#171717',
+  },
+  footerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   activeStatusPill: {
     flexDirection: 'row',

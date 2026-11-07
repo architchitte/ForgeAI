@@ -46,11 +46,15 @@ import RubberSegment from './src/components/navigation/RubberSegment';
 import { FadeInView } from './src/components/animation/FadeInView';
 import { TutorialOverlay } from './src/components/onboarding/TutorialOverlay';
 import { TUTORIAL_STEPS, shouldShowTutorial } from './src/constants/tutorial';
+import { useProfileSync } from './src/hooks/useProfileSync';
+import { LikesProvider } from './src/context/LikesContext';
 
 type AuthenticatedTab = 'discover' | 'submit' | 'account';
 
 const AuthenticatedView: React.FC = () => {
   const { user, completeTutorial } = useAuth();
+  // Mirror the user's display name into public.profiles for comment labels.
+  useProfileSync();
   const [activeTab, setActiveTab] = useState<AuthenticatedTab>('discover');
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
 
@@ -278,7 +282,9 @@ const MainNavigator: React.FC = () => {
     <View style={styles.rootBackdrop}>
       <FadeInView key={screenKey} offset={0} style={styles.rootTransition}>
         {user ? (
-          <AuthenticatedView />
+          <LikesProvider>
+            <AuthenticatedView />
+          </LikesProvider>
         ) : authScreen === 'signup' ? (
           <SignUpScreen onNavigateToLogin={() => setAuthScreen('login')} />
         ) : (

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   Platform,
   Linking,
   BackHandler,
+  Keyboard,
+  type ScrollViewInstance,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
@@ -24,6 +26,11 @@ import {
   CloudIcon,
 } from '../common/AppIcons';
 import { PressableScale } from '../animation/PressableScale';
+import { CommentsSection } from './CommentsSection';
+import { LikeButton } from '../common/LikeButton';
+import { useLikes } from '../../context/LikesContext';
+import { useLikesLiveSync } from '../../hooks/useLikesLiveSync';
+import { COMMUNITY_MEMBER_LABEL } from '../../constants/identity';
 
 interface ProjectDetailViewProps {
   repository: Repository;
@@ -37,6 +44,59 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   const [isLaunching, setIsLaunching] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
 
+  // Keyboard handling for the comment composer. Rather than depending on how
+  // the Android window resizes (edge-to-edge), the docked Launch bar hides
+  // while the keyboard is up, the content gets bottom room equal to the
+  // keyboard height, and the composer is scrolled near the top of the view.
+  const scrollRef = useRef<ScrollViewInstance>(null);
+  const commentsSectionY = useRef(0);
+  const composerScrollTarget = useRef<number | null>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+      const target = composerScrollTarget.current;
+      if (target !== null) {
+        // Wait a frame for the extra bottom room to be laid out.
+        requestAnimationFrame(() =>
+          scrollRef.current?.scrollTo({ y: target, animated: true })
+        );
+      }
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const handleComposerFocus = useCallback((offsetInSection: number) => {
+    const target = Math.max(0, commentsSectionY.current + offsetInSection - 12);
+    composerScrollTarget.current = target;
+    scrollRef.current?.scrollTo({ y: target, animated: true });
+  }, []);
+
+  const handleComposerBlur = useCallback(() => {
+    composerScrollTarget.current = null;
+  }, []);
+
+  const isKeyboardVisible = keyboardHeight > 0;
+
+  // Likes: shared with the feed via LikesContext. Re-read this project's
+  // count on open, and keep it live (realtime + app foreground) while shown.
+  const { likes, pendingIds, refreshLikes, toggleLike } = useLikes();
+  const likeSummary = likes[repository.id];
+  const refreshThisLike = useCallback(() => {
+    refreshLikes([repository.id]);
+  }, [refreshLikes, repository.id]);
+  useEffect(() => {
+    refreshThisLike();
+  }, [refreshThisLike]);
+  useLikesLiveSync(true, refreshThisLike);
+
   // Android hardware back returns to the previous view instead of exiting the app.
   useEffect(() => {
     if (!onBack) return;
@@ -47,10 +107,12 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
     return () => sub.remove();
   }, [onBack]);
 
-  const studentDisplayName =
-    repository.student_name && repository.student_name.trim().length > 0
-      ? repository.student_name.trim()
-      : repository.student_email;
+  // Never fall back to the submitter's email — it is private.
+  const hasStudentName =
+    !!repository.student_name && repository.student_name.trim().length > 0;
+  const studentDisplayName = hasStudentName
+    ? repository.student_name!.trim()
+    : COMMUNITY_MEMBER_LABEL;
 
   const universityText =
     repository.university && repository.university.trim().length > 0
@@ -148,7 +210,8 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
     .filter((line) => line.length > 0);
 
   // Student Initials
-  const initials = studentDisplayName
+  // No initials for the neutral fallback; the avatar shows a user icon instead.
+  const initials = (hasStudentName ? studentDisplayName : '')
     .split(' ')
     .filter(Boolean)
     .slice(0, 2)
@@ -176,8 +239,10 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
       )}
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Title & Metadata Section */}
         <View style={styles.headerSection}>
@@ -303,12 +368,34 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           </View>
         </View>
 
-        {/* Space for docked bottom action bar */}
-        <View style={{ height: 80 }} />
+        {/* Comments */}
+        <View
+          onLayout={(e) => {
+            commentsSectionY.current = e.nativeEvent.layout.y;
+          }}
+        >
+          <CommentsSection
+            repositoryId={repository.id}
+            onComposerFocus={handleComposerFocus}
+            onComposerBlur={handleComposerBlur}
+          />
+        </View>
+
+        {/* Space for docked bottom action bar (or the keyboard while typing) */}
+        <View style={{ height: isKeyboardVisible ? keyboardHeight + 24 : 80 }} />
       </ScrollView>
 
-      {/* Docked Bottom Action Bar */}
+      {/* Docked Bottom Action Bar — hidden while typing so it can't cover the composer */}
+      {!isKeyboardVisible && (
       <View style={styles.dockedActionBar}>
+        <LikeButton
+          variant="large"
+          repositoryId={repository.id}
+          count={likeSummary?.count}
+          liked={likeSummary?.likedByMe ?? false}
+          pending={pendingIds[repository.id] === true}
+          onToggle={toggleLike}
+        />
         <PressableScale
           style={styles.launchButton}
           onPress={handleLaunchAgent}
@@ -323,6 +410,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           <ArrowRightIcon size={16} color="#000000" strokeWidth={2.2} />
         </PressableScale>
       </View>
+      )}
     </View>
   );
 };
@@ -711,8 +799,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   launchButton: {
+    flex: 1,
     height: 46,
     backgroundColor: '#FFFFFF',
     borderRadius: 6,

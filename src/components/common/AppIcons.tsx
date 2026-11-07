@@ -164,3 +164,20 @@ export const TrashIcon: React.FC<IconProps> = ({
 }) => <Feather name="trash-2" size={size} color={color} />;
 
 
+
+/**
+ * 19. Heart / Like Icon — filled when `filled` (liked), outline otherwise
+ */
+export const HeartIcon: React.FC<IconProps & { filled?: boolean }> = ({
+  size = 16,
+  color = STITCH_COLORS.onSurfaceVariant,
+  filled = false,
+}) => <Ionicons name={filled ? 'heart' : 'heart-outline'} size={size} color={color} />;
+
+/**
+ * 20. Comment / Message Icon
+ */
+export const CommentIcon: React.FC<IconProps> = ({
+  size = 16,
+  color = STITCH_COLORS.onSurfaceVariant,
+}) => <Feather name="message-circle" size={size} color={color} />;
