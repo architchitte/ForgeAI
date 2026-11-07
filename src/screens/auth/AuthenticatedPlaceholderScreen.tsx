@@ -428,7 +428,7 @@ export const AuthenticatedPlaceholderScreen: React.FC<
   const handleLogoutPress = () => {
     Alert.alert(
       'Log Out',
-      'Are you sure you want to log out of ForgeAI?',
+      'Are you sure you want to log out of Forge?',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Log Out', style: 'destructive', onPress: signOut },

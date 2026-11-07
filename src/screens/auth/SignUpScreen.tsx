@@ -162,13 +162,13 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
           <View style={styles.header}>
             <View style={styles.plaintextLogoWrapper}>
               <Text style={styles.plaintextLogo}>
-                Forge<Text style={styles.plaintextLogoAccent}>AI</Text>
+                Forge
               </Text>
             </View>
 
             <Text style={styles.heroTitle}>Create Account</Text>
             <Text style={styles.heroSubtitle}>
-              Join ForgeAI to share and discover student AI projects.
+              Join Forge to share and discover student AI projects.
             </Text>
           </View>
 

@@ -134,16 +134,14 @@ const AuthenticatedView: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.authSafeArea}>
-      {/* Centered Top Header with ForgeAI Logo */}
+      {/* Centered Top Header with Forge Logo */}
       <View style={styles.appBar}>
         <TouchableOpacity
           style={styles.appBarBrand}
           onPress={() => handleSelectTab('discover')}
           activeOpacity={0.8}
         >
-          <Text style={styles.appBarTitle}>
-            Forge<Text style={styles.appBarTitleAccent}>AI</Text>
-          </Text>
+          <Text style={styles.appBarTitle}>Forge</Text>
         </TouchableOpacity>
       </View>
 
@@ -319,7 +317,7 @@ const MainNavigator: React.FC = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#ffffff" />
-        <Text style={styles.loadingText}>Initializing ForgeAI Core...</Text>
+        <Text style={styles.loadingText}>Initializing Forge Core...</Text>
       </View>
     );
   }

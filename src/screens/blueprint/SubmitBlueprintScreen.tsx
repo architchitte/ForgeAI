@@ -226,7 +226,7 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
       setSubmitSuccess(true);
       Alert.alert(
         'Blueprint Published! 🚀',
-        `"${formData.appName}" has been successfully published to the ForgeAI repository.${screenshotNote}`,
+        `"${formData.appName}" has been successfully published to the Forge repository.${screenshotNote}`,
         [{ text: 'OK' }]
       );
 
@@ -274,7 +274,7 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
             </View>
             <Text style={styles.title}>Submit Project</Text>
             <Text style={styles.subtitle}>
-              Publish your student AI application to the ForgeAI showcase repository.
+              Publish your student AI application to the Forge showcase repository.
             </Text>
           </View>
 

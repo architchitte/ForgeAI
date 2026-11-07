@@ -18,7 +18,7 @@ export const isSupabaseConfigured = Boolean(
 
 if (!isSupabaseConfigured) {
   console.warn(
-    '\n⚠️ [ForgeAI - Supabase Configuration Warning]\n' +
+    '\n⚠️ [Forge - Supabase Configuration Warning]\n' +
       'EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY is missing or invalid.\n' +
       'Ensure your .env variables start with EXPO_PUBLIC_ and restart Metro with cache reset:\n' +
       '  npx expo start -c\n'

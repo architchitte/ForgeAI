@@ -1,6 +1,6 @@
-# ForgeAI
+# Forge
 
-ForgeAI is an Android application for discovering and sharing student-built AI applications. Students publish an **Application Blueprint** describing their agent: what it does, the orchestration framework it uses, its complete system prompt, and where it runs. Other students can then browse the repository feed, inspect the full blueprint, and launch the live agent.
+Forge is an Android application for discovering and sharing student-built AI applications. Students publish an **Application Blueprint** describing their agent: what it does, the orchestration framework it uses, its complete system prompt, and where it runs. Other students can then browse the repository feed, inspect the full blueprint, and launch the live agent.
 
 Built with React Native, Expo and Supabase.
 
@@ -164,7 +164,7 @@ npx expo start -c
 
 ### Database
 
-ForgeAI uses a single table, `public.repositories`. The application expects the following columns:
+Forge uses a single table, `public.repositories`. The application expects the following columns:
 
 | Column | Type | Notes |
 | --- | --- | --- |
@@ -238,7 +238,7 @@ Android package name: `com.forgeai.app`
 
 ## Design System
 
-ForgeAI follows a strictly monochrome, dark-only design language modelled on Vercel's Geist. It has no colour hues: every surface, border and control is black, white or a neutral grey.
+Forge follows a strictly monochrome, dark-only design language modelled on Vercel's Geist. It has no colour hues: every surface, border and control is black, white or a neutral grey.
 
 - **Colour tokens:** `src/constants/theme.ts`
 - **Typography:**
@@ -252,7 +252,7 @@ The full specification is in [`DESIGN.md`](DESIGN.md).
 
 ## MVP Scope
 
-ForgeAI is built against a fixed MVP specification. The following are explicitly out of scope:
+Forge is built against a fixed MVP specification. The following are explicitly out of scope:
 
 - Native chat sandbox
 - Vector store integrations

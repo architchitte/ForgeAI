@@ -137,13 +137,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToSignUp }) 
           <View style={styles.header}>
             <View style={styles.plaintextLogoWrapper}>
               <Text style={styles.plaintextLogo}>
-                Forge<Text style={styles.plaintextLogoAccent}>AI</Text>
+                Forge
               </Text>
             </View>
 
             <Text style={styles.heroTitle}>Welcome back</Text>
             <Text style={styles.heroSubtitle}>
-              Sign in to your ForgeAI account
+              Sign in to your Forge account
             </Text>
           </View>
 

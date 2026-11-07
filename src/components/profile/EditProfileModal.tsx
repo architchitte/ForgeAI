@@ -76,7 +76,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     <FormSheet
       visible={visible}
       title="Edit Profile"
-      subtitle="This is how you appear across ForgeAI."
+      subtitle="This is how you appear across Forge."
       onClose={onClose}
       submitLabel="Save Profile"
       onSubmit={handleSave}

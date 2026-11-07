@@ -1,8 +1,8 @@
 
-# ForgeAI — Project Instructions
+# Forge — Project Instructions
 
 ## Project Overview
-ForgeAI is an Android application for discovering and sharing
+Forge is an Android application for discovering and sharing
 student-built AI applications.
 
 The implementation must strictly follow the approved

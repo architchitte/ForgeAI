@@ -17,7 +17,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     id: 'welcome',
     tab: 'discover',
     eyebrow: 'Welcome',
-    title: 'Welcome to ForgeAI',
+    title: 'Welcome to Forge',
     body: 'A repository of AI agents built by students. Here is a quick tour of the tabs at the bottom of the screen.',
   },
   {

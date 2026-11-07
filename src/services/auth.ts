@@ -20,7 +20,7 @@ export const getRedirectUrl = (): string => {
     const expoGoUri = AuthSession.makeRedirectUri({
       path: 'login-callback',
     });
-    console.log('[ForgeAI Auth] Detected Expo Go runtime. Redirect URI:', expoGoUri);
+    console.log('[Forge Auth] Detected Expo Go runtime. Redirect URI:', expoGoUri);
     return expoGoUri;
   }
 
@@ -28,7 +28,7 @@ export const getRedirectUrl = (): string => {
     scheme: 'forgeai',
     path: 'login-callback',
   });
-  console.log('[ForgeAI Auth] Detected Native runtime. Redirect URI:', nativeUri);
+  console.log('[Forge Auth] Detected Native runtime. Redirect URI:', nativeUri);
   return nativeUri;
 };
 
@@ -76,41 +76,41 @@ export const extractTokensOrCodeFromUrl = (url: string) => {
 export const createSessionFromUrl = async (
   url: string
 ): Promise<Session | null> => {
-  console.log('[ForgeAI Auth] Processing callback URL:', url);
+  console.log('[Forge Auth] Processing callback URL:', url);
   const { code, accessToken, refreshToken } = extractTokensOrCodeFromUrl(url);
 
-  console.log('[ForgeAI Auth] Extracted credentials:', {
+  console.log('[Forge Auth] Extracted credentials:', {
     hasCode: Boolean(code),
     hasAccessToken: Boolean(accessToken),
     hasRefreshToken: Boolean(refreshToken),
   });
 
   if (code) {
-    console.log('[ForgeAI Auth] Exchanging code for session with Supabase...');
+    console.log('[Forge Auth] Exchanging code for session with Supabase...');
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
-      console.error('[ForgeAI Auth] exchangeCodeForSession failed:', error.message);
+      console.error('[Forge Auth] exchangeCodeForSession failed:', error.message);
       throw error;
     }
-    console.log('[ForgeAI Auth] Code exchange successful. User:', data.session?.user?.email);
+    console.log('[Forge Auth] Code exchange successful. User:', data.session?.user?.email);
     return data.session;
   }
 
   if (accessToken && refreshToken) {
-    console.log('[ForgeAI Auth] Setting session with tokens...');
+    console.log('[Forge Auth] Setting session with tokens...');
     const { data, error } = await supabase.auth.setSession({
       access_token: accessToken,
       refresh_token: refreshToken,
     });
     if (error) {
-      console.error('[ForgeAI Auth] setSession failed:', error.message);
+      console.error('[Forge Auth] setSession failed:', error.message);
       throw error;
     }
-    console.log('[ForgeAI Auth] Session set successful. User:', data.session?.user?.email);
+    console.log('[Forge Auth] Session set successful. User:', data.session?.user?.email);
     return data.session;
   }
 
-  console.warn('[ForgeAI Auth] No valid code or token pair found in redirect URL.');
+  console.warn('[Forge Auth] No valid code or token pair found in redirect URL.');
   return null;
 };
 
@@ -157,7 +157,7 @@ export const signInWithEmail = async (
  */
 export const signInWithGoogle = async (): Promise<Session | null> => {
   const redirectUrl = getRedirectUrl();
-  console.log('[ForgeAI Auth] Starting Google OAuth with redirect URL:', redirectUrl);
+  console.log('[Forge Auth] Starting Google OAuth with redirect URL:', redirectUrl);
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
@@ -168,7 +168,7 @@ export const signInWithGoogle = async (): Promise<Session | null> => {
   });
 
   if (error) {
-    console.error('[ForgeAI Auth] signInWithOAuth failed:', error.message);
+    console.error('[Forge Auth] signInWithOAuth failed:', error.message);
     throw error;
   }
 
@@ -176,16 +176,16 @@ export const signInWithGoogle = async (): Promise<Session | null> => {
     throw new Error('Supabase did not return an OAuth authorization URL.');
   }
 
-  console.log('[ForgeAI Auth] Opening auth browser session...');
+  console.log('[Forge Auth] Opening auth browser session...');
   const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
-  console.log('[ForgeAI Auth] openAuthSessionAsync returned:', JSON.stringify(result));
+  console.log('[Forge Auth] openAuthSessionAsync returned:', JSON.stringify(result));
 
   if (result.type === 'success' && result.url) {
     return await createSessionFromUrl(result.url);
   }
 
   if (result.type === 'cancel' || result.type === 'dismiss') {
-    console.log('[ForgeAI Auth] User dismissed or cancelled the auth sheet.');
+    console.log('[Forge Auth] User dismissed or cancelled the auth sheet.');
   }
 
   return null;
