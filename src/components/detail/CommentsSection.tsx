@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Image,
   type TextInputInstance,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
@@ -20,6 +21,7 @@ import { FadeInView } from '../animation/FadeInView';
 import { FocusBorderView } from '../animation/FocusBorderView';
 import { staggerDelay } from '../animation/motion';
 import { COMMUNITY_MEMBER_LABEL } from '../../constants/identity';
+import { getAvatarUrl } from '../../services/ownProfile';
 
 /**
  * Other commenters are labelled from public.profiles (display names only —
@@ -48,6 +50,32 @@ const formatTimestamp = (iso: string): string => {
 // updated_at is set on edit; treat sub-second differences as "not edited".
 const wasEdited = (c: ProjectComment): boolean =>
   new Date(c.updated_at).getTime() - new Date(c.created_at).getTime() > 1000;
+
+/** Commenter picture; falls back to initials, then a generic icon. */
+const CommentAvatar: React.FC<{ uri: string | null; initials: string; name: string }> = ({
+  uri,
+  initials,
+  name,
+}) => {
+  const [failed, setFailed] = useState<boolean>(false);
+  useEffect(() => setFailed(false), [uri]);
+  return (
+    <View style={styles.commentAvatar}>
+      {uri && !failed ? (
+        <Image
+          source={{ uri }}
+          style={styles.commentAvatarImg}
+          onError={() => setFailed(true)}
+          accessibilityLabel={`${name}'s profile picture`}
+        />
+      ) : initials ? (
+        <Text style={styles.commentAvatarText}>{initials}</Text>
+      ) : (
+        <UserIcon size={13} color={STITCH_COLORS.onSurfaceVariant} />
+      )}
+    </View>
+  );
+};
 
 interface CommentEditorProps {
   initialValue: string;
@@ -178,6 +206,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
   const {
     comments,
     displayNames,
+    avatarPaths,
     total,
     loading,
     error,
@@ -283,6 +312,12 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
           .map((w) => w[0].toUpperCase())
           .join('')
       : '';
+    // Uploaded picture first; your own comments can also use your Google photo.
+    const avatarPath = avatarPaths[comment.user_id];
+    const ownOauthPicture = isOwn
+      ? ((user?.user_metadata?.avatar_url || user?.user_metadata?.picture) as string | undefined)
+      : undefined;
+    const avatarUri = avatarPath ? getAvatarUrl(avatarPath) : ownOauthPicture || null;
     const isDeleting = deletingId === comment.id;
     const isBeingEdited = editingId === comment.id;
 
@@ -303,13 +338,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
           ]}
         >
           <View style={styles.commentHeader}>
-            <View style={styles.commentAvatar}>
-              {initials ? (
-                <Text style={styles.commentAvatarText}>{initials}</Text>
-              ) : (
-                <UserIcon size={13} color={STITCH_COLORS.onSurfaceVariant} />
-              )}
-            </View>
+            <CommentAvatar uri={avatarUri} initials={initials} name={displayName} />
             <View style={styles.commentMeta}>
               <View style={styles.commentNameRow}>
                 <Text style={styles.commentName} numberOfLines={1}>
@@ -673,12 +702,17 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
+    overflow: 'hidden',
     backgroundColor: '#111111',
     borderWidth: 1,
     borderColor: '#262626',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
+  },
+  commentAvatarImg: {
+    width: 28,
+    height: 28,
   },
   commentAvatarText: {
     fontSize: 11,

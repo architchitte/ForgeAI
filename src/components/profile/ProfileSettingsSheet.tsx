@@ -67,7 +67,6 @@ export const ProfileSettingsSheet: React.FC<ProfileSettingsSheetProps> = ({
 
   const rows = [
     { label: 'Full name', value: personalInfo.fullName },
-    { label: 'College / University', value: personalInfo.college },
     {
       label: 'Location',
       value: [personalInfo.city, personalInfo.country].filter((v) => v.trim()).join(', '),

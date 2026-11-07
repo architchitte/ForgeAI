@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   Platform,
-  Image,
   TextInput,
   ActivityIndicator,
   Alert,
@@ -41,9 +40,10 @@ import { pickValidatedImage } from '../../services/screenshotFiles';
 import { fetchCommentCounts, fetchLikeSummaries } from '../../services/engagement';
 import type { PersonalInfoValues } from '../../components/profile/EditProfileModal';
 import { EducationItem } from '../../components/profile/EducationItem';
+import { ProfileCard } from '../../components/profile/ProfileCard';
 import { ProfileSettingsSheet } from '../../components/profile/ProfileSettingsSheet';
 import { useEducation } from '../../hooks/useEducation';
-import { degreeLabel } from '../../types/profile';
+
 import { DesktopFrame, PhoneFrame } from '../../components/screenshot/ScreenshotFrames';
 import {
   fetchScreenshotsForRepositories,
@@ -54,14 +54,11 @@ import { PressableScale } from '../../components/animation/PressableScale';
 import { FadeInView } from '../../components/animation/FadeInView';
 import { staggerDelay } from '../../components/animation/motion';
 import {
-  UserIcon,
   EditIcon,
   ArrowRightIcon,
   TrashIcon,
   RocketIcon,
   MenuIcon,
-  MapPinIcon,
-  GraduationCapIcon,
   HeartIcon,
   CommentIcon,
 } from '../../components/common/AppIcons';
@@ -99,8 +96,7 @@ export const AuthenticatedPlaceholderScreen: React.FC<
   const avatarUrl = ownProfile.profile?.avatar_path
     ? getAvatarUrl(ownProfile.profile.avatar_path)
     : oauthAvatarUrl;
-  const [avatarFailed, setAvatarFailed] = useState<boolean>(false);
-  useEffect(() => setAvatarFailed(false), [avatarUrl]);
+
 
   const userInitials = (() => {
     const parts = fullName.trim().split(/\s+/).filter(Boolean);
@@ -499,78 +495,19 @@ export const AuthenticatedPlaceholderScreen: React.FC<
           </PressableScale>
         </View>
 
-        {/* 1. Profile Overview Card */}
-        <View style={styles.overviewCard}>
-          <View style={styles.avatarInfoRow}>
-            {/* Avatar (changed from Settings) */}
-            <View style={styles.avatarWrap}>
-              {avatarUrl && !avatarFailed ? (
-                <Image
-                  source={{ uri: avatarUrl }}
-                  style={styles.avatarImg}
-                  onError={() => setAvatarFailed(true)}
-                />
-              ) : (
-                <View style={styles.avatarInitialsContainer}>
-                  <Text style={styles.avatarInitialsText}>{userInitials}</Text>
-                </View>
-              )}
-              {ownProfile.avatarBusy && (
-                <View style={styles.avatarBusyOverlay}>
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                </View>
-              )}
-            </View>
-
-            {/* Name, college, location */}
-            <View style={styles.userInfoCol}>
-              <Text style={styles.userNameText}>{fullName}</Text>
-              {currentEducation ? (
-                // Only the current qualification sits with the name.
-                <>
-                  <Text style={styles.currentEduTitle}>
-                    {degreeLabel(currentEducation)} — {currentEducation.specialization}
-                  </Text>
-                  <View style={styles.collegeRow}>
-                    <View style={styles.collegeIcon}>
-                      <GraduationCapIcon size={13} color={STITCH_COLORS.primaryContainer} />
-                    </View>
-                    <Text style={[styles.universityText, styles.collegeText]}>
-                      {currentEducation.institution_name}
-                      {currentEducation.status === 'completed' && currentEducation.graduation_year
-                        ? ` · ${currentEducation.graduation_year}`
-                        : ''}
-                    </Text>
-                  </View>
-                </>
-              ) : (
-                <View style={styles.collegeRow}>
-                  <View style={styles.collegeIcon}>
-                    <GraduationCapIcon size={13} color={STITCH_COLORS.primaryContainer} />
-                  </View>
-                  <Text
-                    style={[
-                      styles.universityText,
-                      styles.collegeText,
-                      !university && styles.universityPlaceholder,
-                    ]}
-                  >
-                    {university || 'Add your college / university'}
-                  </Text>
-                </View>
-              )}
-              {location ? (
-                <View style={styles.locationRow}>
-                  <MapPinIcon size={11} color="#A1A1A1" />
-                  <Text style={styles.locationText}>{location}</Text>
-                </View>
-              ) : null}
-            </View>
-          </View>
-
-          {bio ? <Text style={styles.bioText}>{bio}</Text> : null}
-
-        </View>
+        {/* 1. Profile card (same card as the publisher profile / project page) */}
+        <ProfileCard
+          name={fullName}
+          avatarUri={avatarUrl}
+          initials={userInitials}
+          currentEducation={currentEducation}
+          college={university}
+          collegePlaceholder="Add your college / university"
+          location={location}
+          bio={bio}
+          avatarBusy={ownProfile.avatarBusy}
+          style={styles.profileCard}
+        />
 
         {/* 2. Education (read-only; managed in Settings) */}
         <View style={styles.sectionContainer}>
@@ -989,34 +926,8 @@ const styles = StyleSheet.create({
   },
 
   // 1. Profile Overview Card
-  overviewCard: {
-    backgroundColor: STITCH_COLORS.surfaceContainerLowest, // #ffffff
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest, // #dae2fd
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+  profileCard: {
     marginBottom: 20,
-  },
-  avatarInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 14,
-  },
-  collegeRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 5,
-  },
-  collegeIcon: {
-    marginTop: 4, // text has marginTop 2 + (17 line − 13 icon) / 2
-  },
-  collegeText: {
-    flexShrink: 1,
   },
   profileTopRow: {
     flexDirection: 'row',
@@ -1049,36 +960,6 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.sans.regular,
     color: '#737373',
   },
-  avatarBusyOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 999,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 3,
-  },
-  locationText: {
-    flexShrink: 1,
-    fontSize: 12,
-    fontFamily: FONTS.sans.regular,
-    color: '#A1A1A1',
-  },
-  bioText: {
-    marginTop: 12,
-    fontSize: 13.5,
-    lineHeight: 20,
-    fontFamily: FONTS.sans.regular,
-    color: '#D4D4D4',
-  },
   infoCard: {
     borderRadius: 12,
     borderWidth: 1,
@@ -1086,13 +967,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#0A0A0A',
     paddingHorizontal: 14,
     paddingVertical: 4,
-  },
-  currentEduTitle: {
-    marginTop: 2,
-    fontSize: 13,
-    lineHeight: 18,
-    fontFamily: FONTS.sans.medium,
-    color: '#EDEDED',
   },
   mobileShotRow: {
     flexDirection: 'row',
@@ -1120,52 +994,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: FONTS.mono.medium,
     color: '#A1A1A1',
-  },
-  avatarWrap: {
-    width: 64,
-    height: 64,
-    position: 'relative',
-  },
-  avatarImg: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: STITCH_COLORS.surfaceContainerLow,
-  },
-  avatarInitialsContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: STITCH_COLORS.primaryFixed, // #e2dfff
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: STITCH_COLORS.surfaceContainerLowest,
-  },
-  avatarInitialsText: {
-    fontSize: 22,
-    fontFamily: FONTS.sans.semibold,
-    color: STITCH_COLORS.primary,
-    letterSpacing: 0.5,
-  },
-  userInfoCol: {
-    flex: 1,
-  },
-  userNameText: {
-    fontSize: 19,
-    fontFamily: FONTS.sans.semibold,
-    color: STITCH_COLORS.onSurface, // #131b2e
-    letterSpacing: -0.3,
-  },
-  universityText: {
-    fontSize: 12,
-    lineHeight: 17,
-    color: STITCH_COLORS.onSurfaceVariant,
-    marginTop: 2,
-    fontFamily: FONTS.sans.regular,
-  },
-  universityPlaceholder: {
-    color: STITCH_COLORS.outline,
   },
 
   // Bento Quick Stats — Single Full Banner for Projects

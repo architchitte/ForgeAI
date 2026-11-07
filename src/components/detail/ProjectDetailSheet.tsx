@@ -20,15 +20,16 @@ import { FONTS } from '../../constants/typography';
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
-  UserIcon,
   CopyIcon,
   AccountTreeIcon,
-  CloudIcon,
   FileTextIcon,
 } from '../common/AppIcons';
 import { PressableScale } from '../animation/PressableScale';
 import { CommentsSection } from './CommentsSection';
 import { PublisherProfileSheet } from '../profile/PublisherProfileSheet';
+import { ProfileCard } from '../profile/ProfileCard';
+import { usePublisherProfile } from '../../hooks/usePublisherProfile';
+import { getAvatarUrl } from '../../services/ownProfile';
 import { LikeButton } from '../common/LikeButton';
 import { useLikes } from '../../context/LikesContext';
 import { useLikesLiveSync } from '../../hooks/useLikesLiveSync';
@@ -53,6 +54,8 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
 }) => {
   const [isLaunching, setIsLaunching] = useState<boolean>(false);
   const [publisherOpen, setPublisherOpen] = useState<boolean>(false);
+  // Publisher's public profile for the card (falls back to project data).
+  const publisher = usePublisherProfile(repository.id);
   const [copied, setCopied] = useState<boolean>(false);
 
   // Keyboard handling for the comment composer. Rather than depending on how
@@ -135,10 +138,6 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
     ? repository.student_name!.trim()
     : COMMUNITY_MEMBER_LABEL;
 
-  const universityText =
-    repository.university && repository.university.trim().length > 0
-      ? repository.university.trim()
-      : 'Student Builder';
 
   const isValidHttpUrl = (urlStr: string): boolean => {
     const trimmed = urlStr.trim();
@@ -227,8 +226,12 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
     .filter((p) => p.length > 0);
 
   // Student Initials
+  const publisherName = publisher.profile?.display_name?.trim() || studentDisplayName;
+  const publisherCollege =
+    publisher.profile?.college?.trim() || repository.university?.trim() || null;
+
   // No initials for the neutral fallback; the avatar shows a user icon instead.
-  const initials = (hasStudentName ? studentDisplayName : '')
+  const initials = (publisher.profile?.display_name?.trim() || hasStudentName ? publisherName : '')
     .split(' ')
     .filter(Boolean)
     .slice(0, 2)
@@ -284,39 +287,6 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           appName={repository.app_name}
           isOwner={isOwner}
         />
-
-        {/* Creator Card — tap to view the publisher's profile */}
-        <PressableScale
-          style={styles.card}
-          onPress={() => setPublisherOpen(true)}
-          activeOpacity={0.85}
-          pressedScale={0.985}
-          accessibilityLabel={`View ${studentDisplayName}'s profile`}
-          testID="publisher-card"
-        >
-          <View style={styles.creatorHeader}>
-            <View style={styles.avatarCircle}>
-              {initials ? (
-                <Text style={styles.avatarText}>{initials}</Text>
-              ) : (
-                <UserIcon size={18} color={STITCH_COLORS.primaryContainer} />
-              )}
-            </View>
-            <View style={styles.creatorInfo}>
-              <View style={styles.creatorNameRow}>
-                <Text style={styles.creatorName}>{studentDisplayName}</Text>
-                <View style={styles.verifiedIconWrap}>
-                  <Text style={styles.verifiedIcon}>✓</Text>
-                </View>
-              </View>
-              <Text style={styles.creatorSub}>{universityText}</Text>
-            </View>
-            <View style={styles.viewProfileHint}>
-              <Text style={styles.viewProfileText}>Profile</Text>
-              <ArrowRightIcon size={13} color={STITCH_COLORS.outline} />
-            </View>
-          </View>
-        </PressableScale>
 
         <PublisherProfileSheet
           visible={publisherOpen}
@@ -398,6 +368,23 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
               ))
             )}
           </View>
+        </View>
+
+        {/* Meet the Founder — compact profile card; tap opens the full profile */}
+        <View style={styles.sectionBlock}>
+          <Text style={styles.sectionTitle}>Meet the Founder</Text>
+          <ProfileCard
+            name={publisherName}
+            avatarUri={
+              publisher.profile?.avatar_path ? getAvatarUrl(publisher.profile.avatar_path) : null
+            }
+            initials={initials}
+            currentEducation={publisher.currentEducation}
+            college={publisherCollege}
+            onPress={() => setPublisherOpen(true)}
+            accessibilityLabel={`Meet the founder: view ${publisherName}'s profile`}
+            testID="publisher-card"
+          />
         </View>
 
         {/* Comments */}
@@ -556,77 +543,6 @@ const styles = StyleSheet.create({
     color: STITCH_COLORS.onSurfaceVariant,
     lineHeight: 22,
   },
-  card: {
-    backgroundColor: '#0A0A0A',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#262626',
-    marginBottom: 16,
-  },
-  creatorHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatarCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#262626',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  avatarText: {
-    fontSize: 15,
-    fontFamily: FONTS.sans.semibold,
-    color: '#FFFFFF',
-  },
-  creatorInfo: {
-    flex: 1,
-  },
-  creatorNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  creatorName: {
-    fontSize: 15,
-    fontFamily: FONTS.sans.semibold,
-    color: '#FFFFFF',
-  },
-  verifiedIconWrap: {
-    width: 15,
-    height: 15,
-    borderRadius: 7.5,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  verifiedIcon: {
-    fontSize: 9,
-    fontFamily: FONTS.sans.semibold,
-    color: '#000000',
-  },
-  viewProfileHint: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginLeft: 8,
-  },
-  viewProfileText: {
-    fontSize: 12,
-    fontFamily: FONTS.sans.medium,
-    color: '#A1A1A1',
-  },
-  creatorSub: {
-    fontSize: 12,
-    fontFamily: FONTS.sans.regular,
-    color: '#A1A1A1',
-    marginTop: 2,
-  },
   sectionBlock: {
     marginBottom: 16,
   },
@@ -655,10 +571,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     marginBottom: 4,
-  },
-  specIcon: {
-    fontSize: 13,
-    fontFamily: FONTS.sans.regular,
   },
   techLabelRow: {
     marginBottom: 12,
@@ -776,11 +688,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-  },
-  launchButtonIcon: {
-    fontSize: 16,
-    fontFamily: FONTS.sans.regular,
-    marginRight: 6,
   },
   launchButtonText: {
     fontSize: 14,

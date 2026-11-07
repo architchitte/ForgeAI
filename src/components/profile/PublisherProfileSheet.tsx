@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   Modal,
   ScrollView,
   StyleSheet,
@@ -13,13 +12,20 @@ import { STITCH_COLORS } from '../../constants/theme';
 import { FONTS } from '../../constants/typography';
 import { COMMUNITY_MEMBER_LABEL } from '../../constants/identity';
 import { Repository } from '../../types/repository';
-import { PublisherProfile, degreeLabel, sortEducation } from '../../types/profile';
+import {
+  PublisherProfile,
+  sortEducation,
+} from '../../types/profile';
 import { fetchPublisherProfile } from '../../services/publisher';
 import { fetchUserRepositories } from '../../services/repositories';
 import { getAvatarUrl } from '../../services/ownProfile';
-import { ArrowLeftIcon, ArrowRightIcon, MapPinIcon, UserIcon } from '../common/AppIcons';
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+} from '../common/AppIcons';
 import { PressableScale } from '../animation/PressableScale';
 import { EducationItem } from './EducationItem';
+import { ProfileCard } from './ProfileCard';
 
 interface PublisherProfileSheetProps {
   visible: boolean;
@@ -53,14 +59,12 @@ export const PublisherProfileSheet: React.FC<PublisherProfileSheetProps> = ({
   const [projects, setProjects] = useState<Repository[] | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [avatarFailed, setAvatarFailed] = useState<boolean>(false);
 
   useEffect(() => {
     if (!visible) return;
     let cancelled = false;
     setLoading(true);
     setError(null);
-    setAvatarFailed(false);
     Promise.all([
       fetchPublisherProfile(repository.id),
       fetchUserRepositories(repository.student_email),
@@ -85,7 +89,6 @@ export const PublisherProfileSheet: React.FC<PublisherProfileSheetProps> = ({
   const location = [profile?.city, profile?.country]
     .filter((v): v is string => !!v && v.trim().length > 0)
     .join(', ');
-  const avatarUri = profile?.avatar_path && !avatarFailed ? getAvatarUrl(profile.avatar_path) : null;
   const initials = name === COMMUNITY_MEMBER_LABEL ? '' : initialsOf(name);
   const education = useMemo(() => sortEducation(profile?.education ?? []), [profile]);
   // Same rule as the owner's profile: ongoing first, else latest completed.
@@ -115,59 +118,25 @@ export const PublisherProfileSheet: React.FC<PublisherProfileSheetProps> = ({
           </View>
 
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-            {/* Header */}
-            <View style={styles.headerCard}>
-              <View style={styles.headerRow}>
-                <View style={styles.avatar}>
-                  {avatarUri ? (
-                    <Image
-                      source={{ uri: avatarUri }}
-                      style={styles.avatarImg}
-                      onError={() => setAvatarFailed(true)}
-                      accessibilityLabel={`${name}'s profile picture`}
-                    />
-                  ) : initials ? (
-                    <Text style={styles.avatarText}>{initials}</Text>
-                  ) : (
-                    <UserIcon size={22} color={STITCH_COLORS.onSurfaceVariant} />
-                  )}
-                </View>
-                <View style={styles.flex}>
-                  <Text style={styles.name}>{name}</Text>
-                  {currentEducation ? (
-                    // Only the current qualification sits with the name.
-                    <>
-                      <Text style={styles.currentEduTitle}>
-                        {degreeLabel(currentEducation)} — {currentEducation.specialization}
-                      </Text>
-                      <Text style={styles.college}>
-                        {currentEducation.institution_name}
-                        {currentEducation.status === 'completed' && currentEducation.graduation_year
-                        ? ` · ${currentEducation.graduation_year}`
-                        : ''}
-                      </Text>
-                    </>
-                  ) : college ? (
-                    <Text style={styles.college}>{college}</Text>
-                  ) : null}
-                  {location ? (
-                    <View style={styles.locationRow}>
-                      <MapPinIcon size={11} color="#A1A1A1" />
-                      <Text style={styles.location}>{location}</Text>
-                    </View>
-                  ) : null}
-                </View>
-              </View>
-              {profile?.bio?.trim() ? <Text style={styles.bio}>{profile.bio.trim()}</Text> : null}
-              {loading && (
-                <ActivityIndicator
-                  style={styles.headerSpinner}
-                  size="small"
-                  color={STITCH_COLORS.onSurfaceVariant}
-                />
-              )}
-              {!loading && error ? <Text style={styles.note}>{error}</Text> : null}
-            </View>
+            {/* Header (same card as the Profile tab / project page) */}
+            <ProfileCard
+              name={name}
+              avatarUri={profile?.avatar_path ? getAvatarUrl(profile.avatar_path) : null}
+              initials={initials}
+              currentEducation={currentEducation}
+              college={college}
+              location={location}
+              bio={profile?.bio}
+              style={styles.headerCard}
+            />
+            {loading && (
+              <ActivityIndicator
+                style={styles.headerSpinner}
+                size="small"
+                color={STITCH_COLORS.onSurfaceVariant}
+              />
+            )}
+            {!loading && error ? <Text style={styles.note}>{error}</Text> : null}
 
             {/* Education */}
             {!loading && profile?.has_account !== false && (
@@ -270,82 +239,14 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   headerCard: {
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#262626',
-    backgroundColor: '#0A0A0A',
-    marginBottom: 24,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    overflow: 'hidden',
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#262626',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarImg: {
-    width: 64,
-    height: 64,
-  },
-  avatarText: {
-    fontSize: 20,
-    fontFamily: FONTS.sans.semibold,
-    color: '#FFFFFF',
-  },
-  name: {
-    fontSize: 18,
-    fontFamily: FONTS.sans.semibold,
-    color: '#FFFFFF',
-    letterSpacing: -0.3,
-  },
-  currentEduTitle: {
-    marginTop: 2,
-    fontSize: 13,
-    lineHeight: 18,
-    fontFamily: FONTS.sans.medium,
-    color: '#EDEDED',
-  },
-  college: {
-    marginTop: 2,
-    fontSize: 12.5,
-    lineHeight: 17,
-    fontFamily: FONTS.sans.regular,
-    color: '#A1A1A1',
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 3,
-  },
-  location: {
-    flexShrink: 1,
-    fontSize: 12,
-    fontFamily: FONTS.sans.regular,
-    color: '#A1A1A1',
-  },
-  bio: {
-    marginTop: 12,
-    fontSize: 13.5,
-    lineHeight: 20,
-    fontFamily: FONTS.sans.regular,
-    color: '#D4D4D4',
+    marginBottom: 16,
   },
   headerSpinner: {
-    marginTop: 12,
+    marginBottom: 16,
   },
   note: {
-    marginTop: 10,
+    marginTop: -6,
+    marginBottom: 16,
     fontSize: 12,
     fontFamily: FONTS.sans.regular,
     color: '#737373',

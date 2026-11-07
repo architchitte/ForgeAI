@@ -7,13 +7,15 @@ import {
   fetchComments,
   updateComment,
 } from '../services/engagement';
-import { fetchDisplayNames } from '../services/profiles';
+import { fetchPublicProfiles } from '../services/profiles';
 import { ProjectComment } from '../types/engagement';
 
 interface UseProjectCommentsResult {
   comments: ProjectComment[];
   /** Public display names by user id (from public.profiles); may be partial. */
   displayNames: Record<string, string>;
+  /** Avatar storage paths by user id (from public.profiles); may be partial. */
+  avatarPaths: Record<string, string>;
   total: number;
   loading: boolean;
   /** Load error (mutations report their own errors via return value). */
@@ -53,6 +55,7 @@ export const useProjectComments = (repositoryId: string): UseProjectCommentsResu
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [displayNames, setDisplayNames] = useState<Record<string, string>>({});
+  const [avatarPaths, setAvatarPaths] = useState<Record<string, string>>({});
   // User ids already looked up (found or not), so each is fetched once.
   const requestedNameIds = useRef<Set<string>>(new Set());
 
@@ -130,22 +133,28 @@ export const useProjectComments = (repositoryId: string): UseProjectCommentsResu
     }
   }, [repositoryId, loadWindow]);
 
-  // Look up display names for commenters not seen yet (one batched query).
+  // Look up names + avatars for commenters not seen yet (one batched query).
   useEffect(() => {
     const missing = Array.from(
       new Set(comments.map((c) => c.user_id).filter((id) => !requestedNameIds.current.has(id)))
     );
     if (missing.length === 0) return;
     missing.forEach((id) => requestedNameIds.current.add(id));
-    fetchDisplayNames(missing).then((result) => {
+    fetchPublicProfiles(missing).then((result) => {
       if (!mounted.current) return;
       if (result.error || !result.data) {
         // Allow a retry on the next load; labels fall back meanwhile.
         missing.forEach((id) => requestedNameIds.current.delete(id));
         return;
       }
-      const found = result.data;
-      setDisplayNames((prev) => ({ ...prev, ...found }));
+      const names: Record<string, string> = {};
+      const avatars: Record<string, string> = {};
+      for (const [id, p] of Object.entries(result.data)) {
+        if (p.name) names[id] = p.name;
+        if (p.avatarPath) avatars[id] = p.avatarPath;
+      }
+      setDisplayNames((prev) => ({ ...prev, ...names }));
+      setAvatarPaths((prev) => ({ ...prev, ...avatars }));
     });
   }, [comments]);
 
@@ -185,6 +194,7 @@ export const useProjectComments = (repositoryId: string): UseProjectCommentsResu
   return {
     comments,
     displayNames,
+    avatarPaths,
     total,
     loading,
     error,
