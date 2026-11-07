@@ -39,25 +39,29 @@ import { useOwnProfile } from '../../hooks/useOwnProfile';
 import { getAvatarUrl } from '../../services/ownProfile';
 import { pickValidatedImage } from '../../services/screenshotFiles';
 import { fetchCommentCounts, fetchLikeSummaries } from '../../services/engagement';
+import type { PersonalInfoValues } from '../../components/profile/EditProfileModal';
+import { EducationItem } from '../../components/profile/EducationItem';
+import { ProfileSettingsSheet } from '../../components/profile/ProfileSettingsSheet';
+import { useEducation } from '../../hooks/useEducation';
+import { degreeLabel } from '../../types/profile';
+import { DesktopFrame, PhoneFrame } from '../../components/screenshot/ScreenshotFrames';
 import {
-  EditProfileModal,
-  PersonalInfoValues,
-} from '../../components/profile/EditProfileModal';
-import { EducationSection } from '../../components/profile/EducationSection';
-import { AccountSecuritySection } from '../../components/profile/AccountSecuritySection';
+  fetchScreenshotsForRepositories,
+  getScreenshotUrl,
+} from '../../services/screenshots';
+import { ProjectScreenshot } from '../../types/screenshot';
 import { PressableScale } from '../../components/animation/PressableScale';
 import { FadeInView } from '../../components/animation/FadeInView';
 import { staggerDelay } from '../../components/animation/motion';
 import {
   UserIcon,
   EditIcon,
-  LogOutIcon,
-  ShieldCheckIcon,
   ArrowRightIcon,
   TrashIcon,
   RocketIcon,
-  CameraIcon,
+  MenuIcon,
   MapPinIcon,
+  GraduationCapIcon,
   HeartIcon,
   CommentIcon,
 } from '../../components/common/AppIcons';
@@ -81,6 +85,11 @@ export const AuthenticatedPlaceholderScreen: React.FC<
 
   // Profile data (avatar + private details) from Supabase.
   const ownProfile = useOwnProfile();
+  // One education state for the header and the Education section.
+  const education = useEducation();
+  // Sorted ongoing-first, so the first item is the current qualification
+  // (or the latest completed one when nothing is ongoing).
+  const currentEducation = education.items[0] ?? null;
 
   // Avatar: uploaded picture → Google/OAuth picture (the default) → initials.
   const oauthAvatarUrl =
@@ -104,13 +113,16 @@ export const AuthenticatedPlaceholderScreen: React.FC<
     return 'U';
   })();
 
-  // Edit Profile sheet
-  const [editProfileOpen, setEditProfileOpen] = useState<boolean>(false);
+  // Settings (☰): every profile change happens there; this tab only displays.
+  const [settingsOpen, setSettingsOpen] = useState<boolean>(false);
   const [savingName, setSavingName] = useState<boolean>(false);
 
   // Engagement received on my projects (batched: one likes + one comments query)
   const [projectLikes, setProjectLikes] = useState<Record<string, number>>({});
   const [projectComments, setProjectComments] = useState<Record<string, number>>({});
+  // Screenshots of my projects (one batched query); failed images are hidden.
+  const [projectShots, setProjectShots] = useState<Record<string, ProjectScreenshot>>({});
+  const [failedShots, setFailedShots] = useState<Record<string, true>>({});
 
   // User Projects State
   const [myProjects, setMyProjects] = useState<Repository[]>([]);
@@ -281,16 +293,22 @@ export const AuthenticatedPlaceholderScreen: React.FC<
       const projects = result.data || [];
       setMyProjects(projects);
       const ids = projects.map((p) => p.id);
-      Promise.all([fetchLikeSummaries(ids, user.id), fetchCommentCounts(ids)]).then(
-        ([likes, comments]) => {
-          if (likes.data) {
-            setProjectLikes(
-              Object.fromEntries(Object.entries(likes.data).map(([id, s]) => [id, s.count]))
-            );
-          }
-          if (comments.data) setProjectComments(comments.data);
+      Promise.all([
+        fetchLikeSummaries(ids, user.id),
+        fetchCommentCounts(ids),
+        fetchScreenshotsForRepositories(ids),
+      ]).then(([likes, comments, shots]) => {
+        if (likes.data) {
+          setProjectLikes(
+            Object.fromEntries(Object.entries(likes.data).map(([id, s]) => [id, s.count]))
+          );
         }
-      );
+        if (comments.data) setProjectComments(comments.data);
+        if (shots.data) {
+          setProjectShots(shots.data);
+          setFailedShots({});
+        }
+      });
     }
     setLoadingProjects(false);
   }, [user?.email, user?.id]);
@@ -328,7 +346,6 @@ export const AuthenticatedPlaceholderScreen: React.FC<
         ? `Your name and college were saved, but your other details were not: ${detailsError}`
         : detailsError;
     }
-    setEditProfileOpen(false);
 
     // student_name and university are copied onto each project at publish
     // time, so keep the user's existing projects in sync with the profile.
@@ -466,18 +483,27 @@ export const AuthenticatedPlaceholderScreen: React.FC<
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {/* Title row + settings menu */}
+        <View style={styles.profileTopRow}>
+          <Text style={styles.profileTopTitle}>Profile</Text>
+          <PressableScale
+            style={styles.menuButton}
+            onPress={() => setSettingsOpen(true)}
+            activeOpacity={0.7}
+            pressedScale={0.92}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel="Open profile settings"
+            testID="profile-settings-button"
+          >
+            <MenuIcon size={18} color="#EDEDED" />
+          </PressableScale>
+        </View>
+
         {/* 1. Profile Overview Card */}
         <View style={styles.overviewCard}>
           <View style={styles.avatarInfoRow}>
-            {/* Avatar — tap to upload / replace / remove */}
-            <PressableScale
-              style={styles.avatarWrap}
-              onPress={handleAvatarPress}
-              disabled={ownProfile.avatarBusy}
-              activeOpacity={0.85}
-              pressedScale={0.95}
-              accessibilityLabel="Change profile picture"
-            >
+            {/* Avatar (changed from Settings) */}
+            <View style={styles.avatarWrap}>
               {avatarUrl && !avatarFailed ? (
                 <Image
                   source={{ uri: avatarUrl }}
@@ -494,109 +520,87 @@ export const AuthenticatedPlaceholderScreen: React.FC<
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 </View>
               )}
-              <View style={styles.avatarEditBadge}>
-                <CameraIcon size={11} color="#000000" />
-              </View>
-            </PressableScale>
+            </View>
 
             {/* Name, college, location */}
             <View style={styles.userInfoCol}>
               <Text style={styles.userNameText}>{fullName}</Text>
-              <Text
-                style={[styles.universityText, !university && styles.universityPlaceholder]}
-              >
-                {university || 'Add your college / university'}
-              </Text>
+              {currentEducation ? (
+                // Only the current qualification sits with the name.
+                <>
+                  <Text style={styles.currentEduTitle}>
+                    {degreeLabel(currentEducation)} — {currentEducation.specialization}
+                  </Text>
+                  <View style={styles.collegeRow}>
+                    <View style={styles.collegeIcon}>
+                      <GraduationCapIcon size={13} color={STITCH_COLORS.primaryContainer} />
+                    </View>
+                    <Text style={[styles.universityText, styles.collegeText]}>
+                      {currentEducation.institution_name}
+                      {currentEducation.status === 'completed' && currentEducation.graduation_year
+                        ? ` · ${currentEducation.graduation_year}`
+                        : ''}
+                    </Text>
+                  </View>
+                </>
+              ) : (
+                <View style={styles.collegeRow}>
+                  <View style={styles.collegeIcon}>
+                    <GraduationCapIcon size={13} color={STITCH_COLORS.primaryContainer} />
+                  </View>
+                  <Text
+                    style={[
+                      styles.universityText,
+                      styles.collegeText,
+                      !university && styles.universityPlaceholder,
+                    ]}
+                  >
+                    {university || 'Add your college / university'}
+                  </Text>
+                </View>
+              )}
               {location ? (
                 <View style={styles.locationRow}>
                   <MapPinIcon size={11} color="#A1A1A1" />
                   <Text style={styles.locationText}>{location}</Text>
                 </View>
               ) : null}
-
-              {/* Verified Email Pill */}
-              <View style={styles.verifiedEmailPill}>
-                <ShieldCheckIcon size={13} color={STITCH_COLORS.primaryContainer} />
-                <Text style={styles.verifiedEmailText} numberOfLines={1}>
-                  {user?.email || ''}
-                </Text>
-              </View>
             </View>
           </View>
 
           {bio ? <Text style={styles.bioText}>{bio}</Text> : null}
 
-          <PressableScale
-            style={styles.editProfileButton}
-            onPress={() => setEditProfileOpen(true)}
-            activeOpacity={0.8}
-            pressedScale={0.98}
-            testID="edit-profile-button"
-          >
-            <EditIcon size={13} color="#EDEDED" />
-            <Text style={styles.editProfileText}>Edit Profile</Text>
-          </PressableScale>
-
-          {/* Quick Stats Banner — Projects Count */}
-          <View style={styles.bentoGrid}>
-            <View style={styles.bentoTileFull}>
-              <View style={styles.bentoTileRow}>
-                <Text style={styles.bentoNumberPrimary}>{myProjects.length}</Text>
-                <View style={styles.bentoLabelCol}>
-                  <Text style={styles.bentoLabelTitle}>Published Projects</Text>
-                  <Text style={styles.bentoLabelSub}>Blueprints shared in repository</Text>
-                </View>
-              </View>
-            </View>
-          </View>
         </View>
 
-        {/* 2. Personal Information */}
+        {/* 2. Education (read-only; managed in Settings) */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionHeading}>Personal Information</Text>
-            <PressableScale
-              onPress={() => setEditProfileOpen(true)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              activeOpacity={0.6}
-              accessibilityLabel="Edit personal information"
-            >
-              <Text style={styles.sectionAction}>Edit</Text>
-            </PressableScale>
+            <Text style={styles.sectionHeading}>Education</Text>
           </View>
-          <View style={styles.infoCard}>
-            {ownProfile.loading ? (
+          {education.loading ? (
+            <View style={styles.infoCard}>
               <ActivityIndicator size="small" color={STITCH_COLORS.onSurfaceVariant} />
-            ) : (
-              [
-                { label: 'Full name', value: personalInfo.fullName },
-                { label: 'College / University', value: personalInfo.college },
-                { label: 'City', value: personalInfo.city },
-                { label: 'Country', value: personalInfo.country },
-                { label: 'Bio', value: personalInfo.bio },
-              ].map((row, idx) => (
-                <View key={row.label} style={[styles.infoRow, idx > 0 && styles.infoRowBorder]}>
-                  <Text style={styles.infoLabel}>{row.label}</Text>
-                  <Text style={[styles.infoValue, !row.value && styles.infoValueEmpty]}>
-                    {row.value || 'Not added'}
-                  </Text>
-                </View>
-              ))
-            )}
-            {ownProfile.error && !ownProfile.loading ? (
-              <Text style={styles.infoError}>{ownProfile.error}</Text>
-            ) : null}
-          </View>
+            </View>
+          ) : education.items.length === 0 ? (
+            <View style={styles.infoCard}>
+              <Text style={styles.emptyEducationText}>
+                {education.error || 'No education added yet. Add it from Settings (☰).'}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.educationList}>
+              {education.items.map((e, i) => (
+                <EducationItem key={e.id} education={e} position={i + 1} />
+              ))}
+            </View>
+          )}
         </View>
 
-        {/* 3. Education */}
-        <EducationSection />
-
-        {/* 4. My Submitted Projects Section */}
+        {/* 3. My Submitted Projects Section */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
-              <Text style={styles.sectionHeading}>My Submitted Projects</Text>
+              <Text style={styles.sectionHeading}>My Projects</Text>
               <View style={styles.countBadge}>
                 <Text style={styles.countBadgeText}>{myProjects.length}</Text>
               </View>
@@ -665,21 +669,67 @@ export const AuthenticatedPlaceholderScreen: React.FC<
                     </Text>
                   </View>
 
-                  {/* Card Body */}
-                  <Text style={styles.projectCardTitle}>{project.app_name}</Text>
-                  <Text style={styles.projectCardDesc} numberOfLines={2}>
-                    {project.one_liner}
-                  </Text>
-                  <View style={styles.engagementRow}>
-                    <View style={styles.engagementItem}>
-                      <HeartIcon size={12} color="#A1A1A1" />
-                      <Text style={styles.engagementText}>{projectLikes[project.id] ?? '–'}</Text>
-                    </View>
-                    <View style={styles.engagementItem}>
-                      <CommentIcon size={12} color="#A1A1A1" />
-                      <Text style={styles.engagementText}>{projectComments[project.id] ?? '–'}</Text>
-                    </View>
-                  </View>
+                  {/* Card Body (+ screenshot: browser frame / phone frame) */}
+                  {(() => {
+                    const shot = failedShots[project.id] ? undefined : projectShots[project.id];
+                    const shotUri = shot ? getScreenshotUrl(shot.storage_path) : null;
+                    const hideShot = () =>
+                      setFailedShots((prev) => ({ ...prev, [project.id]: true }));
+                    const body = (
+                      <>
+                        <Text style={styles.projectCardTitle}>{project.app_name}</Text>
+                        <Text
+                          style={styles.projectCardDesc}
+                          numberOfLines={shot?.screenshot_type === 'mobile' ? 4 : 2}
+                        >
+                          {project.one_liner}
+                        </Text>
+                        <View style={styles.engagementRow}>
+                          <View style={styles.engagementItem}>
+                            <HeartIcon size={12} color="#A1A1A1" />
+                            <Text style={styles.engagementText}>
+                              {projectLikes[project.id] ?? '–'}
+                            </Text>
+                          </View>
+                          <View style={styles.engagementItem}>
+                            <CommentIcon size={12} color="#A1A1A1" />
+                            <Text style={styles.engagementText}>
+                              {projectComments[project.id] ?? '–'}
+                            </Text>
+                          </View>
+                        </View>
+                      </>
+                    );
+                    if (shotUri && shot?.screenshot_type === 'mobile') {
+                      return (
+                        <View style={styles.mobileShotRow}>
+                          <View style={styles.mobileShotText}>{body}</View>
+                          <PhoneFrame
+                            uri={shotUri}
+                            width={88}
+                            thumbnail
+                            onError={hideShot}
+                            accessibilityLabel={`${project.app_name} mobile screenshot`}
+                          />
+                        </View>
+                      );
+                    }
+                    return (
+                      <>
+                        {body}
+                        {shotUri && (
+                          <DesktopFrame
+                            uri={shotUri}
+                            compact
+                            thumbnail
+                            style={styles.desktopShot}
+                            onError={hideShot}
+                            accessibilityLabel={`${project.app_name} desktop screenshot`}
+                          />
+                        )}
+                      </>
+                    );
+                  })()}
 
                   {/* Card Bottom Actions */}
                   <View style={styles.cardBottomRow}>
@@ -729,36 +779,6 @@ export const AuthenticatedPlaceholderScreen: React.FC<
           )}
         </View>
 
-        {/* 5. Account Security */}
-        <AccountSecuritySection />
-
-        {/* 6. Signed In & Log Out Card */}
-        <View style={styles.logoutCard}>
-          <View style={styles.logoutInfoCol}>
-            <Text style={styles.signedInLabel}>Signed In</Text>
-            <Text style={styles.signedInEmail} numberOfLines={1}>
-              {user?.email || ''}
-            </Text>
-          </View>
-
-          <PressableScale
-            style={styles.logoutButton}
-            onPress={handleLogoutPress}
-            disabled={authActionLoading}
-            activeOpacity={0.8}
-            testID="logout-button"
-          >
-            {authActionLoading ? (
-              <ActivityIndicator size="small" color={STITCH_COLORS.onErrorContainer} />
-            ) : (
-              <>
-                <LogOutIcon size={16} color={STITCH_COLORS.onErrorContainer} />
-                <Text style={styles.logoutText}>Log Out</Text>
-              </>
-            )}
-          </PressableScale>
-        </View>
-
         {/* 4. Privacy Policy Link */}
         <PressableScale
           style={styles.privacyLinkRow}
@@ -769,12 +789,20 @@ export const AuthenticatedPlaceholderScreen: React.FC<
         </PressableScale>
       </ScrollView>
 
-      <EditProfileModal
-        visible={editProfileOpen}
-        initial={personalInfo}
-        saving={savingName}
-        onClose={() => setEditProfileOpen(false)}
-        onSave={handleSaveProfile}
+      <ProfileSettingsSheet
+        visible={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        avatarUri={avatarUrl}
+        initials={userInitials}
+        avatarBusy={ownProfile.avatarBusy}
+        onChangeAvatar={handleAvatarPress}
+        personalInfo={personalInfo}
+        savingProfile={savingName}
+        onSaveProfile={handleSaveProfile}
+        education={education}
+        email={user?.email || ''}
+        loggingOut={authActionLoading}
+        onLogout={handleLogoutPress}
       />
 
       {/* Edit Project Modal */}
@@ -979,6 +1007,48 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 14,
   },
+  collegeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 5,
+  },
+  collegeIcon: {
+    marginTop: 4, // text has marginTop 2 + (17 line − 13 icon) / 2
+  },
+  collegeText: {
+    flexShrink: 1,
+  },
+  profileTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  profileTopTitle: {
+    fontSize: 22,
+    fontFamily: FONTS.sans.semibold,
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+  menuButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#262626',
+    backgroundColor: '#0A0A0A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  educationList: {
+    gap: 10,
+  },
+  emptyEducationText: {
+    paddingVertical: 10,
+    fontSize: 12.5,
+    fontFamily: FONTS.sans.regular,
+    color: '#737373',
+  },
   avatarBusyOverlay: {
     position: 'absolute',
     top: 0,
@@ -987,19 +1057,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     borderRadius: 999,
     backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarEditBadge: {
-    position: 'absolute',
-    right: -2,
-    bottom: -2,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#0A0A0A',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1022,28 +1079,6 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.sans.regular,
     color: '#D4D4D4',
   },
-  editProfileButton: {
-    marginTop: 14,
-    height: 38,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#333333',
-    backgroundColor: '#111111',
-  },
-  editProfileText: {
-    fontSize: 13,
-    fontFamily: FONTS.sans.semibold,
-    color: '#EDEDED',
-  },
-  sectionAction: {
-    fontSize: 12.5,
-    fontFamily: FONTS.sans.medium,
-    color: '#A1A1A1',
-  },
   infoCard: {
     borderRadius: 12,
     borderWidth: 1,
@@ -1052,33 +1087,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 4,
   },
-  infoRow: {
-    paddingVertical: 10,
-    gap: 2,
-  },
-  infoRowBorder: {
-    borderTopWidth: 1,
-    borderTopColor: '#171717',
-  },
-  infoLabel: {
-    fontSize: 11,
+  currentEduTitle: {
+    marginTop: 2,
+    fontSize: 13,
+    lineHeight: 18,
     fontFamily: FONTS.sans.medium,
-    color: '#737373',
-  },
-  infoValue: {
-    fontSize: 13.5,
-    lineHeight: 19,
-    fontFamily: FONTS.sans.regular,
     color: '#EDEDED',
   },
-  infoValueEmpty: {
-    color: '#525252',
+  mobileShotRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
   },
-  infoError: {
-    paddingBottom: 10,
-    fontSize: 12,
-    fontFamily: FONTS.sans.regular,
-    color: '#737373',
+  mobileShotText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  desktopShot: {
+    marginTop: 12,
   },
   engagementRow: {
     flexDirection: 'row',
@@ -1131,11 +1157,6 @@ const styles = StyleSheet.create({
     color: STITCH_COLORS.onSurface, // #131b2e
     letterSpacing: -0.3,
   },
-  editIconText: {
-    fontSize: 14,
-    fontFamily: FONTS.sans.regular,
-    color: STITCH_COLORS.onSurfaceVariant, // #464555
-  },
   universityText: {
     fontSize: 12,
     lineHeight: 17,
@@ -1146,66 +1167,8 @@ const styles = StyleSheet.create({
   universityPlaceholder: {
     color: STITCH_COLORS.outline,
   },
-  verifiedEmailPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: STITCH_COLORS.surfaceContainerLow, // #f2f3ff
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-    marginTop: 6,
-    gap: 5,
-  },
-  verifiedShieldIcon: {
-    fontSize: 11,
-    fontFamily: FONTS.sans.regular,
-  },
-  verifiedEmailText: {
-    fontSize: 11,
-    fontFamily: FONTS.sans.medium,
-    color: STITCH_COLORS.primary, // #3525cd
-    maxWidth: 200,
-  },
 
   // Bento Quick Stats — Single Full Banner for Projects
-  bentoGrid: {
-    marginTop: 14,
-    paddingTop: 8,
-  },
-  bentoTileFull: {
-    backgroundColor: STITCH_COLORS.surfaceContainerLow, // #f2f3ff
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: STITCH_COLORS.surfaceContainerHighest,
-  },
-  bentoTileRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  bentoNumberPrimary: {
-    fontSize: 24,
-    color: STITCH_COLORS.primary, // #3525cd
-    fontFamily: FONTS.mono.semibold,
-    letterSpacing: -0.5,
-  },
-  bentoLabelCol: {
-    flex: 1,
-  },
-  bentoLabelTitle: {
-    fontSize: 13,
-    fontFamily: FONTS.sans.semibold,
-    color: STITCH_COLORS.onSurface,
-  },
-  bentoLabelSub: {
-    fontSize: 11,
-    fontFamily: FONTS.sans.regular,
-    color: STITCH_COLORS.onSurfaceVariant,
-    marginTop: 1,
-  },
 
   // 2. My Submitted Projects Section
   sectionContainer: {
@@ -1236,21 +1199,6 @@ const styles = StyleSheet.create({
   },
   countBadgeText: {
     fontSize: 11,
-    fontFamily: FONTS.sans.semibold,
-    color: STITCH_COLORS.primary,
-  },
-  newProjectLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  newProjectIcon: {
-    fontSize: 15,
-    fontFamily: FONTS.sans.regular,
-    color: STITCH_COLORS.primary,
-  },
-  newProjectText: {
-    fontSize: 13,
     fontFamily: FONTS.sans.semibold,
     color: STITCH_COLORS.primary,
   },
@@ -1457,58 +1405,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: FONTS.sans.semibold,
   },
-  arrowIcon: {
-    color: '#000000',
-    fontSize: 12,
-    fontFamily: FONTS.sans.regular,
-  },
 
   // 3. Signed In & Logout Card
-  logoutCard: {
-    backgroundColor: '#0A0A0A',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#262626',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  logoutInfoCol: {
-    flex: 1,
-    marginRight: 12,
-  },
-  signedInLabel: {
-    fontSize: 14,
-    fontFamily: FONTS.sans.medium,
-    color: '#FFFFFF',
-  },
-  signedInEmail: {
-    fontSize: 12,
-    color: '#A1A1A1',
-    marginTop: 2,
-    fontFamily: FONTS.mono.regular,
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1F1F1F',
-    borderWidth: 1,
-    borderColor: '#333333',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-    gap: 6,
-  },
-  logoutIcon: {
-    fontSize: 13,
-    fontFamily: FONTS.sans.regular,
-  },
-  logoutText: {
-    fontSize: 12,
-    fontFamily: FONTS.sans.medium,
-    color: '#FFFFFF',
-  },
 
   // 4. Privacy Policy Link
   privacyLinkRow: {

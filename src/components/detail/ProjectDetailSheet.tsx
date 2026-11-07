@@ -28,6 +28,7 @@ import {
 } from '../common/AppIcons';
 import { PressableScale } from '../animation/PressableScale';
 import { CommentsSection } from './CommentsSection';
+import { PublisherProfileSheet } from '../profile/PublisherProfileSheet';
 import { LikeButton } from '../common/LikeButton';
 import { useLikes } from '../../context/LikesContext';
 import { useLikesLiveSync } from '../../hooks/useLikesLiveSync';
@@ -41,13 +42,17 @@ import { COMMUNITY_MEMBER_LABEL } from '../../constants/identity';
 interface ProjectDetailViewProps {
   repository: Repository;
   onBack?: () => void;
+  /** Open another project (e.g. from the publisher's profile). */
+  onOpenProject?: (repo: Repository) => void;
 }
 
 export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   repository,
   onBack,
+  onOpenProject,
 }) => {
   const [isLaunching, setIsLaunching] = useState<boolean>(false);
+  const [publisherOpen, setPublisherOpen] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
 
   // Keyboard handling for the comment composer. Rather than depending on how
@@ -280,8 +285,15 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           isOwner={isOwner}
         />
 
-        {/* Creator Card */}
-        <View style={styles.card}>
+        {/* Creator Card — tap to view the publisher's profile */}
+        <PressableScale
+          style={styles.card}
+          onPress={() => setPublisherOpen(true)}
+          activeOpacity={0.85}
+          pressedScale={0.985}
+          accessibilityLabel={`View ${studentDisplayName}'s profile`}
+          testID="publisher-card"
+        >
           <View style={styles.creatorHeader}>
             <View style={styles.avatarCircle}>
               {initials ? (
@@ -299,8 +311,26 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
               </View>
               <Text style={styles.creatorSub}>{universityText}</Text>
             </View>
+            <View style={styles.viewProfileHint}>
+              <Text style={styles.viewProfileText}>Profile</Text>
+              <ArrowRightIcon size={13} color={STITCH_COLORS.outline} />
+            </View>
           </View>
-        </View>
+        </PressableScale>
+
+        <PublisherProfileSheet
+          visible={publisherOpen}
+          repository={repository}
+          onClose={() => setPublisherOpen(false)}
+          onOpenProject={
+            onOpenProject
+              ? (repo) => {
+                  setPublisherOpen(false);
+                  onOpenProject(repo);
+                }
+              : undefined
+          }
+        />
 
         {/* Architecture Specs Section */}
         <View style={styles.sectionBlock}>
@@ -579,6 +609,17 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontFamily: FONTS.sans.semibold,
     color: '#000000',
+  },
+  viewProfileHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: 8,
+  },
+  viewProfileText: {
+    fontSize: 12,
+    fontFamily: FONTS.sans.medium,
+    color: '#A1A1A1',
   },
   creatorSub: {
     fontSize: 12,

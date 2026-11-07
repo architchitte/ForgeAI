@@ -158,6 +158,7 @@ const AuthenticatedView: React.FC = () => {
               <ProjectDetailView
                 repository={selectedRepo}
                 onBack={() => setSelectedRepo(null)}
+                onOpenProject={setSelectedRepo}
               />
             ) : activeTab === 'submit' ? (
               <SubmitBlueprintScreen

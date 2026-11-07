@@ -103,18 +103,45 @@ export const degreeLabel = (e: Pick<Education, 'degree' | 'custom_degree'>): str
  * Status is the source of truth; an ongoing degree never turns "completed"
  * just because its expected graduation year has passed.
  */
-export const sortEducation = (items: Education[]): Education[] =>
+type SortableEducation = Pick<Education, 'status' | 'start_year' | 'graduation_year'> & {
+  created_at?: string;
+};
+
+export const sortEducation = <T extends SortableEducation>(items: T[]): T[] =>
   [...items].sort((a, b) => {
+    const newer = (b.created_at ?? '').localeCompare(a.created_at ?? '');
     if (a.status !== b.status) return a.status === 'pursuing' ? -1 : 1;
-    if (a.status === 'pursuing') {
-      return b.start_year - a.start_year || b.created_at.localeCompare(a.created_at);
-    }
+    if (a.status === 'pursuing') return b.start_year - a.start_year || newer;
     return (
       (b.graduation_year ?? 0) - (a.graduation_year ?? 0) ||
       b.start_year - a.start_year ||
-      b.created_at.localeCompare(a.created_at)
+      newer
     );
   });
+
+/** Education as shown publicly (no ids). */
+export type PublicEducation = Pick<
+  Education,
+  | 'degree'
+  | 'custom_degree'
+  | 'specialization'
+  | 'institution_name'
+  | 'start_year'
+  | 'graduation_year'
+  | 'status'
+> & { created_at?: string };
+
+/** A project publisher's public profile (from get_project_publisher). */
+export interface PublisherProfile {
+  has_account: boolean;
+  display_name: string | null;
+  avatar_path: string | null;
+  college: string | null;
+  city: string | null;
+  country: string | null;
+  bio: string | null;
+  education: PublicEducation[];
+}
 
 export interface EducationFormErrors {
   degree?: string;

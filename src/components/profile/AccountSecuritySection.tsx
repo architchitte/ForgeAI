@@ -18,7 +18,9 @@ const hasPasswordLogin = (user: ReturnType<typeof useAuth>['user']): boolean => 
 };
 
 /** Profile → Account Security: change password, reset by email. */
-export const AccountSecuritySection: React.FC = () => {
+export const AccountSecuritySection: React.FC<{ title?: string }> = ({
+  title = 'Account Security',
+}) => {
   const { user, requestPasswordReset } = useAuth();
   const [changeOpen, setChangeOpen] = useState(false);
   const [sending, setSending] = useState(false);
@@ -55,7 +57,7 @@ export const AccountSecuritySection: React.FC = () => {
 
   return (
     <View style={styles.section}>
-      <Text style={styles.heading}>Account Security</Text>
+      <Text style={styles.heading}>{title}</Text>
       <View style={styles.card}>
         {canChange ? (
           <PressableScale

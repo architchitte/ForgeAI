@@ -2,18 +2,21 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { STITCH_COLORS } from '../../constants/theme';
 import { FONTS } from '../../constants/typography';
-import { useEducation } from '../../hooks/useEducation';
+import type { useEducation } from '../../hooks/useEducation';
 import { Education, EducationInput, degreeLabel } from '../../types/profile';
-import { EditIcon, GraduationCapIcon, PlusIcon, TrashIcon } from '../common/AppIcons';
+import { GraduationCapIcon, PlusIcon } from '../common/AppIcons';
 import { PressableScale } from '../animation/PressableScale';
 import { EducationEditorModal } from './EducationEditorModal';
-
-const yearsLabel = (e: Education) =>
-  e.graduation_year ? `${e.start_year}–${e.graduation_year}` : `${e.start_year}–Present`;
+import { EducationItem } from './EducationItem';
 
 /** Profile → Education: LinkedIn-style list with add / edit / delete. */
-export const EducationSection: React.FC = () => {
-  const { items, loading, error, busy, refresh, add, update, remove } = useEducation();
+interface EducationSectionProps {
+  /** Shared with the profile header (current qualification under the name). */
+  education: ReturnType<typeof useEducation>;
+}
+
+export const EducationSection: React.FC<EducationSectionProps> = ({ education }) => {
+  const { items, loading, error, busy, refresh, add, update, remove } = education;
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<Education | null>(null);
 
@@ -89,47 +92,14 @@ export const EducationSection: React.FC = () => {
       ) : (
         <View style={styles.list}>
           {items.map((e, index) => (
-            <View key={e.id} style={styles.card}>
-              <View style={styles.indexBadge}>
-                <Text style={styles.indexText}>{index + 1}</Text>
-              </View>
-              <View style={styles.flex}>
-                <Text style={styles.title}>
-                  {degreeLabel(e)} — {e.specialization}
-                </Text>
-                <Text style={styles.meta}>
-                  {e.institution_name} · {yearsLabel(e)}
-                </Text>
-                <View style={[styles.status, e.status === 'pursuing' && styles.statusOngoing]}>
-                  {e.status === 'pursuing' && <View style={styles.liveDot} />}
-                  <Text style={[styles.statusText, e.status === 'pursuing' && styles.statusTextOngoing]}>
-                    {e.status === 'pursuing' ? 'Currently Pursuing' : 'Completed'}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.actions}>
-                <PressableScale
-                  style={styles.iconButton}
-                  onPress={() => openEdit(e)}
-                  disabled={busy}
-                  activeOpacity={0.6}
-                  hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
-                  accessibilityLabel={`Edit ${degreeLabel(e)}`}
-                >
-                  <EditIcon size={13} color="#EDEDED" />
-                </PressableScale>
-                <PressableScale
-                  style={styles.iconButton}
-                  onPress={() => confirmDelete(e)}
-                  disabled={busy}
-                  activeOpacity={0.6}
-                  hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
-                  accessibilityLabel={`Delete ${degreeLabel(e)}`}
-                >
-                  <TrashIcon size={13} color="#EDEDED" />
-                </PressableScale>
-              </View>
-            </View>
+            <EducationItem
+              key={e.id}
+              education={e}
+              position={index + 1}
+              onEdit={() => openEdit(e)}
+              onDelete={() => confirmDelete(e)}
+              disabled={busy}
+            />
           ))}
         </View>
       )}
@@ -233,88 +203,5 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: 10,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#262626',
-    backgroundColor: '#0A0A0A',
-  },
-  indexBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#333333',
-    backgroundColor: '#111111',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 1,
-  },
-  indexText: {
-    fontSize: 11,
-    fontFamily: FONTS.mono.medium,
-    color: '#A1A1A1',
-  },
-  title: {
-    fontSize: 14,
-    lineHeight: 19,
-    fontFamily: FONTS.sans.semibold,
-    color: '#FFFFFF',
-  },
-  meta: {
-    marginTop: 3,
-    fontSize: 12.5,
-    lineHeight: 17,
-    fontFamily: FONTS.sans.regular,
-    color: '#A1A1A1',
-  },
-  status: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginTop: 8,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#262626',
-  },
-  statusOngoing: {
-    borderColor: '#454545',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#FFFFFF',
-  },
-  statusText: {
-    fontSize: 11,
-    fontFamily: FONTS.sans.medium,
-    color: '#A1A1A1',
-  },
-  statusTextOngoing: {
-    color: '#EDEDED',
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  iconButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#333333',
-    backgroundColor: '#111111',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

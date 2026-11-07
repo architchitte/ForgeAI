@@ -277,3 +277,11 @@ export const MapPinIcon: React.FC<IconProps> = ({
   size = 12,
   color = STITCH_COLORS.onSurfaceVariant,
 }) => <Feather name="map-pin" size={size} color={color} />;
+
+/**
+ * 33. Menu Icon (three bars)
+ */
+export const MenuIcon: React.FC<IconProps> = ({
+  size = 20,
+  color = STITCH_COLORS.onSurface,
+}) => <Feather name="menu" size={size} color={color} />;
