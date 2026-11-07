@@ -41,6 +41,9 @@ import { fetchCommentCounts, fetchLikeSummaries } from '../../services/engagemen
 import type { PersonalInfoValues } from '../../components/profile/EditProfileModal';
 import { EducationItem } from '../../components/profile/EducationItem';
 import { ProfileCard } from '../../components/profile/ProfileCard';
+import { FollowStats } from '../../components/profile/FollowControls';
+import { FollowListKind, FollowListSheet } from '../../components/profile/FollowListSheet';
+import { useFollow } from '../../hooks/useFollow';
 import { ProfileSettingsSheet } from '../../components/profile/ProfileSettingsSheet';
 import { useEducation } from '../../hooks/useEducation';
 
@@ -66,11 +69,13 @@ import {
 interface AuthenticatedPlaceholderScreenProps {
   onNavigateToSubmitBlueprint?: () => void;
   onSelectRepository?: (repo: Repository) => void;
+  /** Opens someone's profile (from your followers / following lists). */
+  onOpenUserProfile?: (userId: string) => void;
 }
 
 export const AuthenticatedPlaceholderScreen: React.FC<
   AuthenticatedPlaceholderScreenProps
-> = ({ onNavigateToSubmitBlueprint, onSelectRepository }) => {
+> = ({ onNavigateToSubmitBlueprint, onSelectRepository, onOpenUserProfile }) => {
   const { user, signOut, authActionLoading, updateUserProfile } = useAuth();
   const insets = useSafeAreaInsets();
 
@@ -84,6 +89,9 @@ export const AuthenticatedPlaceholderScreen: React.FC<
   const ownProfile = useOwnProfile();
   // One education state for the header and the Education section.
   const education = useEducation();
+  // Your own follower / following counts and lists.
+  const follow = useFollow(user?.id);
+  const [followList, setFollowList] = useState<FollowListKind | null>(null);
   // Sorted ongoing-first, so the first item is the current qualification
   // (or the latest completed one when nothing is ongoing).
   const currentEducation = education.items[0] ?? null;
@@ -507,6 +515,15 @@ export const AuthenticatedPlaceholderScreen: React.FC<
           bio={bio}
           avatarBusy={ownProfile.avatarBusy}
           style={styles.profileCard}
+          footer={
+            follow.supported && follow.counts ? (
+              <FollowStats
+                counts={follow.counts}
+                onPressFollowers={() => setFollowList('followers')}
+                onPressFollowing={() => setFollowList('following')}
+              />
+            ) : null
+          }
         />
 
         {/* 2. Education (read-only; managed in Settings) */}
@@ -527,7 +544,7 @@ export const AuthenticatedPlaceholderScreen: React.FC<
           ) : (
             <View style={styles.educationList}>
               {education.items.map((e, i) => (
-                <EducationItem key={e.id} education={e} position={i + 1} />
+                <EducationItem key={e.id} education={e} position={i + 1} compact={i > 0} />
               ))}
             </View>
           )}
@@ -725,6 +742,21 @@ export const AuthenticatedPlaceholderScreen: React.FC<
           <Text style={styles.privacyLinkText}>Privacy Policy</Text>
         </PressableScale>
       </ScrollView>
+
+      <FollowListSheet
+        userId={followList ? user?.id ?? null : null}
+        kind={followList ?? 'followers'}
+        onChangeKind={setFollowList}
+        onClose={() => setFollowList(null)}
+        onOpenUser={
+          onOpenUserProfile
+            ? (id) => {
+                setFollowList(null);
+                onOpenUserProfile(id);
+              }
+            : undefined
+        }
+      />
 
       <ProfileSettingsSheet
         visible={settingsOpen}

@@ -14,23 +14,30 @@ import { COMMUNITY_MEMBER_LABEL } from '../../constants/identity';
 import { formatRelativeTime } from '../../constants/time';
 import { Repository } from '../../types/repository';
 import { fetchUserRepositories } from '../../services/repositories';
-import { ActivityEvent, fetchActivityForRepositories } from '../../services/activity';
+import {
+  ActivityEvent,
+  fetchActivityForRepositories,
+  fetchNewFollowers,
+} from '../../services/activity';
 import { fetchPublicProfiles, PublicProfileSummary } from '../../services/profiles';
 import { getAvatarUrl } from '../../services/ownProfile';
 import { Avatar } from '../../components/common/Avatar';
-import { CommentIcon, HeartIcon } from '../../components/common/AppIcons';
+import { CommentIcon, HeartIcon, UserIcon } from '../../components/common/AppIcons';
 import { PressableScale } from '../../components/animation/PressableScale';
 
-type Filter = 'all' | 'like' | 'comment';
+type Filter = 'all' | 'like' | 'comment' | 'follow';
 const FILTERS: { id: Filter; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'like', label: 'Likes' },
   { id: 'comment', label: 'Comments' },
+  { id: 'follow', label: 'Follows' },
 ];
 
 interface ActivityScreenProps {
   isActive?: boolean;
   onSelectRepository: (repo: Repository) => void;
+  /** Opens a person's profile (e.g. a new follower). */
+  onOpenUserProfile?: (userId: string) => void;
 }
 
 /**
@@ -38,7 +45,11 @@ interface ActivityScreenProps {
  * newest first. Three batched requests: my projects → likes + comments on
  * them → commenters' / likers' names and pictures.
  */
-export const ActivityScreen: React.FC<ActivityScreenProps> = ({ isActive = true, onSelectRepository }) => {
+export const ActivityScreen: React.FC<ActivityScreenProps> = ({
+  isActive = true,
+  onSelectRepository,
+  onOpenUserProfile,
+}) => {
   const { user } = useAuth();
   const [projects, setProjects] = useState<Record<string, Repository>>({});
   const [events, setEvents] = useState<ActivityEvent[]>([]);
@@ -58,14 +69,20 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({ isActive = true,
     }
     const byId = Object.fromEntries(mine.data.map((r) => [r.id, r]));
     setProjects(byId);
-    const act = await fetchActivityForRepositories(Object.keys(byId), user.id);
+    const [act, follows] = await Promise.all([
+      fetchActivityForRepositories(Object.keys(byId), user.id),
+      fetchNewFollowers(user.id),
+    ]);
     if (act.error || !act.data) {
       setError(act.error || 'Failed to load activity.');
       return;
     }
     setError(null);
-    setEvents(act.data);
-    const prof = await fetchPublicProfiles(act.data.map((e) => e.user_id));
+    const all = [...act.data, ...(follows.data ?? [])].sort((a, b) =>
+      b.created_at.localeCompare(a.created_at)
+    );
+    setEvents(all);
+    const prof = await fetchPublicProfiles(all.map((e) => e.user_id));
     if (prof.data) setPeople(prof.data);
   }, [user?.email, user?.id]);
 
@@ -93,6 +110,7 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({ isActive = true,
     () => ({
       like: events.filter((e) => e.kind === 'like').length,
       comment: events.filter((e) => e.kind === 'comment').length,
+      follow: events.filter((e) => e.kind === 'follow').length,
     }),
     [events]
   );
@@ -100,32 +118,55 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({ isActive = true,
   const renderItem = ({ item }: { item: ActivityEvent }) => {
     const person = people[item.user_id];
     const name = person?.name || COMMUNITY_MEMBER_LABEL;
-    const project = projects[item.repository_id];
+    const project = item.repository_id ? projects[item.repository_id] : undefined;
     const isLike = item.kind === 'like';
+    const isFollow = item.kind === 'follow';
     return (
       <PressableScale
         style={styles.item}
-        onPress={() => project && onSelectRepository(project)}
+        onPress={() =>
+          isFollow ? onOpenUserProfile?.(item.user_id) : project && onSelectRepository(project)
+        }
         activeOpacity={0.85}
         pressedScale={0.985}
-        accessibilityHint="Opens the project"
+        accessibilityHint={isFollow ? 'Opens their profile' : 'Opens the project'}
       >
-        <View>
+        {/* Picture / name → their profile; the rest of the row → the project */}
+        <PressableScale
+          onPress={() => onOpenUserProfile?.(item.user_id)}
+          disabled={!onOpenUserProfile}
+          activeOpacity={0.7}
+          pressedScale={0.94}
+          accessibilityLabel={`View ${name}'s profile`}
+        >
           <Avatar uri={person?.avatarPath ? getAvatarUrl(person.avatarPath) : null} name={name} size={40} />
           <View style={styles.kindBadge}>
-            {isLike ? (
+            {isFollow ? (
+              <UserIcon size={10} color="#000000" />
+            ) : isLike ? (
               <HeartIcon size={10} filled color="#000000" />
             ) : (
               <CommentIcon size={10} color="#000000" />
             )}
           </View>
-        </View>
+        </PressableScale>
         <View style={styles.itemBody}>
-          <Text style={styles.itemText}>
-            <Text style={styles.strong}>{name}</Text>
-            {isLike ? ' liked ' : ' commented on '}
-            <Text style={styles.strong}>{project?.app_name ?? 'your project'}</Text>
-          </Text>
+          {isFollow ? (
+            <Text style={styles.itemText}>
+              <Text style={styles.strong}>{name}</Text> started following you
+            </Text>
+          ) : (
+            <Text style={styles.itemText}>
+              <Text
+                style={styles.strong}
+                onPress={onOpenUserProfile ? () => onOpenUserProfile(item.user_id) : undefined}
+              >
+                {name}
+              </Text>
+              {isLike ? ' liked ' : ' commented on '}
+              <Text style={styles.strong}>{project?.app_name ?? 'your project'}</Text>
+            </Text>
+          )}
           {item.kind === 'comment' ? (
             <Text style={styles.snippet} numberOfLines={2}>
               “{item.content}”
@@ -141,7 +182,7 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({ isActive = true,
     <View style={styles.screen}>
       <View style={styles.top}>
         <Text style={styles.title}>Activity</Text>
-        <Text style={styles.subtitle}>Likes and comments on your projects.</Text>
+        <Text style={styles.subtitle}>Likes, comments and new followers.</Text>
         <View style={styles.filters}>
           {FILTERS.map((f) => {
             const on = filter === f.id;
@@ -183,8 +224,8 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({ isActive = true,
               <Text style={styles.empty}>
                 {error ||
                   (Object.keys(projects).length === 0
-                    ? 'Publish a project — likes and comments on it will show up here.'
-                    : 'When someone likes or comments on your projects, it shows up here.')}
+                    ? 'Publish a project — likes, comments and follows show up here.'
+                    : 'When someone likes, comments or follows you, it shows up here.')}
               </Text>
             </View>
           }

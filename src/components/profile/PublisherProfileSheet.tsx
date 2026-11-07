@@ -17,7 +17,11 @@ import {
   PublisherProfile,
   sortEducation,
 } from '../../types/profile';
-import { fetchPublisherProfile } from '../../services/publisher';
+import {
+  fetchPublisherProfile,
+  fetchRepositoriesByIds,
+  fetchUserProfile,
+} from '../../services/publisher';
 import { fetchUserRepositories } from '../../services/repositories';
 import { getAvatarUrl } from '../../services/ownProfile';
 import {
@@ -26,6 +30,9 @@ import {
 import { PressableScale } from '../animation/PressableScale';
 import { EducationItem } from './EducationItem';
 import { ProfileCard } from './ProfileCard';
+import { FollowButton, FollowStats } from './FollowControls';
+import { FollowListKind, FollowListSheet } from './FollowListSheet';
+import { useFollow } from '../../hooks/useFollow';
 import { ProjectCard } from '../feed/ProjectCard';
 import { LikersSheet } from '../engagement/LikersSheet';
 import { useLikes } from '../../context/LikesContext';
@@ -38,8 +45,12 @@ import { ProjectScreenshot } from '../../types/screenshot';
 
 interface PublisherProfileSheetProps {
   visible: boolean;
-  /** The project whose publisher is shown. */
-  repository: Repository;
+  /** Show the publisher of this project… */
+  repository?: Repository | null;
+  /** …or any user by account id (e.g. from a followers list). */
+  userId?: string | null;
+  /** Open another person's profile (from the followers / following list). */
+  onOpenUser?: (userId: string) => void;
   onClose: () => void;
   /** Opens one of the publisher's projects (closes this sheet first). */
   onOpenProject?: (repo: Repository) => void;
@@ -67,9 +78,11 @@ const initialsOf = (name: string) =>
  */
 export const PublisherProfileSheet: React.FC<PublisherProfileSheetProps> = ({
   visible,
-  repository,
+  repository = null,
+  userId = null,
   onClose,
   onOpenProject,
+  onOpenUser,
   backLabel = 'Back to project',
   inline = false,
 }) => {
@@ -82,22 +95,36 @@ export const PublisherProfileSheet: React.FC<PublisherProfileSheetProps> = ({
   const [technologies, setTechnologies] = useState<Record<string, ProjectTechnology[]>>({});
   const [likersFor, setLikersFor] = useState<string | null>(null);
   const { likes, pendingIds, refreshLikes, toggleLike } = useLikes();
+  const [followList, setFollowList] = useState<FollowListKind | null>(null);
 
   useEffect(() => {
     if (!visible) return;
     let cancelled = false;
     setLoading(true);
     setError(null);
-    Promise.all([
-      fetchPublisherProfile(repository.id),
-      fetchUserRepositories(repository.student_email),
-    ]).then(([p, r]) => {
+    const load = async () => {
+      let p: Awaited<ReturnType<typeof fetchPublisherProfile>>;
+      let repos: Repository[] = [];
+      if (repository) {
+        const [pr, r] = await Promise.all([
+          fetchPublisherProfile(repository.id),
+          fetchUserRepositories(repository.student_email),
+        ]);
+        p = pr;
+        repos = r.data ?? [];
+      } else if (userId) {
+        p = await fetchUserProfile(userId);
+        const r = await fetchRepositoriesByIds(p.data?.project_ids ?? []);
+        repos = r.data ?? [];
+      } else {
+        return;
+      }
       if (cancelled) return;
       setProfile(p.data);
       setError(p.error);
-      setProjects(r.data ?? null);
+      setProjects(repos);
       setLoading(false);
-      const ids = (r.data ?? []).map((x) => x.id);
+      const ids = repos.map((x) => x.id);
       if (ids.length === 0) return;
       // Card extras: screenshots, technologies and like state (all batched).
       fetchScreenshotsForRepositories(ids).then((res) => {
@@ -107,18 +134,23 @@ export const PublisherProfileSheet: React.FC<PublisherProfileSheetProps> = ({
         if (!cancelled && res.data) setTechnologies(res.data);
       });
       refreshLikes(ids);
-    });
+    };
+    load();
     return () => {
       cancelled = true;
     };
-  }, [visible, repository.id, repository.student_email, refreshLikes]);
+  }, [visible, repository, userId, refreshLikes]);
+
+  // Follow (needs the account id: from the RPC, or the userId we opened with).
+  const targetUserId = profile?.user_id ?? userId ?? null;
+  const follow = useFollow(targetUserId);
 
   // Fall back to what the project itself says if the profile can't load.
   const name =
     profile?.display_name?.trim() ||
-    repository.student_name?.trim() ||
+    repository?.student_name?.trim() ||
     COMMUNITY_MEMBER_LABEL;
-  const college = profile?.college?.trim() || repository.university?.trim() || '';
+  const college = profile?.college?.trim() || repository?.university?.trim() || '';
   const location = [profile?.city, profile?.country]
     .filter((v): v is string => !!v && v.trim().length > 0)
     .join(', ');
@@ -163,6 +195,24 @@ export const PublisherProfileSheet: React.FC<PublisherProfileSheetProps> = ({
               location={location}
               bio={profile?.bio}
               style={styles.headerCard}
+              footer={
+                follow.supported && follow.counts ? (
+                  <>
+                    <FollowStats
+                      counts={follow.counts}
+                      onPressFollowers={() => setFollowList('followers')}
+                      onPressFollowing={() => setFollowList('following')}
+                    />
+                    {!follow.isSelf && (
+                      <FollowButton
+                        isFollowing={follow.isFollowing}
+                        pending={follow.pending}
+                        onPress={follow.toggle}
+                      />
+                    )}
+                  </>
+                ) : null
+              }
             />
             {loading && (
               <ActivityIndicator
@@ -186,6 +236,7 @@ export const PublisherProfileSheet: React.FC<PublisherProfileSheetProps> = ({
                         key={`${e.degree}-${e.institution_name}-${e.start_year}-${i}`}
                         education={e}
                         position={i + 1}
+                        compact={i > 0}
                       />
                     ))}
                   </View>
@@ -223,10 +274,25 @@ export const PublisherProfileSheet: React.FC<PublisherProfileSheetProps> = ({
               </View>
             )}
           </ScrollView>
+          <FollowListSheet
+            userId={followList ? targetUserId : null}
+            kind={followList ?? 'followers'}
+            onChangeKind={setFollowList}
+            onClose={() => setFollowList(null)}
+            onOpenUser={
+              onOpenUser
+                ? (id) => {
+                    setFollowList(null);
+                    onOpenUser(id);
+                  }
+                : undefined
+            }
+          />
           <LikersSheet
             repositoryId={likersFor}
             appName={projects?.find((x) => x.id === likersFor)?.app_name}
             onClose={() => setLikersFor(null)}
+            onOpenUser={onOpenUser}
           />
     </>
   );

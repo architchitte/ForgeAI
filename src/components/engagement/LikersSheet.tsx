@@ -15,16 +15,22 @@ import { COMMUNITY_MEMBER_LABEL } from '../../constants/identity';
 import { formatRelativeTime } from '../../constants/time';
 import { useAuth } from '../../context/AuthContext';
 import { fetchLikers, LIKERS_LIMIT } from '../../services/activity';
+import { fetchCommentLikers } from '../../services/commentLikes';
 import { fetchPublicProfiles, PublicProfileSummary } from '../../services/profiles';
 import { getAvatarUrl } from '../../services/ownProfile';
 import { Avatar } from '../common/Avatar';
 import { HeartIcon } from '../common/AppIcons';
+import { PressableScale } from '../animation/PressableScale';
 
 interface LikersSheetProps {
-  /** Project whose likers are shown; null = hidden. */
+  /** Project (or comment, see `kind`) whose likers are shown; null = hidden. */
   repositoryId: string | null;
   appName?: string;
   onClose: () => void;
+  /** 'comment' lists likes on a comment / reply (id = comment id). */
+  kind?: 'project' | 'comment';
+  /** Opens a liker's profile (the sheet closes first). */
+  onOpenUser?: (userId: string) => void;
 }
 
 interface Liker {
@@ -32,7 +38,13 @@ interface Liker {
   created_at: string;
 }
 
-const SheetBody: React.FC<LikersSheetProps> = ({ repositoryId, appName, onClose }) => {
+const SheetBody: React.FC<LikersSheetProps> = ({
+  repositoryId,
+  appName,
+  onClose,
+  kind = 'project',
+  onOpenUser,
+}) => {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [likers, setLikers] = useState<Liker[] | null>(null);
@@ -44,7 +56,7 @@ const SheetBody: React.FC<LikersSheetProps> = ({ repositoryId, appName, onClose 
     let cancelled = false;
     setLikers(null);
     setError(null);
-    fetchLikers(repositoryId).then(async (res) => {
+    (kind === 'comment' ? fetchCommentLikers(repositoryId) : fetchLikers(repositoryId)).then(async (res) => {
       if (cancelled) return;
       if (res.error || !res.data) {
         setError(res.error || 'Failed to load likes.');
@@ -58,7 +70,7 @@ const SheetBody: React.FC<LikersSheetProps> = ({ repositoryId, appName, onClose 
     return () => {
       cancelled = true;
     };
-  }, [repositoryId]);
+  }, [repositoryId, kind]);
 
   const own = (user?.user_metadata?.full_name || user?.user_metadata?.name || '') as string;
 
@@ -91,7 +103,18 @@ const SheetBody: React.FC<LikersSheetProps> = ({ repositoryId, appName, onClose 
               const p = profiles[item.user_id];
               const name = p?.name || (isMe && own.trim()) || COMMUNITY_MEMBER_LABEL;
               return (
-                <View style={styles.row}>
+                <PressableScale
+                  style={styles.row}
+                  onPress={() => {
+                    if (!onOpenUser) return;
+                    onClose();
+                    onOpenUser(item.user_id);
+                  }}
+                  disabled={!onOpenUser}
+                  activeOpacity={0.8}
+                  pressedScale={0.99}
+                  accessibilityHint={onOpenUser ? 'Opens their profile' : undefined}
+                >
                   <Avatar uri={p?.avatarPath ? getAvatarUrl(p.avatarPath) : null} name={name} size={36} />
                   <View style={styles.rowText}>
                     <Text style={styles.name} numberOfLines={1}>
@@ -100,7 +123,7 @@ const SheetBody: React.FC<LikersSheetProps> = ({ repositoryId, appName, onClose 
                     </Text>
                   </View>
                   <Text style={styles.time}>{formatRelativeTime(item.created_at)}</Text>
-                </View>
+                </PressableScale>
               );
             }}
           />

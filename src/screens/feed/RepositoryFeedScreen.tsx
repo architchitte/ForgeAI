@@ -42,12 +42,15 @@ interface RepositoryFeedScreenProps {
   onNavigateToSubmit?: () => void;
   onSelectRepository?: (repo: Repository) => void;
   isActive?: boolean;
+  /** Opens a person's profile (e.g. from the likers list). */
+  onOpenUserProfile?: (userId: string) => void;
 }
 
 export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
   onNavigateToSubmit,
   onSelectRepository,
   isActive = true,
+  onOpenUserProfile,
 }) => {
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -260,6 +263,7 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
         repositoryId={likersFor}
         appName={repositories.find((r) => r.id === likersFor)?.app_name}
         onClose={() => setLikersFor(null)}
+        onOpenUser={onOpenUserProfile}
       />
 
       {/* Project Detail Sheet */}

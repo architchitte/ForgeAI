@@ -13,6 +13,8 @@ interface EducationItemProps {
   onEdit?: () => void;
   onDelete?: () => void;
   disabled?: boolean;
+  /** Smaller card for previous (non-current) education. */
+  compact?: boolean;
 }
 
 const yearsLabel = (e: PublicEducation) =>
@@ -25,21 +27,22 @@ export const EducationItem: React.FC<EducationItemProps> = ({
   onEdit,
   onDelete,
   disabled,
+  compact = false,
 }) => {
   const ongoing = e.status === 'pursuing';
   return (
-    <View style={styles.card}>
-      <View style={styles.indexBadge}>
-        <Text style={styles.indexText}>{position}</Text>
+    <View style={[styles.card, compact && styles.cardCompact]}>
+      <View style={[styles.indexBadge, compact && styles.indexBadgeCompact]}>
+        <Text style={[styles.indexText, compact && styles.indexTextCompact]}>{position}</Text>
       </View>
       <View style={styles.flex}>
-        <Text style={styles.title}>
+        <Text style={[styles.title, compact && styles.titleCompact]}>
           {degreeLabel(e)} — {e.specialization}
         </Text>
-        <Text style={styles.meta}>
+        <Text style={[styles.meta, compact && styles.metaCompact]}>
           {e.institution_name} · {yearsLabel(e)}
         </Text>
-        <View style={[styles.status, ongoing && styles.statusOngoing]}>
+        <View style={[styles.status, ongoing && styles.statusOngoing, compact && styles.statusCompact]}>
           {ongoing && <View style={styles.liveDot} />}
           <Text style={[styles.statusText, ongoing && styles.statusTextOngoing]}>
             {ongoing ? 'Currently Pursuing' : 'Completed'}
@@ -92,6 +95,36 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#262626',
     backgroundColor: '#0A0A0A',
+  },
+  cardCompact: {
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderColor: '#1F1F1F',
+  },
+  indexBadgeCompact: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
+  indexTextCompact: {
+    fontSize: 10,
+  },
+  titleCompact: {
+    fontSize: 12.5,
+    lineHeight: 17,
+    fontFamily: FONTS.sans.medium,
+    color: '#D4D4D4',
+  },
+  metaCompact: {
+    marginTop: 2,
+    fontSize: 11.5,
+    lineHeight: 15,
+  },
+  statusCompact: {
+    marginTop: 6,
+    paddingVertical: 1,
   },
   indexBadge: {
     width: 24,

@@ -15,7 +15,8 @@ import { validateCommentContent } from '../../services/engagement';
 import { COMMENT_MAX_LENGTH, ProjectComment } from '../../types/engagement';
 import { STITCH_COLORS } from '../../constants/theme';
 import { FONTS } from '../../constants/typography';
-import { CommentIcon, EditIcon, TrashIcon, UserIcon } from '../common/AppIcons';
+import { CommentIcon, EditIcon, HeartIcon, TrashIcon, UserIcon } from '../common/AppIcons';
+import { LikersSheet } from '../engagement/LikersSheet';
 import { PressableScale } from '../animation/PressableScale';
 import { FadeInView } from '../animation/FadeInView';
 import { FocusBorderView } from '../animation/FocusBorderView';
@@ -85,11 +86,15 @@ interface CommentEditorProps {
   onCancel: () => void;
   onFocus?: () => void;
   onBlur?: () => void;
+  /** Primary button label (default "Save"; replies use "Reply"). */
+  submitLabel?: string;
+  placeholder?: string;
 }
 
 /**
  * Inline editor shown inside the comment's own card, separate from the
  * new-comment composer. Save is enabled only for a valid, changed comment.
+ * Also used as the reply composer.
  */
 const CommentEditor: React.FC<CommentEditorProps> = ({
   initialValue,
@@ -98,6 +103,8 @@ const CommentEditor: React.FC<CommentEditorProps> = ({
   onCancel,
   onFocus,
   onBlur,
+  submitLabel = 'Save',
+  placeholder = 'Edit your comment…',
 }) => {
   const [value, setValue] = useState<string>(initialValue);
   const [focused, setFocused] = useState<boolean>(false);
@@ -137,7 +144,7 @@ const CommentEditor: React.FC<CommentEditorProps> = ({
           maxLength={COMMENT_MAX_LENGTH}
           textAlignVertical="top"
           autoCapitalize="sentences"
-          placeholder="Edit your comment…"
+          placeholder={placeholder}
           placeholderTextColor={STITCH_COLORS.placeholder}
           onFocus={() => {
             setFocused(true);
@@ -171,12 +178,12 @@ const CommentEditor: React.FC<CommentEditorProps> = ({
           activeOpacity={0.8}
           pressedScale={0.96}
           accessibilityState={{ disabled: !canSave, busy: saving }}
-          accessibilityLabel="Save comment"
+          accessibilityLabel={`${submitLabel} comment`}
         >
           {saving ? (
             <ActivityIndicator size="small" color="#000000" />
           ) : (
-            <Text style={styles.postButtonText}>Save</Text>
+            <Text style={styles.postButtonText}>{submitLabel}</Text>
           )}
         </PressableScale>
       </View>
@@ -195,12 +202,15 @@ interface CommentsSectionProps {
    */
   onInputFocus?: (offsetY: number) => void;
   onInputBlur?: () => void;
+  /** Opens a commenter's / liker's profile. */
+  onOpenUser?: (userId: string) => void;
 }
 
 export const CommentsSection: React.FC<CommentsSectionProps> = ({
   repositoryId,
   onInputFocus,
   onInputBlur,
+  onOpenUser,
 }) => {
   const { user } = useAuth();
   const {
@@ -208,6 +218,14 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
     displayNames,
     avatarPaths,
     total,
+    allTotal,
+    replies,
+    repliesSupported,
+    commentLikes,
+    commentLikesSupported,
+    commentLikePending,
+    toggleCommentLike,
+    addReply,
     loading,
     error,
     mutating,
@@ -230,6 +248,12 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState<boolean>(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  // Replies: one composer at a time, under the thread's top-level comment.
+  const [replyingTo, setReplyingTo] = useState<{ parentId: string; mention: string } | null>(null);
+  const [postingReply, setPostingReply] = useState<boolean>(false);
+  const [expandedThreads, setExpandedThreads] = useState<Record<string, true>>({});
+  // Hold a comment's heart → who liked it.
+  const [likersComment, setLikersComment] = useState<string | null>(null);
 
   const inputRef = useRef<TextInputInstance>(null);
   const composerY = useRef(0);
@@ -239,8 +263,12 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 
   // Drop edit mode if the comment disappears (e.g. deleted elsewhere).
   useEffect(() => {
-    if (editingId && !comments.some((c) => c.id === editingId)) setEditingId(null);
-  }, [comments, editingId]);
+    if (!editingId) return;
+    const exists =
+      comments.some((c) => c.id === editingId) ||
+      Object.values(replies).some((list) => list.some((r) => r.id === editingId));
+    if (!exists) setEditingId(null);
+  }, [comments, replies, editingId]);
 
   const ownDisplayName = useMemo<string>(() => {
     const meta = user?.user_metadata ?? {};
@@ -282,9 +310,31 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
     return err;
   };
 
+  const startReply = (parentId: string, mentionName: string | null) => {
+    if (mutating) return;
+    setEditingId(null);
+    setReplyingTo({ parentId, mention: mentionName ? `@${mentionName} ` : '' });
+    setExpandedThreads((prev) => ({ ...prev, [parentId]: true }));
+  };
+
+  const handleSendReply = async (content: string): Promise<string | null> => {
+    if (!replyingTo) return null;
+    setPostingReply(true);
+    const err = await addReply(replyingTo.parentId, content);
+    setPostingReply(false);
+    if (!err) setReplyingTo(null);
+    return err;
+  };
+
   const confirmDelete = (comment: ProjectComment) => {
     if (mutating) return;
-    Alert.alert('Delete comment?', 'This comment will be permanently removed.', [
+    const replyCount = comment.parent_id ? 0 : (replies[comment.id] ?? []).length;
+    Alert.alert(
+      comment.parent_id ? 'Delete reply?' : 'Delete comment?',
+      replyCount > 0
+        ? `This comment and its ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'} will be permanently removed.`
+        : `This ${comment.parent_id ? 'reply' : 'comment'} will be permanently removed.`,
+      [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -300,6 +350,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
   };
 
   const renderComment = (comment: ProjectComment, index: number) => {
+    const isReply = !!comment.parent_id;
     const isOwn = !!user && comment.user_id === user.id;
     const profileName = displayNames[comment.user_id];
     const displayName = isOwn ? ownDisplayName : profileName || FALLBACK_DISPLAY_NAME;
@@ -333,15 +384,29 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
         <View
           style={[
             styles.commentCard,
+            isReply && styles.replyCard,
             isBeingEdited && styles.commentCardEditing,
             isDeleting && styles.commentCardDeleting,
           ]}
         >
           <View style={styles.commentHeader}>
-            <CommentAvatar uri={avatarUri} initials={initials} name={displayName} />
+            <PressableScale
+              onPress={() => onOpenUser?.(comment.user_id)}
+              disabled={!onOpenUser}
+              activeOpacity={0.7}
+              pressedScale={0.94}
+              accessibilityLabel={`View ${displayName}'s profile`}
+            >
+              <CommentAvatar uri={avatarUri} initials={initials} name={displayName} />
+            </PressableScale>
             <View style={styles.commentMeta}>
               <View style={styles.commentNameRow}>
-                <Text style={styles.commentName} numberOfLines={1}>
+                <Text
+                  style={styles.commentName}
+                  numberOfLines={1}
+                  onPress={onOpenUser ? () => onOpenUser(comment.user_id) : undefined}
+                  accessibilityRole={onOpenUser ? 'link' : undefined}
+                >
                   {displayName}
                 </Text>
                 {isOwn && (
@@ -402,8 +467,104 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
           ) : (
             <Text style={styles.commentBody}>{comment.content}</Text>
           )}
+
+          {/* Like + Reply */}
+          {!isBeingEdited && (commentLikesSupported || repliesSupported) && (
+            <View style={styles.commentFooter}>
+              {commentLikesSupported && (() => {
+                const like = commentLikes[comment.id];
+                const liked = like?.likedByMe ?? false;
+                return (
+                  <PressableScale
+                    style={styles.footerAction}
+                    onPress={() => toggleCommentLike(comment.id)}
+                    onLongPress={() => setLikersComment(comment.id)}
+                    delayLongPress={400}
+                    activeOpacity={0.6}
+                    pressedScale={0.9}
+                    hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                    accessibilityLabel={`${liked ? 'Unlike' : 'Like'} comment, ${like?.count ?? 0} likes`}
+                    accessibilityHint="Hold to see who liked this comment"
+                    accessibilityState={{ selected: liked, busy: !!commentLikePending[comment.id] }}
+                  >
+                    <HeartIcon
+                      size={13}
+                      filled={liked}
+                      color={liked ? '#FFFFFF' : STITCH_COLORS.onSurfaceVariant}
+                    />
+                    <Text style={[styles.footerText, liked && styles.footerTextOn]}>
+                      {like ? like.count : '–'}
+                    </Text>
+                  </PressableScale>
+                );
+              })()}
+              {repliesSupported && user && (
+                <PressableScale
+                  style={styles.footerAction}
+                  onPress={() =>
+                    startReply(
+                      comment.parent_id || comment.id,
+                      isReply && displayName !== FALLBACK_DISPLAY_NAME ? displayName : null
+                    )
+                  }
+                  disabled={mutating}
+                  activeOpacity={0.6}
+                  hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                  accessibilityLabel={`Reply to ${displayName}`}
+                >
+                  <CommentIcon size={13} color={STITCH_COLORS.onSurfaceVariant} />
+                  <Text style={styles.footerText}>Reply</Text>
+                </PressableScale>
+              )}
+            </View>
+          )}
         </View>
       </FadeInView>
+    );
+  };
+
+  /** A top-level comment with its replies and (optionally) a reply composer. */
+  const renderThread = (comment: ProjectComment, index: number) => {
+    const threadReplies = replies[comment.id] ?? [];
+    const expanded = !!expandedThreads[comment.id];
+    const shown = expanded ? threadReplies : threadReplies.slice(0, 2);
+    const hidden = threadReplies.length - shown.length;
+    const composing = replyingTo?.parentId === comment.id;
+    return (
+      <View key={comment.id}>
+        {renderComment(comment, index)}
+        {(threadReplies.length > 0 || composing) && (
+          <View style={styles.thread}>
+            {shown.map((r, i) => renderComment(r, i))}
+            {hidden > 0 && (
+              <PressableScale
+                style={styles.viewReplies}
+                onPress={() => setExpandedThreads((prev) => ({ ...prev, [comment.id]: true }))}
+                activeOpacity={0.6}
+              >
+                <Text style={styles.viewRepliesText}>
+                  View {hidden} more {hidden === 1 ? 'reply' : 'replies'}
+                </Text>
+              </PressableScale>
+            )}
+            {composing && (
+              <View style={[styles.commentCard, styles.replyCard]}>
+                <CommentEditor
+                  key={`reply-${comment.id}-${replyingTo?.mention}`}
+                  initialValue={replyingTo?.mention ?? ''}
+                  saving={postingReply}
+                  submitLabel="Reply"
+                  placeholder="Write a reply…"
+                  onSave={handleSendReply}
+                  onCancel={() => setReplyingTo(null)}
+                  onFocus={() => onInputFocus?.(listY.current + (cardY.current[comment.id] ?? 0))}
+                  onBlur={() => onInputBlur?.()}
+                />
+              </View>
+            )}
+          </View>
+        )}
+      </View>
     );
   };
 
@@ -411,6 +572,13 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 
   return (
     <View style={styles.section}>
+      <LikersSheet
+        kind="comment"
+        repositoryId={likersComment}
+        appName="Comment likes"
+        onClose={() => setLikersComment(null)}
+        onOpenUser={onOpenUser}
+      />
       {/* Header */}
       <View style={styles.headerRow}>
         <View style={styles.headerTitleRow}>
@@ -418,7 +586,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
           <Text style={styles.sectionTitle}>Comments</Text>
         </View>
         <View style={styles.countBadge}>
-          <Text style={styles.countBadgeText}>{loading ? '–' : total}</Text>
+          <Text style={styles.countBadgeText}>{loading ? '–' : allTotal}</Text>
         </View>
       </View>
 
@@ -515,7 +683,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
           }}
         >
           {error && <Text style={styles.inlineError}>{error}</Text>}
-          {comments.map(renderComment)}
+          {comments.map(renderThread)}
           {loadMoreError && <Text style={styles.inlineError}>{loadMoreError}</Text>}
           {hasMore && (
             <PressableScale
@@ -686,6 +854,46 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#262626',
     padding: 12,
+  },
+  replyCard: {
+    padding: 10,
+    borderRadius: 8,
+  },
+  thread: {
+    marginTop: 8,
+    marginLeft: 22,
+    paddingLeft: 12,
+    borderLeftWidth: 1,
+    borderLeftColor: '#262626',
+    gap: 8,
+  },
+  viewReplies: {
+    alignSelf: 'flex-start',
+    paddingVertical: 4,
+  },
+  viewRepliesText: {
+    fontSize: 12,
+    fontFamily: FONTS.sans.medium,
+    color: '#A1A1A1',
+  },
+  commentFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 18,
+    marginTop: 10,
+  },
+  footerAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  footerText: {
+    fontSize: 12,
+    fontFamily: FONTS.sans.medium,
+    color: STITCH_COLORS.onSurfaceVariant,
+  },
+  footerTextOn: {
+    color: '#FFFFFF',
   },
   commentCardEditing: {
     borderColor: '#454545',

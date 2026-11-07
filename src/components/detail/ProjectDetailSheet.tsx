@@ -48,6 +48,8 @@ interface ProjectDetailViewProps {
   onOpenProject?: (repo: Repository) => void;
   /** Show the founder's profile as an in-app screen (keeps the bottom nav). */
   onOpenPublisher?: (repo: Repository) => void;
+  /** Open any person's profile (likers, commenters). */
+  onOpenUserProfile?: (userId: string) => void;
 }
 
 export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
@@ -55,6 +57,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   onBack,
   onOpenProject,
   onOpenPublisher,
+  onOpenUserProfile,
 }) => {
   const [isLaunching, setIsLaunching] = useState<boolean>(false);
   const [publisherOpen, setPublisherOpen] = useState<boolean>(false);
@@ -297,6 +300,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           repositoryId={likersOpen ? repository.id : null}
           appName={repository.app_name}
           onClose={() => setLikersOpen(false)}
+          onOpenUser={onOpenUserProfile}
         />
 
         <PublisherProfileSheet
@@ -410,6 +414,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
             repositoryId={repository.id}
             onInputFocus={handleComposerFocus}
             onInputBlur={handleComposerBlur}
+            onOpenUser={onOpenUserProfile}
           />
         </View>
 

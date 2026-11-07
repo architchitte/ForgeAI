@@ -14,6 +14,8 @@ export interface ProjectComment {
   content: string;
   created_at: string;
   updated_at: string;
+  /** Top-level comment this replies to (null/undefined = top-level). */
+  parent_id?: string | null;
 }
 
 /** Aggregated like state for one repository, from the current user's view. */

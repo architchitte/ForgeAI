@@ -134,6 +134,10 @@ export type PublicEducation = Pick<
 /** A project publisher's public profile (from get_project_publisher). */
 export interface PublisherProfile {
   has_account: boolean;
+  /** Account id (same as public.profiles.id) — used to follow; never an email. */
+  user_id?: string | null;
+  /** Their project ids (get_user_profile only). */
+  project_ids?: string[];
   display_name: string | null;
   avatar_path: string | null;
   college: string | null;

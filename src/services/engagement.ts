@@ -175,40 +175,107 @@ export const unlikeRepository = async (
  * A newest-first window of comments (rows offset..offset+limit-1) for a
  * repository, plus the exact total count.
  */
+const COMMENT_COLUMNS = 'id, repository_id, user_id, content, created_at, updated_at';
+
+/**
+ * A newest-first window of TOP-LEVEL comments (rows offset..offset+limit-1)
+ * for a repository, plus totals. Falls back to all comments (no replies) if
+ * the replies migration (parent_id) hasn't been applied yet.
+ *  - total:     top-level comments (drives paging)
+ *  - allTotal:  every comment including replies (shown as the count)
+ */
 export const fetchComments = async (
   repositoryId: string,
   offset = 0,
   limit = COMMENTS_PAGE_SIZE
-): Promise<RepositoryResponse<{ comments: ProjectComment[]; total: number }>> => {
+): Promise<
+  RepositoryResponse<{
+    comments: ProjectComment[];
+    total: number;
+    allTotal: number;
+    repliesSupported: boolean;
+  }>
+> => {
   try {
-    const { data, error, count } = await supabase
-      .from('project_comments')
-      .select('id, repository_id, user_id, content, created_at, updated_at', {
-        count: 'exact',
-      })
-      .eq('repository_id', repositoryId)
-      .order('created_at', { ascending: false })
-      // id tiebreaker keeps page boundaries stable for equal timestamps.
-      .order('id', { ascending: false })
-      .range(offset, offset + limit - 1);
+    const page = (withReplies: boolean) => {
+      let q = supabase
+        .from('project_comments')
+        .select(withReplies ? `${COMMENT_COLUMNS}, parent_id` : COMMENT_COLUMNS, { count: 'exact' })
+        .eq('repository_id', repositoryId);
+      if (withReplies) q = q.is('parent_id', null);
+      return q
+        .order('created_at', { ascending: false })
+        // id tiebreaker keeps page boundaries stable for equal timestamps.
+        .order('id', { ascending: false })
+        .range(offset, offset + limit - 1);
+    };
 
+    let repliesSupported = true;
+    let { data, error, count } = await page(true);
+    if (error?.code === '42703') {
+      repliesSupported = false;
+      ({ data, error, count } = await page(false));
+    }
     if (error) {
       console.error('[EngagementService] fetchComments error:', error.message);
       return { data: null, error: toFriendlyError(error, 'Failed to load comments.') };
     }
 
-    const comments = (data || []) as ProjectComment[];
-    return { data: { comments, total: count ?? comments.length }, error: null };
+    const comments = (data || []) as unknown as ProjectComment[];
+    const total = count ?? comments.length;
+    let allTotal = total;
+    if (repliesSupported) {
+      const all = await supabase
+        .from('project_comments')
+        .select('id', { count: 'exact', head: true })
+        .eq('repository_id', repositoryId);
+      if (!all.error && typeof all.count === 'number') allTotal = all.count;
+    }
+    return { data: { comments, total, allTotal, repliesSupported }, error: null };
   } catch (err: any) {
     console.error('[EngagementService] Unexpected comments fetch error:', err);
     return { data: null, error: err?.message || 'Failed to load comments.' };
   }
 };
 
+/** Replies for several top-level comments, oldest first (batched). */
+export const fetchReplies = async (
+  parentIds: string[]
+): Promise<RepositoryResponse<Record<string, ProjectComment[]>>> => {
+  const byParent: Record<string, ProjectComment[]> = {};
+  if (parentIds.length === 0) return { data: byParent, error: null };
+  try {
+    for (let i = 0; i < parentIds.length; i += ID_CHUNK_SIZE) {
+      const chunk = parentIds.slice(i, i + ID_CHUNK_SIZE);
+      for (let from = 0; ; from += PAGE_SIZE) {
+        const { data, error } = await supabase
+          .from('project_comments')
+          .select(`${COMMENT_COLUMNS}, parent_id`)
+          .in('parent_id', chunk)
+          .order('created_at', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) {
+          console.error('[EngagementService] fetchReplies error:', error.message);
+          return { data: null, error: toFriendlyError(error, 'Failed to load replies.') };
+        }
+        const rows = (data || []) as ProjectComment[];
+        for (const r of rows) (byParent[r.parent_id as string] ||= []).push(r);
+        if (rows.length < PAGE_SIZE) break;
+      }
+    }
+    return { data: byParent, error: null };
+  } catch (err: any) {
+    return { data: null, error: err?.message || 'Failed to load replies.' };
+  }
+};
+
 export const createComment = async (
   repositoryId: string,
   userId: string | null | undefined,
-  content: string
+  content: string,
+  /** Top-level comment to reply to (replies are one level deep). */
+  parentId?: string | null
 ): Promise<RepositoryResponse<ProjectComment>> => {
   const uid = requireUserId(userId);
   if (!uid) return { data: null, error: NOT_SIGNED_IN };
@@ -218,7 +285,12 @@ export const createComment = async (
   try {
     const { data, error } = await supabase
       .from('project_comments')
-      .insert({ repository_id: repositoryId, user_id: uid, content: content.trim() })
+      .insert({
+        repository_id: repositoryId,
+        user_id: uid,
+        content: content.trim(),
+        ...(parentId ? { parent_id: parentId } : {}),
+      })
       .select('id, repository_id, user_id, content, created_at, updated_at')
       .single();
 

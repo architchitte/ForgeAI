@@ -25,7 +25,46 @@ export interface CommentEvent {
   created_at: string;
 }
 
-export type ActivityEvent = LikeEvent | CommentEvent;
+export interface FollowEvent {
+  kind: 'follow';
+  id: string;
+  /** Not tied to a project. */
+  repository_id: '';
+  user_id: string;
+  created_at: string;
+}
+
+export type ActivityEvent = LikeEvent | CommentEvent | FollowEvent;
+
+/** People who started following `userId` (newest first; [] before the migration). */
+export const fetchNewFollowers = async (
+  userId: string
+): Promise<RepositoryResponse<FollowEvent[]>> => {
+  try {
+    const { data, error } = await supabase
+      .from('follows')
+      .select('follower_id, created_at')
+      .eq('following_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(ACTIVITY_LIMIT);
+    if (error) {
+      if (error.code === 'PGRST205' || error.code === '42P01') return { data: [], error: null };
+      return { data: null, error: error.message };
+    }
+    return {
+      data: ((data || []) as { follower_id: string; created_at: string }[]).map((r) => ({
+        kind: 'follow' as const,
+        id: `${r.follower_id}-${r.created_at}`,
+        repository_id: '' as const,
+        user_id: r.follower_id,
+        created_at: r.created_at,
+      })),
+      error: null,
+    };
+  } catch (err: any) {
+    return { data: null, error: err?.message || 'Failed to load followers.' };
+  }
+};
 
 const ID_CHUNK_SIZE = 100;
 export const ACTIVITY_LIMIT = 100;

@@ -66,6 +66,20 @@ const AuthenticatedView: React.FC = () => {
   // Founder profile shown in-app (via one of their projects); sits above the
   // project page, so Back returns to wherever it was opened from.
   const [profileRepo, setProfileRepo] = useState<Repository | null>(null);
+  // …or a profile opened by account id (followers lists, Activity).
+  const [profileUserId, setProfileUserId] = useState<string | null>(null);
+  const openRepoProfile = useCallback((repo: Repository) => {
+    setProfileUserId(null);
+    setProfileRepo(repo);
+  }, []);
+  const openUserProfile = useCallback((id: string) => {
+    setProfileRepo(null);
+    setProfileUserId(id);
+  }, []);
+  const closeProfile = useCallback(() => {
+    setProfileRepo(null);
+    setProfileUserId(null);
+  }, []);
 
   // First-run tutorial: null = hidden, otherwise the current step index.
   // Decided once on mount so a metadata refresh mid-tour doesn't restart it.
@@ -80,6 +94,7 @@ const AuthenticatedView: React.FC = () => {
     if (!step) return;
     setSelectedRepo(null);
     setProfileRepo(null);
+    setProfileUserId(null);
     setActiveTab(step.tab);
   }, [tutorialStep]);
 
@@ -87,6 +102,7 @@ const AuthenticatedView: React.FC = () => {
     setTutorialStep(null);
     setSelectedRepo(null);
     setProfileRepo(null);
+    setProfileUserId(null);
     setActiveTab('discover');
     // Hide locally right away; a failed save only means it may show again.
     completeTutorial().catch((err: any) => {
@@ -111,9 +127,10 @@ const AuthenticatedView: React.FC = () => {
     setActiveTab(tab);
     setSelectedRepo(null);
     setProfileRepo(null);
+    setProfileUserId(null);
   };
 
-  const noOverlay = selectedRepo === null && profileRepo === null;
+  const noOverlay = selectedRepo === null && profileRepo === null && profileUserId === null;
   const isFeedVisible = activeTab === 'discover' && noOverlay;
   // Search also stays mounted, so a query survives opening a project / profile.
   const isSearchVisible = activeTab === 'search' && noOverlay;
@@ -165,6 +182,7 @@ const AuthenticatedView: React.FC = () => {
             isActive={isFeedVisible}
             onNavigateToSubmit={handleNavigateToSubmit}
             onSelectRepository={setSelectedRepo}
+            onOpenUserProfile={openUserProfile}
           />
         </FadeInView>
 
@@ -180,7 +198,7 @@ const AuthenticatedView: React.FC = () => {
           <SearchScreen
             isActive={isSearchVisible}
             onSelectRepository={setSelectedRepo}
-            onOpenProfile={setProfileRepo}
+            onOpenProfile={openRepoProfile}
           />
         </FadeInView>
 
@@ -188,8 +206,8 @@ const AuthenticatedView: React.FC = () => {
         {!isFeedVisible && !isSearchVisible && (
           <FadeInView
             key={
-              profileRepo
-                ? `profile-${profileRepo.id}`
+              profileRepo || profileUserId
+                ? `profile-${profileRepo?.id ?? profileUserId}`
                 : selectedRepo
                   ? `detail-${selectedRepo.id}`
                   : activeTab
@@ -197,13 +215,15 @@ const AuthenticatedView: React.FC = () => {
             offset={6}
             style={styles.screenTransition}
           >
-            {profileRepo ? (
+            {profileRepo || profileUserId ? (
               <PublisherProfileView
                 repository={profileRepo}
+                userId={profileUserId}
+                onOpenUser={openUserProfile}
                 backLabel={profileBackLabel}
-                onClose={() => setProfileRepo(null)}
+                onClose={closeProfile}
                 onOpenProject={(repo) => {
-                  setProfileRepo(null);
+                  closeProfile();
                   setSelectedRepo(repo);
                 }}
               />
@@ -212,10 +232,15 @@ const AuthenticatedView: React.FC = () => {
                 repository={selectedRepo}
                 onBack={() => setSelectedRepo(null)}
                 onOpenProject={setSelectedRepo}
-                onOpenPublisher={setProfileRepo}
+                onOpenPublisher={openRepoProfile}
+                onOpenUserProfile={openUserProfile}
               />
             ) : activeTab === 'activity' ? (
-              <ActivityScreen isActive onSelectRepository={setSelectedRepo} />
+              <ActivityScreen
+                isActive
+                onSelectRepository={setSelectedRepo}
+                onOpenUserProfile={openUserProfile}
+              />
             ) : activeTab === 'submit' ? (
               <SubmitBlueprintScreen
                 onSuccess={() => {
@@ -225,6 +250,7 @@ const AuthenticatedView: React.FC = () => {
               />
             ) : (
               <AuthenticatedPlaceholderScreen
+                onOpenUserProfile={openUserProfile}
                 onNavigateToSubmitBlueprint={handleNavigateToSubmit}
                 onSelectRepository={setSelectedRepo}
               />

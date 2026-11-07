@@ -35,6 +35,8 @@ export interface ProfileCardProps {
   accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
   testID?: string;
+  /** Extra content at the bottom of the card (follow counts / button). */
+  footer?: React.ReactNode;
 }
 
 /**
@@ -57,6 +59,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
   accessibilityLabel,
   style,
   testID,
+  footer,
 }) => {
   const [avatarFailed, setAvatarFailed] = useState<boolean>(false);
   useEffect(() => setAvatarFailed(false), [avatarUri]);
@@ -127,6 +130,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
           {bio.trim()}
         </Text>
       ) : null}
+      {footer}
     </>
   );
 
