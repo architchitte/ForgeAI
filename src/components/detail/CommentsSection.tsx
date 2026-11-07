@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -49,17 +49,130 @@ const formatTimestamp = (iso: string): string => {
 const wasEdited = (c: ProjectComment): boolean =>
   new Date(c.updated_at).getTime() - new Date(c.created_at).getTime() > 1000;
 
+interface CommentEditorProps {
+  initialValue: string;
+  saving: boolean;
+  /** Resolves to an error message, or null on success. */
+  onSave: (content: string) => Promise<string | null>;
+  onCancel: () => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+}
+
+/**
+ * Inline editor shown inside the comment's own card, separate from the
+ * new-comment composer. Save is enabled only for a valid, changed comment.
+ */
+const CommentEditor: React.FC<CommentEditorProps> = ({
+  initialValue,
+  saving,
+  onSave,
+  onCancel,
+  onFocus,
+  onBlur,
+}) => {
+  const [value, setValue] = useState<string>(initialValue);
+  const [focused, setFocused] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const trimmed = value.trim();
+  const validationError = validateCommentContent(value);
+  const unchanged = trimmed === initialValue.trim();
+  const canSave = !validationError && !unchanged && !saving;
+  const remaining = COMMENT_MAX_LENGTH - trimmed.length;
+  const shownError = saveError || validationError;
+
+  const handleSave = async () => {
+    if (!canSave) return;
+    setSaveError(null);
+    const err = await onSave(value);
+    if (err) setSaveError(err);
+  };
+
+  return (
+    <View>
+      <FocusBorderView
+        focused={focused}
+        hasError={Boolean(shownError)}
+        style={styles.editor}
+      >
+        <TextInput
+          style={styles.editorInput}
+          value={value}
+          onChangeText={(t) => {
+            setValue(t);
+            if (saveError) setSaveError(null);
+          }}
+          autoFocus
+          editable={!saving}
+          multiline
+          maxLength={COMMENT_MAX_LENGTH}
+          textAlignVertical="top"
+          autoCapitalize="sentences"
+          placeholder="Edit your comment…"
+          placeholderTextColor={STITCH_COLORS.placeholder}
+          onFocus={() => {
+            setFocused(true);
+            onFocus?.();
+          }}
+          onBlur={() => {
+            setFocused(false);
+            onBlur?.();
+          }}
+          accessibilityLabel="Edit comment"
+        />
+      </FocusBorderView>
+
+      <View style={styles.editorFooter}>
+        <Text style={styles.counterText}>
+          {trimmed.length >= COUNTER_THRESHOLD ? `${remaining} characters left` : ''}
+        </Text>
+        <PressableScale
+          style={[styles.editorCancel, saving && styles.disabled]}
+          onPress={onCancel}
+          disabled={saving}
+          activeOpacity={0.7}
+          accessibilityLabel="Cancel editing"
+        >
+          <Text style={styles.editorCancelText}>Cancel</Text>
+        </PressableScale>
+        <PressableScale
+          style={[styles.editorSave, !canSave && styles.postButtonDisabled]}
+          onPress={handleSave}
+          disabled={!canSave}
+          activeOpacity={0.8}
+          pressedScale={0.96}
+          accessibilityState={{ disabled: !canSave, busy: saving }}
+          accessibilityLabel="Save comment"
+        >
+          {saving ? (
+            <ActivityIndicator size="small" color="#000000" />
+          ) : (
+            <Text style={styles.postButtonText}>Save</Text>
+          )}
+        </PressableScale>
+      </View>
+
+      {shownError && <Text style={styles.inlineError}>{shownError}</Text>}
+    </View>
+  );
+};
+
 interface CommentsSectionProps {
   repositoryId: string;
-  /** Called with the composer's y offset inside this section when it gains focus. */
-  onComposerFocus?: (offsetY: number) => void;
-  onComposerBlur?: () => void;
+  /**
+   * Called when a text input in this section (composer or inline editor)
+   * gains focus, with its y offset inside the section, so the parent can
+   * scroll it above the keyboard.
+   */
+  onInputFocus?: (offsetY: number) => void;
+  onInputBlur?: () => void;
 }
 
 export const CommentsSection: React.FC<CommentsSectionProps> = ({
   repositoryId,
-  onComposerFocus,
-  onComposerBlur,
+  onInputFocus,
+  onInputBlur,
 }) => {
   const { user } = useAuth();
   const {
@@ -79,14 +192,26 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
     removeComment,
   } = useProjectComments(repositoryId);
 
+  // New-comment composer (top of the section) — never used for editing.
   const [draft, setDraft] = useState<string>('');
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [focused, setFocused] = useState<boolean>(false);
+  const [posting, setPosting] = useState<boolean>(false);
+  // Inline editing happens inside the comment's own card.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [savingEdit, setSavingEdit] = useState<boolean>(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const inputRef = useRef<TextInputInstance>(null);
   const composerY = useRef(0);
+  // Layout offsets used to scroll a focused inline editor into view.
+  const listY = useRef(0);
+  const cardY = useRef<Record<string, number>>({});
+
+  // Drop edit mode if the comment disappears (e.g. deleted elsewhere).
+  useEffect(() => {
+    if (editingId && !comments.some((c) => c.id === editingId)) setEditingId(null);
+  }, [comments, editingId]);
 
   const ownDisplayName = useMemo<string>(() => {
     const meta = user?.user_metadata ?? {};
@@ -98,33 +223,34 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
   const validationError = trimmedLength > 0 ? validateCommentContent(draft) : null;
   const canSubmit = !!user && trimmedLength > 0 && !validationError && !mutating;
 
-  const resetComposer = () => {
-    setDraft('');
-    setEditingId(null);
-    setSubmitError(null);
-  };
-
   const handleSubmit = async () => {
     if (!canSubmit) {
       if (trimmedLength === 0) setSubmitError('Comment cannot be empty.');
       return;
     }
     setSubmitError(null);
-    const err = editingId ? await editComment(editingId, draft) : await addComment(draft);
+    setPosting(true);
+    const err = await addComment(draft);
+    setPosting(false);
     if (err) {
       setSubmitError(err);
       return;
     }
-    resetComposer();
+    setDraft('');
     inputRef.current?.blur();
   };
 
   const startEditing = (comment: ProjectComment) => {
     if (mutating) return;
     setEditingId(comment.id);
-    setDraft(comment.content);
-    setSubmitError(null);
-    inputRef.current?.focus();
+  };
+
+  const handleSaveEdit = async (commentId: string, content: string): Promise<string | null> => {
+    setSavingEdit(true);
+    const err = await editComment(commentId, content);
+    setSavingEdit(false);
+    if (!err) setEditingId(null);
+    return err;
   };
 
   const confirmDelete = (comment: ProjectComment) => {
@@ -138,11 +264,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
           setDeletingId(comment.id);
           const err = await removeComment(comment.id);
           setDeletingId(null);
-          if (err) {
-            Alert.alert('Could not delete comment', err);
-          } else if (editingId === comment.id) {
-            resetComposer();
-          }
+          if (err) Alert.alert('Could not delete comment', err);
         },
       },
     ]);
@@ -165,7 +287,14 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
     const isBeingEdited = editingId === comment.id;
 
     return (
-      <FadeInView key={comment.id} delay={staggerDelay(index)} offset={4}>
+      <FadeInView
+        key={comment.id}
+        delay={staggerDelay(index)}
+        offset={4}
+        onLayout={(e) => {
+          cardY.current[comment.id] = e.nativeEvent.layout.y;
+        }}
+      >
         <View
           style={[
             styles.commentCard,
@@ -198,7 +327,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
               </Text>
             </View>
 
-            {isOwn && (
+            {isOwn && !isBeingEdited && (
               <View style={styles.commentActions}>
                 {isDeleting ? (
                   <ActivityIndicator size="small" color={STITCH_COLORS.onSurfaceVariant} />
@@ -230,7 +359,20 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
             )}
           </View>
 
-          <Text style={styles.commentBody}>{comment.content}</Text>
+          {isBeingEdited ? (
+            <CommentEditor
+              initialValue={comment.content}
+              saving={savingEdit}
+              onSave={(content) => handleSaveEdit(comment.id, content)}
+              onCancel={() => setEditingId(null)}
+              onFocus={() =>
+                onInputFocus?.(listY.current + (cardY.current[comment.id] ?? 0))
+              }
+              onBlur={() => onInputBlur?.()}
+            />
+          ) : (
+            <Text style={styles.commentBody}>{comment.content}</Text>
+          )}
         </View>
       </FadeInView>
     );
@@ -257,20 +399,6 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
           composerY.current = e.nativeEvent.layout.y;
         }}
       >
-        {editingId && (
-          <View style={styles.editingBanner}>
-            <Text style={styles.editingBannerText}>Editing your comment</Text>
-            <PressableScale
-              onPress={resetComposer}
-              disabled={mutating}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              activeOpacity={0.6}
-            >
-              <Text style={styles.editingCancel}>Cancel</Text>
-            </PressableScale>
-          </View>
-        )}
-
         <FocusBorderView
           focused={focused}
           hasError={Boolean(validationError || submitError)}
@@ -286,20 +414,20 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
             }}
             placeholder={user ? 'Share feedback on this project…' : 'Sign in to comment'}
             placeholderTextColor={STITCH_COLORS.placeholder}
-            editable={!!user && !mutating}
+            editable={!!user && !posting}
             multiline
             maxLength={COMMENT_MAX_LENGTH}
             textAlignVertical="top"
             autoCapitalize="sentences"
             onFocus={() => {
               setFocused(true);
-              onComposerFocus?.(composerY.current);
+              onInputFocus?.(composerY.current);
             }}
             onBlur={() => {
               setFocused(false);
-              onComposerBlur?.();
+              onInputBlur?.();
             }}
-            accessibilityLabel={editingId ? 'Edit comment' : 'Write a comment'}
+            accessibilityLabel="Write a comment"
           />
 
           <View style={styles.composerFooter}>
@@ -316,12 +444,12 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
               disabled={!canSubmit}
               activeOpacity={0.8}
               pressedScale={0.96}
-              accessibilityState={{ disabled: !canSubmit, busy: mutating }}
+              accessibilityState={{ disabled: !canSubmit, busy: posting }}
             >
-              {mutating && !deletingId ? (
+              {posting ? (
                 <ActivityIndicator size="small" color="#000000" />
               ) : (
-                <Text style={styles.postButtonText}>{editingId ? 'Save' : 'Post'}</Text>
+                <Text style={styles.postButtonText}>Post</Text>
               )}
             </PressableScale>
           </View>
@@ -351,7 +479,12 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
           <Text style={styles.stateText}>Be the first to share feedback on this project.</Text>
         </View>
       ) : (
-        <View style={styles.list}>
+        <View
+          style={styles.list}
+          onLayout={(e) => {
+            listY.current = e.nativeEvent.layout.y;
+          }}
+        >
           {error && <Text style={styles.inlineError}>{error}</Text>}
           {comments.map(renderComment)}
           {loadMoreError && <Text style={styles.inlineError}>{loadMoreError}</Text>}
@@ -414,21 +547,50 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.sans.semibold,
     color: '#EDEDED',
   },
-  editingBanner: {
+  editor: {
+    backgroundColor: '#000000',
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  editorInput: {
+    minHeight: 56,
+    maxHeight: 180,
+    color: '#EDEDED',
+    fontSize: 13.5,
+    lineHeight: 20,
+    fontFamily: FONTS.sans.regular,
+    paddingVertical: 2,
+  },
+  editorFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 6,
+    gap: 8,
+    marginTop: 8,
   },
-  editingBannerText: {
-    fontSize: 12,
+  editorCancel: {
+    height: 30,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#333333',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editorCancelText: {
+    fontSize: 12.5,
     fontFamily: FONTS.sans.medium,
-    color: '#A1A1A1',
+    color: '#EDEDED',
   },
-  editingCancel: {
-    fontSize: 12,
-    fontFamily: FONTS.sans.semibold,
-    color: '#FFFFFF',
+  editorSave: {
+    minWidth: 60,
+    height: 30,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   composer: {
     backgroundColor: '#000000',

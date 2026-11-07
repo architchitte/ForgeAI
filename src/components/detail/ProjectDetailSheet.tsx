@@ -376,8 +376,8 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
         >
           <CommentsSection
             repositoryId={repository.id}
-            onComposerFocus={handleComposerFocus}
-            onComposerBlur={handleComposerBlur}
+            onInputFocus={handleComposerFocus}
+            onInputBlur={handleComposerBlur}
           />
         </View>
 
