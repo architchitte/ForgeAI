@@ -48,6 +48,7 @@ import { TutorialOverlay } from './src/components/onboarding/TutorialOverlay';
 import { TUTORIAL_STEPS, shouldShowTutorial } from './src/constants/tutorial';
 import { useProfileSync } from './src/hooks/useProfileSync';
 import { LikesProvider } from './src/context/LikesContext';
+import { ResetPasswordScreen } from './src/screens/auth/ResetPasswordScreen';
 
 type AuthenticatedTab = 'discover' | 'submit' | 'account';
 
@@ -257,7 +258,7 @@ const AuthenticatedView: React.FC = () => {
 };
 
 const MainNavigator: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, passwordRecovery } = useAuth();
   const [authScreen, setAuthScreen] = useState<'login' | 'signup'>('login');
 
   // Fonts are already loaded by the time this renders; hide once auth is ready.
@@ -275,13 +276,16 @@ const MainNavigator: React.FC = () => {
   }
 
   // Keyed fade so moving between Login, Sign Up and the app feels continuous.
-  const screenKey = user ? 'app' : authScreen;
+  const screenKey = user ? (passwordRecovery ? 'recovery' : 'app') : authScreen;
 
   return (
     // Static dark backdrop so the fade never reveals the default window colour.
     <View style={styles.rootBackdrop}>
       <FadeInView key={screenKey} offset={0} style={styles.rootTransition}>
-        {user ? (
+        {user && passwordRecovery ? (
+          // Opened a password-recovery link: set the new password first.
+          <ResetPasswordScreen />
+        ) : user ? (
           <LikesProvider>
             <AuthenticatedView />
           </LikesProvider>

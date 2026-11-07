@@ -35,6 +35,16 @@ import {
   rowsToSelection,
 } from '../../services/technologies';
 import { PRIVACY_POLICY_URL } from '../../constants/privacy';
+import { useOwnProfile } from '../../hooks/useOwnProfile';
+import { getAvatarUrl } from '../../services/ownProfile';
+import { pickValidatedImage } from '../../services/screenshotFiles';
+import { fetchCommentCounts, fetchLikeSummaries } from '../../services/engagement';
+import {
+  EditProfileModal,
+  PersonalInfoValues,
+} from '../../components/profile/EditProfileModal';
+import { EducationSection } from '../../components/profile/EducationSection';
+import { AccountSecuritySection } from '../../components/profile/AccountSecuritySection';
 import { PressableScale } from '../../components/animation/PressableScale';
 import { FadeInView } from '../../components/animation/FadeInView';
 import { staggerDelay } from '../../components/animation/motion';
@@ -46,6 +56,10 @@ import {
   ArrowRightIcon,
   TrashIcon,
   RocketIcon,
+  CameraIcon,
+  MapPinIcon,
+  HeartIcon,
+  CommentIcon,
 } from '../../components/common/AppIcons';
 
 interface AuthenticatedPlaceholderScreenProps {
@@ -62,13 +76,22 @@ export const AuthenticatedPlaceholderScreen: React.FC<
   const fullName =
     (user?.user_metadata?.full_name ||
       user?.user_metadata?.name ||
-      'Alex Chen') as string;
+      user?.user_metadata?.user_name ||
+      'Your name') as string;
 
-  // Dynamic Avatar (from Google/OAuth or initials circle fallback)
-  const avatarUrl =
+  // Profile data (avatar + private details) from Supabase.
+  const ownProfile = useOwnProfile();
+
+  // Avatar: uploaded picture → Google/OAuth picture (the default) → initials.
+  const oauthAvatarUrl =
     (user?.user_metadata?.avatar_url as string) ||
     (user?.user_metadata?.picture as string) ||
     null;
+  const avatarUrl = ownProfile.profile?.avatar_path
+    ? getAvatarUrl(ownProfile.profile.avatar_path)
+    : oauthAvatarUrl;
+  const [avatarFailed, setAvatarFailed] = useState<boolean>(false);
+  useEffect(() => setAvatarFailed(false), [avatarUrl]);
 
   const userInitials = (() => {
     const parts = fullName.trim().split(/\s+/).filter(Boolean);
@@ -81,12 +104,13 @@ export const AuthenticatedPlaceholderScreen: React.FC<
     return 'U';
   })();
 
-  // Edit Name State
-  const [isEditingName, setIsEditingName] = useState<boolean>(false);
-  const [editedName, setEditedName] = useState<string>(fullName);
-  const [editedUniversity, setEditedUniversity] = useState<string>('');
+  // Edit Profile sheet
+  const [editProfileOpen, setEditProfileOpen] = useState<boolean>(false);
   const [savingName, setSavingName] = useState<boolean>(false);
-  const [nameError, setNameError] = useState<string | null>(null);
+
+  // Engagement received on my projects (batched: one likes + one comments query)
+  const [projectLikes, setProjectLikes] = useState<Record<string, number>>({});
+  const [projectComments, setProjectComments] = useState<Record<string, number>>({});
 
   // User Projects State
   const [myProjects, setMyProjects] = useState<Repository[]>([]);
@@ -242,18 +266,6 @@ export const AuthenticatedPlaceholderScreen: React.FC<
     );
   };
 
-  // Sync edit fields when user metadata changes
-  useEffect(() => {
-    setEditedName(fullName);
-  }, [fullName]);
-
-  const handleStartEdit = () => {
-    setEditedName(fullName);
-    setEditedUniversity(university);
-    setNameError(null);
-    setIsEditingName(true);
-  };
-
   // Load user's submitted blueprints
   const loadUserProjects = useCallback(async () => {
     if (!user?.email) {
@@ -266,39 +278,57 @@ export const AuthenticatedPlaceholderScreen: React.FC<
     if (result.error) {
       setProjectsError(result.error);
     } else {
-      setMyProjects(result.data || []);
+      const projects = result.data || [];
+      setMyProjects(projects);
+      const ids = projects.map((p) => p.id);
+      Promise.all([fetchLikeSummaries(ids, user.id), fetchCommentCounts(ids)]).then(
+        ([likes, comments]) => {
+          if (likes.data) {
+            setProjectLikes(
+              Object.fromEntries(Object.entries(likes.data).map(([id, s]) => [id, s.count]))
+            );
+          }
+          if (comments.data) setProjectComments(comments.data);
+        }
+      );
     }
     setLoadingProjects(false);
-  }, [user?.email]);
+  }, [user?.email, user?.id]);
 
   useEffect(() => {
     loadUserProjects();
   }, [loadUserProjects]);
 
-  // Handle Save Name
-  const handleSaveName = async () => {
-    const trimmed = editedName.trim();
-    if (!trimmed) {
-      setNameError('Name cannot be empty.');
-      return;
-    }
-    const trimmedUniversity = editedUniversity.trim();
-    if (trimmedUniversity.length > 120) {
-      setNameError('University cannot exceed 120 characters.');
-      return;
-    }
-    const nextUniversity = trimmedUniversity || null;
-
-    setNameError(null);
+  // Save Edit Profile: name + college keep using the existing auth-metadata
+  // flow (copied onto projects), city / country / bio go to profile_details.
+  const handleSaveProfile = async (values: PersonalInfoValues): Promise<string | null> => {
+    const trimmed = values.fullName.trim();
+    const nextUniversity = values.college.trim() || null;
     setSavingName(true);
-    try {
-      await updateUserProfile({ name: trimmed, university: nextUniversity });
-      setIsEditingName(false);
-    } catch (err: any) {
-      setNameError(err?.message || 'Failed to update profile.');
-      setSavingName(false);
-      return;
+
+    const nameChanged =
+      trimmed !== fullName.trim() || (nextUniversity || '') !== (university || '');
+    if (nameChanged) {
+      try {
+        await updateUserProfile({ name: trimmed, university: nextUniversity });
+      } catch (err: any) {
+        setSavingName(false);
+        return err?.message || 'Failed to update profile.';
+      }
     }
+
+    const detailsError = await ownProfile.saveDetails({
+      city: values.city,
+      country: values.country,
+      bio: values.bio,
+    });
+    if (detailsError) {
+      setSavingName(false);
+      return nameChanged
+        ? `Your name and college were saved, but your other details were not: ${detailsError}`
+        : detailsError;
+    }
+    setEditProfileOpen(false);
 
     // student_name and university are copied onto each project at publish
     // time, so keep the user's existing projects in sync with the profile.
@@ -324,13 +354,62 @@ export const AuthenticatedPlaceholderScreen: React.FC<
       }
     }
     setSavingName(false);
+    return null;
   };
 
-  const handleCancelEdit = () => {
-    setEditedName(fullName);
-    setEditedUniversity(university);
-    setNameError(null);
-    setIsEditingName(false);
+  // Profile picture: choose (with square crop) / replace / remove.
+  const pickAndUploadAvatar = async () => {
+    const picked = await pickValidatedImage({ cropAspect: [1, 1] });
+    if (picked.canceled) return;
+    if (picked.error || !picked.data) {
+      Alert.alert('Cannot use this image', picked.error || 'Please choose another image.');
+      return;
+    }
+    const { error, warning } = await ownProfile.changeAvatar(picked.data);
+    if (error) Alert.alert('Upload failed', error);
+    else Alert.alert('Profile picture updated', warning || 'Your new picture is live.');
+  };
+
+  const handleAvatarPress = () => {
+    if (ownProfile.avatarBusy) return;
+    const hasUpload = !!ownProfile.profile?.avatar_path;
+    Alert.alert('Profile picture', 'JPG, PNG or WebP, up to 5 MB. You can crop it after choosing.', [
+      { text: hasUpload ? 'Choose a new photo' : 'Choose from gallery', onPress: pickAndUploadAvatar },
+      ...(hasUpload
+        ? [
+            {
+              text: 'Remove photo',
+              style: 'destructive' as const,
+              onPress: () =>
+                Alert.alert('Remove profile picture?', 'Your default avatar will be shown instead.', [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Remove',
+                    style: 'destructive',
+                    onPress: async () => {
+                      const { error, warning } = await ownProfile.clearAvatar();
+                      if (error) Alert.alert('Could not remove picture', error);
+                      else if (warning) Alert.alert('Picture removed', warning);
+                    },
+                  },
+                ]),
+            },
+          ]
+        : []),
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const location = [ownProfile.details?.city, ownProfile.details?.country]
+    .filter((v): v is string => !!v && v.trim().length > 0)
+    .join(', ');
+  const bio = ownProfile.details?.bio?.trim() || '';
+  const personalInfo: PersonalInfoValues = {
+    fullName: fullName === 'Your name' ? '' : fullName,
+    college: university,
+    city: ownProfile.details?.city ?? '',
+    country: ownProfile.details?.country ?? '',
+    bio: ownProfile.details?.bio ?? '',
   };
 
   const handleLogoutPress = () => {
@@ -390,103 +469,73 @@ export const AuthenticatedPlaceholderScreen: React.FC<
         {/* 1. Profile Overview Card */}
         <View style={styles.overviewCard}>
           <View style={styles.avatarInfoRow}>
-            {/* Avatar with Verified Green Check Badge (Dynamic or Stylized Initials) */}
-            <View style={styles.avatarWrap}>
-              {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={styles.avatarImg} />
+            {/* Avatar — tap to upload / replace / remove */}
+            <PressableScale
+              style={styles.avatarWrap}
+              onPress={handleAvatarPress}
+              disabled={ownProfile.avatarBusy}
+              activeOpacity={0.85}
+              pressedScale={0.95}
+              accessibilityLabel="Change profile picture"
+            >
+              {avatarUrl && !avatarFailed ? (
+                <Image
+                  source={{ uri: avatarUrl }}
+                  style={styles.avatarImg}
+                  onError={() => setAvatarFailed(true)}
+                />
               ) : (
                 <View style={styles.avatarInitialsContainer}>
                   <Text style={styles.avatarInitialsText}>{userInitials}</Text>
                 </View>
               )}
-              <View style={styles.verifiedCheckBadge}>
-                <Text style={styles.checkIconText}>✓</Text>
-              </View>
-            </View>
-
-            {/* User Info & Inline Edit */}
-            <View style={styles.userInfoCol}>
-              {!isEditingName ? (
-                <>
-                <View style={styles.nameRow}>
-                  <Text style={styles.userNameText} numberOfLines={1}>
-                    {fullName}
-                  </Text>
-                  <PressableScale
-                    onPress={handleStartEdit}
-                    style={styles.editIconBtn}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    activeOpacity={0.7}
-                  >
-                    <EditIcon size={13} color={STITCH_COLORS.outline} />
-                  </PressableScale>
-                </View>
-                <Text
-                  style={[styles.universityText, !university && styles.universityPlaceholder]}
-                >
-                  {university || 'Add your university'}
-                </Text>
-                </>
-              ) : (
-                <View style={styles.nameEditBox}>
-                  <TextInput
-                    style={styles.nameInput}
-                    value={editedName}
-                    onChangeText={(t) => {
-                      setEditedName(t);
-                      if (nameError) setNameError(null);
-                    }}
-                    placeholder="Enter full name"
-                    placeholderTextColor={STITCH_COLORS.outline}
-                    autoFocus
-                  />
-                  <TextInput
-                    style={[styles.nameInput, styles.universityInput]}
-                    value={editedUniversity}
-                    onChangeText={(t) => {
-                      setEditedUniversity(t);
-                      if (nameError) setNameError(null);
-                    }}
-                    placeholder="University (optional)"
-                    placeholderTextColor={STITCH_COLORS.outline}
-                    maxLength={120}
-                    testID="university-input"
-                  />
-                  <View style={styles.nameEditBtnRow}>
-                    <PressableScale
-                      style={styles.saveNameBtn}
-                      onPress={handleSaveName}
-                      disabled={savingName}
-                      activeOpacity={0.7}
-                    >
-                      {savingName ? (
-                        <ActivityIndicator size="small" color={STITCH_COLORS.onPrimary} />
-                      ) : (
-                        <Text style={styles.saveNameBtnText}>Save</Text>
-                      )}
-                    </PressableScale>
-                    <PressableScale
-                      style={styles.cancelNameBtn}
-                      onPress={handleCancelEdit}
-                      disabled={savingName}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.cancelNameBtnText}>Cancel</Text>
-                    </PressableScale>
-                  </View>
-                  {nameError && <Text style={styles.nameErrorText}>{nameError}</Text>}
+              {ownProfile.avatarBusy && (
+                <View style={styles.avatarBusyOverlay}>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
                 </View>
               )}
+              <View style={styles.avatarEditBadge}>
+                <CameraIcon size={11} color="#000000" />
+              </View>
+            </PressableScale>
+
+            {/* Name, college, location */}
+            <View style={styles.userInfoCol}>
+              <Text style={styles.userNameText}>{fullName}</Text>
+              <Text
+                style={[styles.universityText, !university && styles.universityPlaceholder]}
+              >
+                {university || 'Add your college / university'}
+              </Text>
+              {location ? (
+                <View style={styles.locationRow}>
+                  <MapPinIcon size={11} color="#A1A1A1" />
+                  <Text style={styles.locationText}>{location}</Text>
+                </View>
+              ) : null}
 
               {/* Verified Email Pill */}
               <View style={styles.verifiedEmailPill}>
                 <ShieldCheckIcon size={13} color={STITCH_COLORS.primaryContainer} />
                 <Text style={styles.verifiedEmailText} numberOfLines={1}>
-                  {user?.email || 'alex.chen@university.edu'}
+                  {user?.email || ''}
                 </Text>
               </View>
             </View>
           </View>
+
+          {bio ? <Text style={styles.bioText}>{bio}</Text> : null}
+
+          <PressableScale
+            style={styles.editProfileButton}
+            onPress={() => setEditProfileOpen(true)}
+            activeOpacity={0.8}
+            pressedScale={0.98}
+            testID="edit-profile-button"
+          >
+            <EditIcon size={13} color="#EDEDED" />
+            <Text style={styles.editProfileText}>Edit Profile</Text>
+          </PressableScale>
 
           {/* Quick Stats Banner — Projects Count */}
           <View style={styles.bentoGrid}>
@@ -502,7 +551,48 @@ export const AuthenticatedPlaceholderScreen: React.FC<
           </View>
         </View>
 
-        {/* 2. My Submitted Projects Section */}
+        {/* 2. Personal Information */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionHeading}>Personal Information</Text>
+            <PressableScale
+              onPress={() => setEditProfileOpen(true)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.6}
+              accessibilityLabel="Edit personal information"
+            >
+              <Text style={styles.sectionAction}>Edit</Text>
+            </PressableScale>
+          </View>
+          <View style={styles.infoCard}>
+            {ownProfile.loading ? (
+              <ActivityIndicator size="small" color={STITCH_COLORS.onSurfaceVariant} />
+            ) : (
+              [
+                { label: 'Full name', value: personalInfo.fullName },
+                { label: 'College / University', value: personalInfo.college },
+                { label: 'City', value: personalInfo.city },
+                { label: 'Country', value: personalInfo.country },
+                { label: 'Bio', value: personalInfo.bio },
+              ].map((row, idx) => (
+                <View key={row.label} style={[styles.infoRow, idx > 0 && styles.infoRowBorder]}>
+                  <Text style={styles.infoLabel}>{row.label}</Text>
+                  <Text style={[styles.infoValue, !row.value && styles.infoValueEmpty]}>
+                    {row.value || 'Not added'}
+                  </Text>
+                </View>
+              ))
+            )}
+            {ownProfile.error && !ownProfile.loading ? (
+              <Text style={styles.infoError}>{ownProfile.error}</Text>
+            ) : null}
+          </View>
+        </View>
+
+        {/* 3. Education */}
+        <EducationSection />
+
+        {/* 4. My Submitted Projects Section */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
@@ -580,6 +670,16 @@ export const AuthenticatedPlaceholderScreen: React.FC<
                   <Text style={styles.projectCardDesc} numberOfLines={2}>
                     {project.one_liner}
                   </Text>
+                  <View style={styles.engagementRow}>
+                    <View style={styles.engagementItem}>
+                      <HeartIcon size={12} color="#A1A1A1" />
+                      <Text style={styles.engagementText}>{projectLikes[project.id] ?? '–'}</Text>
+                    </View>
+                    <View style={styles.engagementItem}>
+                      <CommentIcon size={12} color="#A1A1A1" />
+                      <Text style={styles.engagementText}>{projectComments[project.id] ?? '–'}</Text>
+                    </View>
+                  </View>
 
                   {/* Card Bottom Actions */}
                   <View style={styles.cardBottomRow}>
@@ -629,12 +729,15 @@ export const AuthenticatedPlaceholderScreen: React.FC<
           )}
         </View>
 
-        {/* 3. Signed In & Log Out Card */}
+        {/* 5. Account Security */}
+        <AccountSecuritySection />
+
+        {/* 6. Signed In & Log Out Card */}
         <View style={styles.logoutCard}>
           <View style={styles.logoutInfoCol}>
             <Text style={styles.signedInLabel}>Signed In</Text>
             <Text style={styles.signedInEmail} numberOfLines={1}>
-              {user?.email || 'alex.chen@university.edu'}
+              {user?.email || ''}
             </Text>
           </View>
 
@@ -665,6 +768,14 @@ export const AuthenticatedPlaceholderScreen: React.FC<
           <Text style={styles.privacyLinkText}>Privacy Policy</Text>
         </PressableScale>
       </ScrollView>
+
+      <EditProfileModal
+        visible={editProfileOpen}
+        initial={personalInfo}
+        saving={savingName}
+        onClose={() => setEditProfileOpen(false)}
+        onSave={handleSaveProfile}
+      />
 
       {/* Edit Project Modal */}
       <Modal
@@ -868,6 +979,122 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 14,
   },
+  avatarBusyOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarEditBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#0A0A0A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 3,
+  },
+  locationText: {
+    flexShrink: 1,
+    fontSize: 12,
+    fontFamily: FONTS.sans.regular,
+    color: '#A1A1A1',
+  },
+  bioText: {
+    marginTop: 12,
+    fontSize: 13.5,
+    lineHeight: 20,
+    fontFamily: FONTS.sans.regular,
+    color: '#D4D4D4',
+  },
+  editProfileButton: {
+    marginTop: 14,
+    height: 38,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#333333',
+    backgroundColor: '#111111',
+  },
+  editProfileText: {
+    fontSize: 13,
+    fontFamily: FONTS.sans.semibold,
+    color: '#EDEDED',
+  },
+  sectionAction: {
+    fontSize: 12.5,
+    fontFamily: FONTS.sans.medium,
+    color: '#A1A1A1',
+  },
+  infoCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#262626',
+    backgroundColor: '#0A0A0A',
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+  },
+  infoRow: {
+    paddingVertical: 10,
+    gap: 2,
+  },
+  infoRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: '#171717',
+  },
+  infoLabel: {
+    fontSize: 11,
+    fontFamily: FONTS.sans.medium,
+    color: '#737373',
+  },
+  infoValue: {
+    fontSize: 13.5,
+    lineHeight: 19,
+    fontFamily: FONTS.sans.regular,
+    color: '#EDEDED',
+  },
+  infoValueEmpty: {
+    color: '#525252',
+  },
+  infoError: {
+    paddingBottom: 10,
+    fontSize: 12,
+    fontFamily: FONTS.sans.regular,
+    color: '#737373',
+  },
+  engagementRow: {
+    flexDirection: 'row',
+    gap: 14,
+    marginTop: 8,
+  },
+  engagementItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  engagementText: {
+    fontSize: 12,
+    fontFamily: FONTS.mono.medium,
+    color: '#A1A1A1',
+  },
   avatarWrap: {
     width: 64,
     height: 64,
@@ -895,31 +1122,8 @@ const styles = StyleSheet.create({
     color: STITCH_COLORS.primary,
     letterSpacing: 0.5,
   },
-  verifiedCheckBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: STITCH_COLORS.tertiaryContainer, // #006e4b
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#ffffff',
-  },
-  checkIconText: {
-    fontSize: 10,
-    fontFamily: FONTS.sans.semibold,
-    color: '#ffffff',
-  },
   userInfoCol: {
     flex: 1,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
   },
   userNameText: {
     fontSize: 19,
@@ -927,70 +1131,10 @@ const styles = StyleSheet.create({
     color: STITCH_COLORS.onSurface, // #131b2e
     letterSpacing: -0.3,
   },
-  editIconBtn: {
-    padding: 4,
-    borderRadius: 6,
-  },
   editIconText: {
     fontSize: 14,
     fontFamily: FONTS.sans.regular,
     color: STITCH_COLORS.onSurfaceVariant, // #464555
-  },
-  nameEditBox: {
-    marginBottom: 6,
-  },
-  nameInput: {
-    backgroundColor: STITCH_COLORS.surfaceContainerLow,
-    fontSize: 16,
-    fontFamily: FONTS.sans.semibold,
-    color: STITCH_COLORS.onSurface,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: STITCH_COLORS.primary,
-  },
-  nameEditBtnRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 6,
-  },
-  saveNameBtn: {
-    backgroundColor: STITCH_COLORS.primary,
-    minWidth: 72,
-    height: 32,
-    paddingHorizontal: 14,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveNameBtnText: {
-    color: STITCH_COLORS.onPrimary,
-    fontSize: 13,
-    fontFamily: FONTS.sans.semibold,
-  },
-  cancelNameBtn: {
-    backgroundColor: STITCH_COLORS.surfaceContainerHigh,
-    minWidth: 72,
-    height: 32,
-    paddingHorizontal: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: STITCH_COLORS.outlineVariant,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelNameBtnText: {
-    color: STITCH_COLORS.onSurfaceVariant,
-    fontSize: 13,
-    fontFamily: FONTS.sans.medium,
-  },
-  nameErrorText: {
-    fontSize: 11,
-    fontFamily: FONTS.sans.regular,
-    color: STITCH_COLORS.error,
-    marginTop: 4,
   },
   universityText: {
     fontSize: 12,
@@ -1001,11 +1145,6 @@ const styles = StyleSheet.create({
   },
   universityPlaceholder: {
     color: STITCH_COLORS.outline,
-  },
-  universityInput: {
-    marginTop: 6,
-    fontSize: 13,
-    fontFamily: FONTS.sans.regular,
   },
   verifiedEmailPill: {
     flexDirection: 'row',

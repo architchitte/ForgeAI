@@ -210,3 +210,42 @@ export const getInitialSession = async (): Promise<Session | null> => {
   }
   return data.session;
 };
+
+// ---------------------------------------------------------------------------
+// Password recovery & change (Supabase Auth only — passwords are never stored
+// or logged by the app).
+// ---------------------------------------------------------------------------
+
+/**
+ * Sends Supabase's password-recovery email. The link returns to the app via
+ * the same, already allow-listed redirect as OAuth (forgeai://login-callback
+ * or the Expo Go equivalent); AuthContext recognises it as a recovery.
+ */
+export const sendPasswordResetEmail = async (email: string): Promise<void> => {
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo: getRedirectUrl(),
+  });
+  if (error) throw error;
+};
+
+/**
+ * Re-authenticates with the current password before a change. Supabase has
+ * no "check password" call, so this signs in again as the same account; a
+ * wrong password fails without changing anything.
+ */
+export const verifyCurrentPassword = async (email: string, password: string): Promise<void> => {
+  const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+  if (error) {
+    throw new Error(
+      /invalid login credentials/i.test(error.message)
+        ? 'Your current password is incorrect.'
+        : error.message
+    );
+  }
+};
+
+/** Sets a new password for the signed-in (or recovering) user. */
+export const updatePassword = async (newPassword: string): Promise<void> => {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
+};

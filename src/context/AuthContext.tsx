@@ -17,6 +17,9 @@ import {
   signOut as apiSignOut,
   createSessionFromUrl,
   getInitialSession,
+  sendPasswordResetEmail,
+  verifyCurrentPassword,
+  updatePassword,
 } from '../services/auth';
 
 interface AuthContextType {
@@ -36,6 +39,17 @@ interface AuthContextType {
   updateUserName: (name: string) => Promise<void>;
   updateUserProfile: (profile: { name: string; university: string | null }) => Promise<void>;
   completeTutorial: () => Promise<void>;
+  /** True after opening a password-recovery link, until a new password is set. */
+  passwordRecovery: boolean;
+  /** Sends the recovery email (always resolves the same way for privacy). */
+  requestPasswordReset: (email: string) => Promise<void>;
+  /**
+   * Changes the password. Pass the current password to re-authenticate
+   * first (email accounts); null only during recovery.
+   */
+  changePassword: (currentPassword: string | null, newPassword: string) => Promise<void>;
+  /** Leaves recovery mode without changing the password (signs out). */
+  cancelPasswordRecovery: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,6 +60,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState<boolean>(true);
   const [authActionLoading, setAuthActionLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [passwordRecovery, setPasswordRecovery] = useState<boolean>(false);
 
   const clearError = useCallback(() => setError(null), []);
 
@@ -67,6 +82,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (newSession) {
         setSession(newSession);
         setUser(newSession.user);
+        if (/[?#&]type=recovery\b/.test(url)) setPasswordRecovery(true);
       }
     } catch (err: any) {
       console.warn('[AuthContext] Deep link session handling error:', err?.message || err);
@@ -95,8 +111,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // 2. Listen to Supabase auth state transitions
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, currentSession) => {
+      (event, currentSession) => {
         if (!isMounted) return;
+        if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true);
+        if (event === 'SIGNED_OUT') setPasswordRecovery(false);
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         setLoading(false);
@@ -231,6 +249,46 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Marks the first-run tutorial as seen so it never shows again on any device.
+  const requestPasswordReset = async (email: string) => {
+    if (!checkConfig()) return;
+    const trimmed = email.trim();
+    if (!trimmed) throw new Error('Enter your email address first.');
+    try {
+      await sendPasswordResetEmail(trimmed);
+    } catch (err: any) {
+      // Rate limits are worth surfacing; anything else stays generic so the
+      // response never reveals whether an account exists.
+      if (/rate limit|too many|seconds/i.test(err?.message || '')) {
+        throw new Error('Too many requests. Please wait a minute and try again.');
+      }
+      console.warn('[AuthContext] Password reset request failed:', err?.message || err);
+    }
+  };
+
+  const changePassword = async (currentPassword: string | null, newPassword: string) => {
+    try {
+      setAuthActionLoading(true);
+      if (currentPassword !== null) {
+        const email = user?.email;
+        if (!email) throw new Error('Your account has no email address.');
+        await verifyCurrentPassword(email, currentPassword);
+      } else if (!passwordRecovery) {
+        throw new Error('Please confirm your current password.');
+      }
+      await updatePassword(newPassword);
+      setPasswordRecovery(false);
+    } catch (err: any) {
+      throw new Error(err?.message || 'Failed to change password.');
+    } finally {
+      setAuthActionLoading(false);
+    }
+  };
+
+  const cancelPasswordRecovery = async () => {
+    setPasswordRecovery(false);
+    await signOut().catch(() => {});
+  };
+
   const completeTutorial = async () => {
     await saveUserMetadata({ tutorial_completed: true }, 'Failed to save tutorial progress.');
   };
@@ -276,6 +334,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         updateUserName,
         updateUserProfile,
         completeTutorial,
+        passwordRecovery,
+        requestPasswordReset,
+        changePassword,
+        cancelPasswordRecovery,
       }}
     >
       {children}

@@ -76,14 +76,27 @@ export const getOrientationMismatch = (
 export const extensionForMime = (mime: AllowedScreenshotMime): string =>
   mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg';
 
-/** Opens the system photo picker and validates the chosen image. */
-export const pickScreenshotImage = async (): Promise<PickResult> => {
+export interface PickImageOptions {
+  /**
+   * Show the system crop / reposition step with a fixed aspect ratio
+   * (e.g. [1, 1] for avatars). Omit to keep the image untouched.
+   */
+  cropAspect?: [number, number];
+}
+
+/**
+ * Opens the system photo picker (gallery only — no camera permission) and
+ * validates the chosen image: real type from its bytes, real size ≤ 5 MB,
+ * readable dimensions.
+ */
+export const pickValidatedImage = async (options: PickImageOptions = {}): Promise<PickResult> => {
   try {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsEditing: false, // never crop or alter the screenshot
+      allowsEditing: !!options.cropAspect,
+      aspect: options.cropAspect,
       allowsMultipleSelection: false,
-      quality: 1,
+      quality: options.cropAspect ? 0.9 : 1,
       exif: false,
       base64: false,
     });
@@ -141,3 +154,6 @@ export const pickScreenshotImage = async (): Promise<PickResult> => {
     };
   }
 };
+
+/** Screenshots are never cropped or altered. */
+export const pickScreenshotImage = (): Promise<PickResult> => pickValidatedImage();

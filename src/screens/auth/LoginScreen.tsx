@@ -31,7 +31,7 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToSignUp }) => {
-  const { signInWithEmail, signInWithGoogle, authActionLoading, error, clearError } =
+  const { signInWithEmail, signInWithGoogle, authActionLoading, error, clearError, requestPasswordReset } =
     useAuth();
 
   const [email, setEmail] = useState<string>('');
@@ -73,12 +73,32 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToSignUp }) 
     }
   };
 
+  // Real recovery flow: Supabase emails a reset link that opens the app,
+  // which then shows the "Set a new password" screen (AuthContext).
   const handleForgotPassword = () => {
-    Alert.alert(
-      'Reset Password',
-      'If you have an active university account, password reset instructions will be sent to your registered academic email.',
-      [{ text: 'OK' }]
-    );
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setLocalError('Enter your account email above, then tap "Forgot password?".');
+      return;
+    }
+    setLocalError(null);
+    Alert.alert('Reset Password', `Send a password reset link to ${trimmedEmail}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Send Link',
+        onPress: async () => {
+          try {
+            await requestPasswordReset(trimmedEmail);
+            Alert.alert(
+              'Check your inbox',
+              `If an account exists for ${trimmedEmail}, you'll receive a link to reset your password. Open it on this device.`
+            );
+          } catch (err: any) {
+            Alert.alert('Could not send link', err?.message || 'Please try again later.');
+          }
+        },
+      },
+    ]);
   };
 
   const handlePrivacy = async () => {

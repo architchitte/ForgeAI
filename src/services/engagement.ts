@@ -326,3 +326,39 @@ export const subscribeToLikeChanges = (onChange: () => void): (() => void) => {
     supabase.removeChannel(channel).catch(() => {});
   };
 };
+
+/**
+ * Comment totals for several repositories in batched requests (one per 100
+ * ids, paginated past 1000 rows) — used by "My Projects" on the profile.
+ */
+export const fetchCommentCounts = async (
+  repositoryIds: string[]
+): Promise<RepositoryResponse<Record<string, number>>> => {
+  const counts: Record<string, number> = {};
+  for (const id of repositoryIds) counts[id] = 0;
+  if (repositoryIds.length === 0) return { data: counts, error: null };
+  try {
+    for (let i = 0; i < repositoryIds.length; i += ID_CHUNK_SIZE) {
+      const chunk = repositoryIds.slice(i, i + ID_CHUNK_SIZE);
+      for (let from = 0; ; from += PAGE_SIZE) {
+        const { data, error } = await supabase
+          .from('project_comments')
+          .select('repository_id')
+          .in('repository_id', chunk)
+          .order('id', { ascending: true })
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) {
+          console.error('[EngagementService] fetchCommentCounts error:', error.message);
+          return { data: null, error: toFriendlyError(error, 'Failed to load comment counts.') };
+        }
+        const rows = (data || []) as { repository_id: string }[];
+        for (const row of rows) counts[row.repository_id] = (counts[row.repository_id] ?? 0) + 1;
+        if (rows.length < PAGE_SIZE) break;
+      }
+    }
+    return { data: counts, error: null };
+  } catch (err: any) {
+    console.error('[EngagementService] Unexpected comment count error:', err);
+    return { data: null, error: err?.message || 'Failed to load comment counts.' };
+  }
+};

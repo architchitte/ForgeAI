@@ -261,3 +261,19 @@ export const PlusIcon: React.FC<IconProps> = ({
   size = 14,
   color = STITCH_COLORS.onSurface,
 }) => <Feather name="plus" size={size} color={color} />;
+
+/**
+ * 31. Camera Icon (change photo badge)
+ */
+export const CameraIcon: React.FC<IconProps> = ({
+  size = 12,
+  color = '#000000',
+}) => <Feather name="camera" size={size} color={color} />;
+
+/**
+ * 32. Map Pin / Location Icon
+ */
+export const MapPinIcon: React.FC<IconProps> = ({
+  size = 12,
+  color = STITCH_COLORS.onSurfaceVariant,
+}) => <Feather name="map-pin" size={size} color={color} />;
