@@ -12,7 +12,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { STITCH_COLORS } from '../../constants/theme';
 import { FONTS } from '../../constants/typography';
 import { COMMUNITY_MEMBER_LABEL } from '../../constants/identity';
-import { Repository } from '../../types/repository';
+import { RepositorySummary } from '../../types/repository';
 import {
   PublisherProfile,
   sortEducation,
@@ -22,7 +22,7 @@ import {
   fetchRepositoriesByIds,
   fetchUserProfile,
 } from '../../services/publisher';
-import { fetchUserRepositories } from '../../services/repositories';
+import { fetchUserRepositorySummaries } from '../../services/repositories';
 import { getAvatarUrl } from '../../services/ownProfile';
 import {
   ArrowLeftIcon,
@@ -46,14 +46,14 @@ import { ProjectScreenshot } from '../../types/screenshot';
 interface PublisherProfileSheetProps {
   visible: boolean;
   /** Show the publisher of this project… */
-  repository?: Repository | null;
+  repository?: RepositorySummary | null;
   /** …or any user by account id (e.g. from a followers list). */
   userId?: string | null;
   /** Open another person's profile (from the followers / following list). */
   onOpenUser?: (userId: string) => void;
   onClose: () => void;
   /** Opens one of the publisher's projects (closes this sheet first). */
-  onOpenProject?: (repo: Repository) => void;
+  onOpenProject?: (repo: RepositorySummary) => void;
   /** Top-left back label, e.g. "Back to search" (default "Back to project"). */
   backLabel?: string;
   /**
@@ -87,7 +87,7 @@ export const PublisherProfileSheet: React.FC<PublisherProfileSheetProps> = ({
   inline = false,
 }) => {
   const [profile, setProfile] = useState<PublisherProfile | null>(null);
-  const [projects, setProjects] = useState<Repository[] | null>(null);
+  const [projects, setProjects] = useState<RepositorySummary[] | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   // Same data the Discover cards use (batched for this founder's projects).
@@ -104,11 +104,11 @@ export const PublisherProfileSheet: React.FC<PublisherProfileSheetProps> = ({
     setError(null);
     const load = async () => {
       let p: Awaited<ReturnType<typeof fetchPublisherProfile>>;
-      let repos: Repository[] = [];
+      let repos: RepositorySummary[] = [];
       if (repository) {
         const [pr, r] = await Promise.all([
           fetchPublisherProfile(repository.id),
-          fetchUserRepositories(repository.student_email),
+          fetchUserRepositorySummaries(repository.student_email),
         ]);
         p = pr;
         repos = r.data ?? [];

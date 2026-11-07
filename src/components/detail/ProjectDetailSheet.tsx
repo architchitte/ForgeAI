@@ -10,11 +10,12 @@ import {
   Linking,
   BackHandler,
   Keyboard,
+  ActivityIndicator,
   type ScrollViewInstance,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
-import { Repository } from '../../types/repository';
+import { RepositorySummary } from '../../types/repository';
 import { STITCH_COLORS } from '../../constants/theme';
 import { FONTS } from '../../constants/typography';
 import {
@@ -26,6 +27,7 @@ import {
 } from '../common/AppIcons';
 import { PressableScale } from '../animation/PressableScale';
 import { CommentsSection } from './CommentsSection';
+import { fetchRepositoryById } from '../../services/repositories';
 import { PublisherProfileSheet } from '../profile/PublisherProfileSheet';
 import { LikersSheet } from '../engagement/LikersSheet';
 import { ProfileCard } from '../profile/ProfileCard';
@@ -42,12 +44,12 @@ import { TechnologyGroups } from '../technology/TechnologyDisplay';
 import { COMMUNITY_MEMBER_LABEL } from '../../constants/identity';
 
 interface ProjectDetailViewProps {
-  repository: Repository;
+  repository: RepositorySummary;
   onBack?: () => void;
   /** Open another project (e.g. from the publisher's profile). */
-  onOpenProject?: (repo: Repository) => void;
+  onOpenProject?: (repo: RepositorySummary) => void;
   /** Show the founder's profile as an in-app screen (keeps the bottom nav). */
-  onOpenPublisher?: (repo: Repository) => void;
+  onOpenPublisher?: (repo: RepositorySummary) => void;
   /** Open any person's profile (likers, commenters). */
   onOpenUserProfile?: (userId: string) => void;
 }
@@ -62,6 +64,28 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   const [isLaunching, setIsLaunching] = useState<boolean>(false);
   const [publisherOpen, setPublisherOpen] = useState<boolean>(false);
   const [likersOpen, setLikersOpen] = useState<boolean>(false);
+  // Lists pass a summary (no description); load the full row on demand.
+  const [description, setDescription] = useState<string | null>(
+    repository.system_prompt !== undefined ? repository.system_prompt : null
+  );
+  const [descriptionError, setDescriptionError] = useState<string | null>(null);
+  useEffect(() => {
+    if (repository.system_prompt !== undefined) {
+      setDescription(repository.system_prompt);
+      return;
+    }
+    let cancelled = false;
+    setDescription(null);
+    setDescriptionError(null);
+    fetchRepositoryById(repository.id).then((res) => {
+      if (cancelled) return;
+      if (res.data) setDescription(res.data.system_prompt || '');
+      else setDescriptionError(res.error || 'Could not load the description.');
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [repository.id, repository.system_prompt]);
   // Publisher's public profile for the card (falls back to project data).
   const publisher = usePublisherProfile(repository.id);
   const [copied, setCopied] = useState<boolean>(false);
@@ -226,7 +250,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
 
   // Project description (stored in system_prompt): blank lines separate
   // paragraphs; single line breaks are kept within a paragraph.
-  const descriptionParagraphs = (repository.system_prompt || '')
+  const descriptionParagraphs = (description || '')
     .replace(/\r\n?/g, '\n')
     .trim()
     .split(/\n\s*\n+/)
@@ -366,7 +390,13 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           </View>
 
           <View style={styles.descriptionCard}>
-            {descriptionParagraphs.length === 0 ? (
+            {description === null ? (
+              descriptionError ? (
+                <Text style={styles.descriptionEmpty}>{descriptionError}</Text>
+              ) : (
+                <ActivityIndicator size="small" color={STITCH_COLORS.onSurfaceVariant} />
+              )
+            ) : descriptionParagraphs.length === 0 ? (
               <Text style={styles.descriptionEmpty}>No description provided.</Text>
             ) : (
               descriptionParagraphs.map((paragraph, index) => (
@@ -454,7 +484,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
 };
 
 interface ProjectDetailSheetProps {
-  repository: Repository | null;
+  repository: RepositorySummary | null;
   visible: boolean;
   onClose: () => void;
 }

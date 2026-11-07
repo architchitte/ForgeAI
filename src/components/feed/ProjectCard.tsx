@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
-import { Repository } from '../../types/repository';
+import { RepositorySummary } from '../../types/repository';
 import { STITCH_COLORS } from '../../constants/theme';
 import { FONTS } from '../../constants/typography';
 import { COMMUNITY_MEMBER_LABEL } from '../../constants/identity';
@@ -29,9 +29,9 @@ const CARD_PHONE_MIN_WIDTH = 104;
 const CARD_PHONE_MAX_WIDTH = 132;
 
 export interface ProjectCardProps {
-  item: Repository;
+  item: RepositorySummary;
   index: number;
-  onPress: (repo: Repository) => void;
+  onPress: (repo: RepositorySummary) => void;
   /** Undefined until like state has loaded for this card. */
   likeCount?: number;
   liked: boolean;

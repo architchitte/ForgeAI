@@ -1,5 +1,6 @@
 import { Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import {
   AllowedScreenshotMime,
   PickedScreenshot,
@@ -79,24 +80,42 @@ export const extensionForMime = (mime: AllowedScreenshotMime): string =>
 export interface PickImageOptions {
   /**
    * Show the system crop / reposition step with a fixed aspect ratio
-   * (e.g. [1, 1] for avatars). Omit to keep the image untouched.
+   * (e.g. [1, 1] for avatars). Omit to keep the image's own framing.
    */
   cropAspect?: [number, number];
+  /**
+   * Downscale so the long edge ≤ maxLongEdge and the short edge ≤
+   * maxShortEdge (aspect ratio kept). Defaults: 1920 × 1080 — a 4K desktop
+   * capture becomes 1920×1080, a 1080×1920 phone capture is untouched.
+   */
+  maxLongEdge?: number;
+  maxShortEdge?: number;
 }
 
+/** JPEG quality for re-encoded images (picker + downscale). */
+const IMAGE_QUALITY = 0.8;
+/** Re-encode even without resizing when the file is bigger than this. */
+const REENCODE_ABOVE_BYTES = 1024 * 1024;
+/** Refuse to process absurdly large originals (memory safety). */
+const ORIGINAL_MAX_BYTES = 40 * 1024 * 1024;
+
 /**
- * Opens the system photo picker (gallery only — no camera permission) and
- * validates the chosen image: real type from its bytes, real size ≤ 5 MB,
- * readable dimensions.
+ * Opens the system photo picker (gallery only — no camera permission),
+ * validates the original (JPG / PNG / WebP by its bytes), then downscales
+ * and re-encodes large images to JPEG at 0.8 quality before upload — typically
+ * cutting multi-MB screenshots to a few hundred KB and keeping GPU texture
+ * memory small. The final file must still be ≤ 5 MB.
  */
 export const pickValidatedImage = async (options: PickImageOptions = {}): Promise<PickResult> => {
+  const maxLong = options.maxLongEdge ?? 1920;
+  const maxShort = options.maxShortEdge ?? 1080;
   try {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: !!options.cropAspect,
       aspect: options.cropAspect,
       allowsMultipleSelection: false,
-      quality: options.cropAspect ? 0.9 : 1,
+      quality: IMAGE_QUALITY,
       exif: false,
       base64: false,
     });
@@ -105,28 +124,21 @@ export const pickValidatedImage = async (options: PickImageOptions = {}): Promis
     }
 
     const asset = result.assets[0];
-    if (asset.fileSize && asset.fileSize > SCREENSHOT_MAX_BYTES) {
+    if (asset.fileSize && asset.fileSize > ORIGINAL_MAX_BYTES) {
       return {
         data: null,
-        error: `This image is ${formatMb(asset.fileSize)}. The maximum size is 5 MB.`,
+        error: `This image is ${formatMb(asset.fileSize)} — too large to process. Please choose a smaller image.`,
         canceled: false,
       };
     }
 
-    const data = await fetch(asset.uri).then((res) => res.arrayBuffer());
-    if (data.byteLength === 0) {
+    // 1. Validate the original's real type.
+    const original = await fetch(asset.uri).then((res) => res.arrayBuffer());
+    if (original.byteLength === 0) {
       return { data: null, error: 'The selected image could not be read.', canceled: false };
     }
-    if (data.byteLength > SCREENSHOT_MAX_BYTES) {
-      return {
-        data: null,
-        error: `This image is ${formatMb(data.byteLength)}. The maximum size is 5 MB.`,
-        canceled: false,
-      };
-    }
-
-    const mimeType = sniffMime(data);
-    if (!mimeType || !SCREENSHOT_ALLOWED_MIME.includes(mimeType)) {
+    const originalMime = sniffMime(original);
+    if (!originalMime || !SCREENSHOT_ALLOWED_MIME.includes(originalMime)) {
       return {
         data: null,
         error: 'Unsupported file type. Please choose a JPG, PNG, or WebP image.',
@@ -140,8 +152,45 @@ export const pickValidatedImage = async (options: PickImageOptions = {}): Promis
       return { data: null, error: 'Could not read the image dimensions.', canceled: false };
     }
 
+    // 2. Downscale / re-encode when it's big (dimensions or bytes).
+    const long = Math.max(width, height);
+    const short = Math.min(width, height);
+    const scale = Math.min(1, maxLong / long, maxShort / short);
+    let uri = asset.uri;
+    let data = original;
+    let mimeType: AllowedScreenshotMime = originalMime;
+    if (scale < 1 || original.byteLength > REENCODE_ABOVE_BYTES) {
+      const targetW = Math.max(1, Math.round(width * scale));
+      const targetH = Math.max(1, Math.round(height * scale));
+      const base = ImageManipulator.manipulate(asset.uri);
+      const ctx = scale < 1 ? base.resize({ width: targetW, height: targetH }) : base;
+      const rendered = await ctx.renderAsync();
+      const saved = await rendered.saveAsync({ compress: IMAGE_QUALITY, format: SaveFormat.JPEG });
+      // Free the native bitmaps right away instead of waiting for GC.
+      rendered.release();
+      ctx.release();
+      if (ctx !== base) base.release();
+      uri = saved.uri;
+      width = saved.width;
+      height = saved.height;
+      data = await fetch(saved.uri).then((res) => res.arrayBuffer());
+      mimeType = 'image/jpeg';
+    }
+
+    // 3. Final checks on the exact bytes that will be uploaded.
+    if (data.byteLength > SCREENSHOT_MAX_BYTES) {
+      return {
+        data: null,
+        error: `This image is still ${formatMb(data.byteLength)} after compression. The maximum size is 5 MB.`,
+        canceled: false,
+      };
+    }
+    if (sniffMime(data) !== mimeType) {
+      return { data: null, error: 'The image could not be processed. Please try another one.', canceled: false };
+    }
+
     return {
-      data: { uri: asset.uri, width, height, mimeType, data, sizeBytes: data.byteLength },
+      data: { uri, width, height, mimeType, data, sizeBytes: data.byteLength },
       error: null,
       canceled: false,
     };

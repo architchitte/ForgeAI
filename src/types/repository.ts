@@ -12,6 +12,15 @@ export interface Repository {
   user_id?: string | null;
 }
 
+/**
+ * Lightweight list shape (feed, search, profiles): everything except the
+ * multi-line system_prompt (project description), which is loaded on demand
+ * when a project page opens. A full Repository is also a valid summary.
+ */
+export type RepositorySummary = Omit<Repository, 'system_prompt'> & {
+  system_prompt?: string;
+};
+
 export interface CreateRepositoryInput {
   app_name: string;
   one_liner: string;

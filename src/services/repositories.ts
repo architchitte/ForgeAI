@@ -1,5 +1,10 @@
 import { supabase } from '../../lib/supabase';
-import { Repository, CreateRepositoryInput, UpdateRepositoryInput } from '../types/repository';
+import {
+  Repository,
+  RepositorySummary,
+  CreateRepositoryInput,
+  UpdateRepositoryInput,
+} from '../types/repository';
 
 export interface RepositoryResponse<T> {
   data: T | null;
@@ -7,29 +12,102 @@ export interface RepositoryResponse<T> {
 }
 
 /**
- * Retrieve all blueprint repositories from Supabase, sorted by created_at descending.
+ * Columns for list views — no system_prompt (the long project description),
+ * which is fetched on demand by fetchRepositoryById. (repositories.user_id
+ * does not exist in the database, so it is not requested.)
  */
-export const fetchRepositories = async (): Promise<
-  RepositoryResponse<Repository[]>
-> => {
+export const REPOSITORY_SUMMARY_COLUMNS =
+  'id, app_name, one_liner, framework, student_name, student_email, university, created_at, agent_execution_url';
+
+export const FEED_PAGE_SIZE = 20;
+
+/**
+ * One page of repository summaries, newest first (rows offset..offset+limit-1).
+ */
+export const fetchRepositories = async (
+  offset = 0,
+  limit = FEED_PAGE_SIZE
+): Promise<RepositoryResponse<RepositorySummary[]>> => {
   try {
     const { data, error } = await supabase
       .from('repositories')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .select(REPOSITORY_SUMMARY_COLUMNS)
+      .order('created_at', { ascending: false })
+      // id tiebreaker keeps page boundaries stable for equal timestamps.
+      .order('id', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) {
       console.error('[RepositoriesService] fetchRepositories error:', error.message);
       return { data: null, error: error.message };
     }
 
-    return { data: (data as Repository[]) || [], error: null };
+    return { data: (data as RepositorySummary[]) || [], error: null };
   } catch (err: any) {
     console.error('[RepositoriesService] Unexpected fetch error:', err);
     return {
       data: null,
       error: err?.message || 'Failed to fetch repositories due to an unexpected error.',
     };
+  }
+};
+
+/** One full repository (including system_prompt), for the project page. */
+export const fetchRepositoryById = async (
+  id: string
+): Promise<RepositoryResponse<Repository>> => {
+  try {
+    const { data, error } = await supabase.from('repositories').select('*').eq('id', id).maybeSingle();
+    if (error) {
+      console.error('[RepositoriesService] fetchRepositoryById error:', error.message);
+      return { data: null, error: error.message };
+    }
+    if (!data) return { data: null, error: 'This project no longer exists.' };
+    return { data: data as Repository, error: null };
+  } catch (err: any) {
+    console.error('[RepositoriesService] Unexpected fetchRepositoryById error:', err);
+    return { data: null, error: err?.message || 'Failed to load the project.' };
+  }
+};
+
+/** Upper bound for the search index (summaries only, no descriptions). */
+const SEARCH_INDEX_LIMIT = 1000;
+const SEARCH_CACHE_MS = 60_000;
+let searchCache: { at: number; data: RepositorySummary[] } | null = null;
+
+/**
+ * All repository summaries for Search, cached in memory for a minute so
+ * returning to the tab doesn't re-download them. `force` skips the cache
+ * (pull-to-refresh).
+ */
+export const fetchRepositorySummariesCached = async (
+  force = false
+): Promise<RepositoryResponse<RepositorySummary[]>> => {
+  if (!force && searchCache && Date.now() - searchCache.at < SEARCH_CACHE_MS) {
+    return { data: searchCache.data, error: null };
+  }
+  const result = await fetchRepositories(0, SEARCH_INDEX_LIMIT);
+  if (result.data) searchCache = { at: Date.now(), data: result.data };
+  return result;
+};
+
+/** A user's projects as summaries (profiles, Activity) — no descriptions. */
+export const fetchUserRepositorySummaries = async (
+  email: string
+): Promise<RepositoryResponse<RepositorySummary[]>> => {
+  try {
+    const { data, error } = await supabase
+      .from('repositories')
+      .select(REPOSITORY_SUMMARY_COLUMNS)
+      .eq('student_email', email)
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('[RepositoriesService] fetchUserRepositorySummaries error:', error.message);
+      return { data: null, error: error.message };
+    }
+    return { data: (data as RepositorySummary[]) || [], error: null };
+  } catch (err: any) {
+    return { data: null, error: err?.message || 'Failed to fetch projects.' };
   }
 };
 

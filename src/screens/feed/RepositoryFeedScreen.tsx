@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,8 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import { Repository } from '../../types/repository';
-import { fetchRepositories } from '../../services/repositories';
+import { RepositorySummary } from '../../types/repository';
+import { FEED_PAGE_SIZE, fetchRepositories } from '../../services/repositories';
 import { ProjectDetailSheet } from '../../components/detail/ProjectDetailSheet';
 import { STITCH_COLORS } from '../../constants/theme';
 import { FONTS } from '../../constants/typography';
@@ -40,11 +40,19 @@ import { FadeInView } from '../../components/animation/FadeInView';
 
 interface RepositoryFeedScreenProps {
   onNavigateToSubmit?: () => void;
-  onSelectRepository?: (repo: Repository) => void;
+  onSelectRepository?: (repo: RepositorySummary) => void;
   isActive?: boolean;
   /** Opens a person's profile (e.g. from the likers list). */
   onOpenUserProfile?: (userId: string) => void;
 }
+
+/** Static list header — a stable component, so FlatList never rebuilds it. */
+const FeedHeader: React.FC = () => (
+  <View style={styles.headerContainer}>
+    <Text style={styles.heroTitle}>Student AI Projects</Text>
+    <Text style={styles.heroSubtitle}>Discover AI projects built by university students.</Text>
+  </View>
+);
 
 export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
   onNavigateToSubmit,
@@ -52,17 +60,16 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
   isActive = true,
   onOpenUserProfile,
 }) => {
-  const [repositories, setRepositories] = useState<Repository[]>([]);
+  const [repositories, setRepositories] = useState<RepositorySummary[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Search & Filter State
   // Likers sheet (hold a like button)
   const [likersFor, setLikersFor] = useState<string | null>(null);
 
   // Selected repository for Project Detail Sheet
-  const [selectedRepository, setSelectedRepository] = useState<Repository | null>(null);
+  const [selectedRepository, setSelectedRepository] = useState<RepositorySummary | null>(null);
   const [isDetailVisible, setIsDetailVisible] = useState<boolean>(false);
 
   const isInitialMount = useRef(true);
@@ -71,50 +78,119 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
   const [screenshots, setScreenshots] = useState<Record<string, ProjectScreenshot>>({});
   const [technologies, setTechnologies] = useState<Record<string, ProjectTechnology[]>>({});
 
-  // Repositories first, then one batched like query and one batched
-  // screenshot query (in parallel) for every loaded card. Failures there
-  // don't block the feed: counts stay unknown / cards show no screenshot.
-  const loadData = useCallback(async () => {
-    setError(null);
-    const result = await fetchRepositories();
-    if (result.error) {
-      setError(result.error);
-    } else {
-      const repos = result.data || [];
-      setRepositories(repos);
-      const ids = repos.map((r) => r.id);
+  // Pagination
+  const [hasMore, setHasMore] = useState<boolean>(true);
+  const [loadingMore, setLoadingMore] = useState<boolean>(false);
+  const loadingMoreRef = useRef(false);
+  const repositoriesRef = useRef(repositories);
+  repositoriesRef.current = repositories;
+  // Bumped by every window reload; stale page responses are ignored.
+  const loadSeq = useRef(0);
+
+  /**
+   * Batched extras for a set of cards: likes (merged into the shared store),
+   * screenshots and technologies. `replace` resets the maps (full reload);
+   * otherwise new pages are merged in.
+   */
+  const loadExtras = useCallback(
+    async (ids: string[], replace: boolean) => {
+      if (ids.length === 0) {
+        if (replace) {
+          setScreenshots({});
+          setTechnologies({});
+        }
+        return;
+      }
       await Promise.all([
         refreshLikes(ids),
         fetchScreenshotsForRepositories(ids).then((res) => {
-          if (res.data) setScreenshots(res.data);
+          if (res.data) {
+            const shots = res.data;
+            setScreenshots((prev) => (replace ? shots : { ...prev, ...shots }));
+          }
         }),
         fetchTechnologiesForRepositories(ids).then((res) => {
-          if (res.data) setTechnologies(res.data);
+          if (res.data) {
+            const techs = res.data;
+            setTechnologies((prev) => (replace ? techs : { ...prev, ...techs }));
+          }
         }),
       ]);
-    }
-  }, [refreshLikes]);
+    },
+    [refreshLikes]
+  );
 
-  // Initial load
+  /** Reloads the newest `size` projects (summaries only), replacing the list. */
+  const loadWindow = useCallback(
+    async (size: number) => {
+      const seq = ++loadSeq.current;
+      setError(null);
+      const result = await fetchRepositories(0, size);
+      if (seq !== loadSeq.current) return;
+      if (result.error || !result.data) {
+        setError(result.error || 'Failed to load projects.');
+        return;
+      }
+      const repos = result.data;
+      setRepositories(repos);
+      setHasMore(repos.length === size);
+      await loadExtras(
+        repos.map((r) => r.id),
+        true
+      );
+    },
+    [loadExtras]
+  );
+
+  // Initial load: first page only.
   useEffect(() => {
-    loadData().finally(() => setLoading(false));
-  }, [loadData]);
+    loadWindow(FEED_PAGE_SIZE).finally(() => setLoading(false));
+  }, [loadWindow]);
 
-  // Refresh when the screen becomes active again
+  // Returning to the tab: quietly refresh what's already loaded (keeps the
+  // scroll position instead of collapsing back to page one).
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
       return;
     }
-
     if (isActive) {
-      loadData();
+      loadWindow(Math.max(FEED_PAGE_SIZE, repositoriesRef.current.length));
     }
-  }, [isActive, loadData]);
+  }, [isActive, loadWindow]);
+
+  /** Infinite scroll: append the next page. */
+  const loadMore = useCallback(async () => {
+    if (!hasMore || loadingMoreRef.current || loading) return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    const seq = loadSeq.current;
+    try {
+      const current = repositoriesRef.current;
+      const result = await fetchRepositories(current.length, FEED_PAGE_SIZE);
+      if (seq !== loadSeq.current || !result.data) return;
+      const page = result.data;
+      const seen = new Set(current.map((r) => r.id));
+      const fresh = page.filter((r) => !seen.has(r.id));
+      if (fresh.length < page.length) {
+        // New projects were published meanwhile and offsets shifted:
+        // reload the whole window rather than risk skipping a project.
+        await loadWindow(current.length + FEED_PAGE_SIZE);
+        return;
+      }
+      setRepositories([...current, ...fresh]);
+      setHasMore(page.length === FEED_PAGE_SIZE);
+      await loadExtras(
+        fresh.map((r) => r.id),
+        false
+      );
+    } finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  }, [hasMore, loading, loadExtras, loadWindow]);
 
   // Live like counts while the feed is visible (realtime + app foreground).
-  const repositoriesRef = useRef(repositories);
-  repositoriesRef.current = repositories;
   const refreshVisibleLikes = useCallback(() => {
     const ids = repositoriesRef.current.map((r) => r.id);
     if (ids.length > 0) refreshLikes(ids);
@@ -123,12 +199,12 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadData();
+    await loadWindow(FEED_PAGE_SIZE);
     setRefreshing(false);
   };
 
   const handleSelectRepository = useCallback(
-    (repo: Repository) => {
+    (repo: RepositorySummary) => {
       if (onSelectRepository) {
         onSelectRepository(repo);
       } else {
@@ -145,7 +221,7 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
   };
 
   const renderCard = useCallback(
-    ({ item, index }: { item: Repository; index: number }) => {
+    ({ item, index }: { item: RepositorySummary; index: number }) => {
       const summary = likes[item.id];
       return (
         <ProjectCard
@@ -165,44 +241,47 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
     [handleSelectRepository, likes, pendingIds, toggleLike, screenshots, technologies]
   );
 
-  const keyExtractor = useCallback((item: Repository) => item.id, []);
+  const keyExtractor = useCallback((item: RepositorySummary) => item.id, []);
 
-  const renderHeader = () => (
-    <View style={styles.headerContainer}>
-
-      {/* Hero Title & Subtitle */}
-      <Text style={styles.heroTitle}>Student AI Projects</Text>
-      <Text style={styles.heroSubtitle}>
-        Discover AI projects built by university students.
-      </Text>
-
-    </View>
+  // Re-render rows only when card data actually changes (stable reference).
+  const listExtraData = useMemo(
+    () => ({ likes, pendingIds, screenshots, technologies }),
+    [likes, pendingIds, screenshots, technologies]
   );
 
-  const renderFooter = () => (
-    <View style={styles.footerContainer}>
-      {/* Call To Action Card */}
-      <View style={styles.cohortCard}>
-        <View style={styles.cohortBadgeRow}>
-          <RocketIcon size={14} color="#ffffff" />
-          <Text style={styles.cohortBadgeText}>COMMUNITY SHOWCASE</Text>
+  // Footer: spinner while more pages load; the Submit CTA once all are shown.
+  const listFooter = useMemo(
+    () =>
+      hasMore ? (
+        <View style={styles.pageLoader}>
+          {loadingMore ? <ActivityIndicator size="small" color={STITCH_COLORS.onSurfaceVariant} /> : null}
         </View>
+      ) : (
+        <View style={styles.footerContainer}>
+          {/* Call To Action Card */}
+          <View style={styles.cohortCard}>
+            <View style={styles.cohortBadgeRow}>
+              <RocketIcon size={14} color="#ffffff" />
+              <Text style={styles.cohortBadgeText}>COMMUNITY SHOWCASE</Text>
+            </View>
 
-        <Text style={styles.cohortTitle}>Submit Your Project</Text>
-        <Text style={styles.cohortDesc}>
-          Share your AI project with student builders and get feedback.
-        </Text>
+            <Text style={styles.cohortTitle}>Submit Your Project</Text>
+            <Text style={styles.cohortDesc}>
+              Share your AI project with student builders and get feedback.
+            </Text>
 
-        <PressableScale
-          style={styles.cohortButton}
-          onPress={onNavigateToSubmit}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.cohortButtonText}>Submit a Project</Text>
-          <ArrowRightIcon size={14} color={STITCH_COLORS.primary} />
-        </PressableScale>
-      </View>
-    </View>
+            <PressableScale
+              style={styles.cohortButton}
+              onPress={onNavigateToSubmit}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.cohortButtonText}>Submit a Project</Text>
+              <ArrowRightIcon size={14} color={STITCH_COLORS.primary} />
+            </PressableScale>
+          </View>
+        </View>
+      ),
+    [hasMore, loadingMore, onNavigateToSubmit]
   );
 
   return (
@@ -229,13 +308,15 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
           data={repositories}
           keyExtractor={keyExtractor}
           renderItem={renderCard}
-          extraData={[likes, screenshots, technologies]}
-          initialNumToRender={8}
+          extraData={listExtraData}
+          initialNumToRender={6}
           maxToRenderPerBatch={8}
-          windowSize={11}
+          windowSize={5}
           removeClippedSubviews={Platform.OS === 'android'}
-          ListHeaderComponent={renderHeader()}
-          ListFooterComponent={renderFooter()}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListHeaderComponent={FeedHeader}
+          ListFooterComponent={listFooter}
           ListEmptyComponent={
             <FadeInView style={styles.emptyContainer}>
               <View style={styles.emptyIcon}>
@@ -307,6 +388,11 @@ const styles = StyleSheet.create({
   // Project Card
 
   // Call To Action Footer
+  pageLoader: {
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   footerContainer: {
     marginTop: 8,
     marginBottom: 20,

@@ -380,7 +380,7 @@ export const AuthenticatedPlaceholderScreen: React.FC<
 
   // Profile picture: choose (with square crop) / replace / remove.
   const pickAndUploadAvatar = async () => {
-    const picked = await pickValidatedImage({ cropAspect: [1, 1] });
+    const picked = await pickValidatedImage({ cropAspect: [1, 1], maxLongEdge: 512, maxShortEdge: 512 });
     if (picked.canceled) return;
     if (picked.error || !picked.data) {
       Alert.alert('Cannot use this image', picked.error || 'Please choose another image.');

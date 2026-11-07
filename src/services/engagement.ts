@@ -78,6 +78,64 @@ export const fetchLikeSummaries = async (
   repositoryIds: string[],
   currentUserId: string | null
 ): Promise<RepositoryResponse<Record<string, LikeSummary>>> => {
+  const aggregated = await fetchLikeSummariesAggregated(repositoryIds);
+  if (aggregated !== 'unavailable') return aggregated;
+  return fetchLikeSummariesByRows(repositoryIds, currentUserId);
+};
+
+/** Ids per RPC call (sent in the request body, so no URL-length limit). */
+const RPC_ID_CHUNK = 500;
+let likesRpcAvailable = true;
+
+/**
+ * Server-side aggregation (get_project_likes_summary): one small row per
+ * project instead of one row per like. Returns 'unavailable' when the
+ * function isn't deployed, so callers fall back to row counting.
+ */
+const fetchLikeSummariesAggregated = async (
+  repositoryIds: string[]
+): Promise<RepositoryResponse<Record<string, LikeSummary>> | 'unavailable'> => {
+  if (!likesRpcAvailable) return 'unavailable';
+  const summaries: Record<string, LikeSummary> = {};
+  for (const id of repositoryIds) summaries[id] = { count: 0, likedByMe: false };
+  if (repositoryIds.length === 0) return { data: summaries, error: null };
+  try {
+    for (let i = 0; i < repositoryIds.length; i += RPC_ID_CHUNK) {
+      const { data, error } = await supabase.rpc('get_project_likes_summary', {
+        p_repository_ids: repositoryIds.slice(i, i + RPC_ID_CHUNK),
+      });
+      if (error) {
+        if (error.code === 'PGRST202' || /could not find the function/i.test(error.message)) {
+          likesRpcAvailable = false; // don't retry the missing function every refresh
+          return 'unavailable';
+        }
+        console.error('[EngagementService] get_project_likes_summary error:', error.message);
+        return { data: null, error: toFriendlyError(error, 'Failed to load likes.') };
+      }
+      for (const row of (data || []) as {
+        repository_id: string;
+        like_count: number | string;
+        liked_by_me: boolean;
+      }[]) {
+        if (!summaries[row.repository_id]) continue;
+        summaries[row.repository_id] = {
+          count: Number(row.like_count) || 0,
+          likedByMe: !!row.liked_by_me,
+        };
+      }
+    }
+    return { data: summaries, error: null };
+  } catch (err: any) {
+    console.error('[EngagementService] Unexpected likes aggregation error:', err);
+    return { data: null, error: err?.message || 'Failed to load likes.' };
+  }
+};
+
+/** Fallback: download (repository_id, user_id) rows and count on device. */
+const fetchLikeSummariesByRows = async (
+  repositoryIds: string[],
+  currentUserId: string | null
+): Promise<RepositoryResponse<Record<string, LikeSummary>>> => {
   const summaries: Record<string, LikeSummary> = {};
   for (const id of repositoryIds) summaries[id] = { count: 0, likedByMe: false };
   if (repositoryIds.length === 0) return { data: summaries, error: null };

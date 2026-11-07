@@ -34,7 +34,7 @@ import { AuthenticatedPlaceholderScreen } from './src/screens/auth/Authenticated
 import { SubmitBlueprintScreen } from './src/screens/blueprint/SubmitBlueprintScreen';
 import { RepositoryFeedScreen } from './src/screens/feed/RepositoryFeedScreen';
 import { ProjectDetailView } from './src/components/detail/ProjectDetailSheet';
-import { Repository } from './src/types/repository';
+import { RepositorySummary } from './src/types/repository';
 import { STITCH_COLORS } from './src/constants/theme';
 import { FONTS, FONT_ASSETS } from './src/constants/typography';
 import RubberSegment from './src/components/navigation/RubberSegment';
@@ -62,13 +62,13 @@ const AuthenticatedView: React.FC = () => {
   // Mirror the user's display name into public.profiles for comment labels.
   useProfileSync();
   const [activeTab, setActiveTab] = useState<AuthenticatedTab>('discover');
-  const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
+  const [selectedRepo, setSelectedRepo] = useState<RepositorySummary | null>(null);
   // Founder profile shown in-app (via one of their projects); sits above the
   // project page, so Back returns to wherever it was opened from.
-  const [profileRepo, setProfileRepo] = useState<Repository | null>(null);
+  const [profileRepo, setProfileRepo] = useState<RepositorySummary | null>(null);
   // …or a profile opened by account id (followers lists, Activity).
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
-  const openRepoProfile = useCallback((repo: Repository) => {
+  const openRepoProfile = useCallback((repo: RepositorySummary) => {
     setProfileUserId(null);
     setProfileRepo(repo);
   }, []);

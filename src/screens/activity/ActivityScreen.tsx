@@ -12,8 +12,8 @@ import { STITCH_COLORS } from '../../constants/theme';
 import { FONTS } from '../../constants/typography';
 import { COMMUNITY_MEMBER_LABEL } from '../../constants/identity';
 import { formatRelativeTime } from '../../constants/time';
-import { Repository } from '../../types/repository';
-import { fetchUserRepositories } from '../../services/repositories';
+import { RepositorySummary } from '../../types/repository';
+import { fetchUserRepositorySummaries } from '../../services/repositories';
 import {
   ActivityEvent,
   fetchActivityForRepositories,
@@ -35,7 +35,7 @@ const FILTERS: { id: Filter; label: string }[] = [
 
 interface ActivityScreenProps {
   isActive?: boolean;
-  onSelectRepository: (repo: Repository) => void;
+  onSelectRepository: (repo: RepositorySummary) => void;
   /** Opens a person's profile (e.g. a new follower). */
   onOpenUserProfile?: (userId: string) => void;
 }
@@ -51,7 +51,7 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
   onOpenUserProfile,
 }) => {
   const { user } = useAuth();
-  const [projects, setProjects] = useState<Record<string, Repository>>({});
+  const [projects, setProjects] = useState<Record<string, RepositorySummary>>({});
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [people, setPeople] = useState<Record<string, PublicProfileSummary>>({});
   const [loading, setLoading] = useState<boolean>(true);
@@ -62,7 +62,7 @@ export const ActivityScreen: React.FC<ActivityScreenProps> = ({
 
   const load = useCallback(async () => {
     if (!user?.email) return;
-    const mine = await fetchUserRepositories(user.email);
+    const mine = await fetchUserRepositorySummaries(user.email);
     if (mine.error || !mine.data) {
       setError(mine.error || 'Failed to load your projects.');
       return;

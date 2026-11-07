@@ -1,7 +1,7 @@
 import { supabase } from '../../lib/supabase';
-import { RepositoryResponse } from './repositories';
+import { REPOSITORY_SUMMARY_COLUMNS, RepositoryResponse } from './repositories';
 import { PublisherProfile } from '../types/profile';
-import { Repository } from '../types/repository';
+import { RepositorySummary } from '../types/repository';
 
 /**
  * Public profile of a project's publisher, resolved server-side by
@@ -62,16 +62,16 @@ export const fetchUserProfile = async (
 /** Repositories by id (e.g. a user's projects from get_user_profile), newest first. */
 export const fetchRepositoriesByIds = async (
   ids: string[]
-): Promise<RepositoryResponse<Repository[]>> => {
+): Promise<RepositoryResponse<RepositorySummary[]>> => {
   if (ids.length === 0) return { data: [], error: null };
   try {
     const { data, error } = await supabase
       .from('repositories')
-      .select('*')
+      .select(REPOSITORY_SUMMARY_COLUMNS)
       .in('id', ids.slice(0, 100))
       .order('created_at', { ascending: false });
     if (error) return { data: null, error: error.message };
-    return { data: (data || []) as Repository[], error: null };
+    return { data: (data || []) as RepositorySummary[], error: null };
   } catch (err: any) {
     return { data: null, error: err?.message || 'Failed to load projects.' };
   }

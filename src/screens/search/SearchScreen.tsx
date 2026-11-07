@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -12,8 +12,8 @@ import { STITCH_COLORS } from '../../constants/theme';
 import { FONTS } from '../../constants/typography';
 import { COMMUNITY_MEMBER_LABEL } from '../../constants/identity';
 import { CATEGORY_LABEL, TECHNOLOGY_BY_ID, normalizeTechName } from '../../constants/technologies';
-import { Repository } from '../../types/repository';
-import { fetchRepositories } from '../../services/repositories';
+import { RepositorySummary } from '../../types/repository';
+import { fetchRepositorySummariesCached } from '../../services/repositories';
 import {
   ProjectTechnology,
   fetchTechnologiesForRepositories,
@@ -50,7 +50,7 @@ interface Founder {
   key: string;
   name: string;
   college: string;
-  projects: Repository[];
+  projects: RepositorySummary[];
 }
 interface Institute {
   key: string;
@@ -67,13 +67,13 @@ interface TechAgg {
 type Refinement = { kind: 'institute' | 'technology'; key: string; label: string };
 
 const norm = (v: string | null | undefined) => normalizeTechName(v || '');
-const founderName = (r: Repository) => r.student_name?.trim() || COMMUNITY_MEMBER_LABEL;
+const founderName = (r: RepositorySummary) => r.student_name?.trim() || COMMUNITY_MEMBER_LABEL;
 
 interface SearchScreenProps {
   isActive?: boolean;
-  onSelectRepository: (repo: Repository) => void;
+  onSelectRepository: (repo: RepositorySummary) => void;
   /** Open a founder's profile (in-app screen; bottom nav stays visible). */
-  onOpenProfile: (repoOfFounder: Repository) => void;
+  onOpenProfile: (repoOfFounder: RepositorySummary) => void;
 }
 
 export const SearchScreen: React.FC<SearchScreenProps> = ({
@@ -81,7 +81,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
   onSelectRepository,
   onOpenProfile,
 }) => {
-  const [repos, setRepos] = useState<Repository[]>([]);
+  const [repos, setRepos] = useState<RepositorySummary[]>([]);
   const [techs, setTechs] = useState<Record<string, ProjectTechnology[]>>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -92,13 +92,18 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
   const [refinement, setRefinement] = useState<Refinement | null>(null);
   const firstLoad = useRef(true);
 
-  const load = useCallback(async () => {
-    const r = await fetchRepositories();
+  // Summaries only (no descriptions), cached for a minute across tab visits;
+  // technologies are re-fetched only when the project list itself changed.
+  const lastLoaded = useRef<RepositorySummary[] | null>(null);
+  const load = useCallback(async (force = false) => {
+    const r = await fetchRepositorySummariesCached(force);
     if (r.error || !r.data) {
       setError(r.error || 'Failed to load projects.');
       return;
     }
     setError(null);
+    if (r.data === lastLoaded.current) return; // cache hit: nothing changed
+    lastLoaded.current = r.data;
     setRepos(r.data);
     const t = await fetchTechnologiesForRepositories(r.data.map((x) => x.id));
     if (t.data) setTechs(t.data);
@@ -116,7 +121,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await load();
+    await load(true);
     setRefreshing(false);
   };
 
@@ -169,7 +174,10 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
   }, [repos, techs]);
 
   // ---------------------------------------------------------------- matching
-  const q = norm(query);
+  // Filtering runs on a deferred copy of the query, so typing stays instant
+  // and the heavy matching happens in a lower-priority render.
+  const deferredQuery = useDeferredValue(query);
+  const q = norm(deferredQuery);
   const results = useMemo(() => {
     if (!q) return { projects: [], founders: [], institutes: [], technologies: [] };
     const projectMatches = repos.filter(
@@ -214,7 +222,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
   };
 
   // ---------------------------------------------------------------- rows
-  const ProjectRow = ({ r }: { r: Repository }) => (
+  const ProjectRow = ({ r }: { r: RepositorySummary }) => (
     <PressableScale style={styles.card} onPress={() => onSelectRepository(r)} activeOpacity={0.85} pressedScale={0.985}>
       <Text style={styles.cardTitle} numberOfLines={1}>{r.app_name}</Text>
       <View style={styles.metaRow}>
