@@ -1,6 +1,6 @@
 import type { User } from '@supabase/supabase-js';
 
-export type TutorialTab = 'discover' | 'submit' | 'account';
+export type TutorialTab = 'discover' | 'search' | 'submit' | 'activity' | 'account';
 
 export interface TutorialStep {
   id: string;
@@ -18,18 +18,28 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     tab: 'discover',
     eyebrow: 'Welcome',
     title: 'Welcome to ForgeAI',
-    body: 'A repository of AI agents built by students. Here is a quick tour of the three tabs at the bottom of the screen.',
+    body: 'A repository of AI agents built by students. Here is a quick tour of the tabs at the bottom of the screen.',
   },
   {
     id: 'discover',
     tab: 'discover',
     eyebrow: 'Discover tab',
     title: 'Browse projects',
-    body: 'The Discover feed lists every published agent blueprint, newest first.',
+    body: 'The Discover feed showcases every published project, newest first.',
     bullets: [
-      'Search by app name, creator or university',
-      'Filter by orchestration framework',
+      'Tap the heart to like a project, hold it to see who liked it',
       'Pull down to refresh the feed',
+    ],
+  },
+  {
+    id: 'search',
+    tab: 'search',
+    eyebrow: 'Search tab',
+    title: 'Find anything',
+    body: 'Search projects, founders, institutes and technologies in one place.',
+    bullets: [
+      'Tap an institute or technology to see its projects',
+      'Tap a founder to open their profile',
     ],
   },
   {
@@ -39,9 +49,9 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     title: 'Open any project',
     body: 'Tap a project card to see how the agent is built.',
     bullets: [
-      'Read the complete system prompt',
-      'See the framework and the creator',
-      'Tap Launch Agent to open the live deployment',
+      'Read the project description and technologies',
+      'Meet the founder and join the comments',
+      'Tap Launch App to open the live deployment',
     ],
   },
   {
@@ -49,24 +59,30 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     tab: 'submit',
     eyebrow: 'Submit tab',
     title: 'Publish your blueprint',
-    body: 'Share your own agent with the community by filling in five fields:',
+    body: 'Share your own project with the community:',
     bullets: [
       'App name and a one-liner (up to 140 characters)',
-      'Orchestration framework',
-      'Full system prompt',
-      'Deployment URL (http or https)',
+      'AI technologies & frameworks you used',
+      'Project description and deployment URL',
+      'An optional desktop or mobile screenshot',
     ],
+  },
+  {
+    id: 'activity',
+    tab: 'activity',
+    eyebrow: 'Activity tab',
+    title: 'See who engaged',
+    body: 'Likes and comments on your projects appear here, newest first.',
   },
   {
     id: 'account',
     tab: 'account',
     eyebrow: 'Profile tab',
     title: 'Manage your profile',
-    body: 'Tap the pencil next to your name to edit your profile.',
+    body: 'Your profile shows your picture, current education and projects.',
     bullets: [
-      'Add your name and university so they show on your projects',
+      'Tap ☰ for settings: personal info, education, security and log out',
       'Edit, view or delete the projects you have published',
-      'Read the privacy policy or sign out',
     ],
   },
   {

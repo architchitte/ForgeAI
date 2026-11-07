@@ -27,6 +27,7 @@ import {
 import { PressableScale } from '../animation/PressableScale';
 import { CommentsSection } from './CommentsSection';
 import { PublisherProfileSheet } from '../profile/PublisherProfileSheet';
+import { LikersSheet } from '../engagement/LikersSheet';
 import { ProfileCard } from '../profile/ProfileCard';
 import { usePublisherProfile } from '../../hooks/usePublisherProfile';
 import { getAvatarUrl } from '../../services/ownProfile';
@@ -45,15 +46,19 @@ interface ProjectDetailViewProps {
   onBack?: () => void;
   /** Open another project (e.g. from the publisher's profile). */
   onOpenProject?: (repo: Repository) => void;
+  /** Show the founder's profile as an in-app screen (keeps the bottom nav). */
+  onOpenPublisher?: (repo: Repository) => void;
 }
 
 export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   repository,
   onBack,
   onOpenProject,
+  onOpenPublisher,
 }) => {
   const [isLaunching, setIsLaunching] = useState<boolean>(false);
   const [publisherOpen, setPublisherOpen] = useState<boolean>(false);
+  const [likersOpen, setLikersOpen] = useState<boolean>(false);
   // Publisher's public profile for the card (falls back to project data).
   const publisher = usePublisherProfile(repository.id);
   const [copied, setCopied] = useState<boolean>(false);
@@ -288,6 +293,12 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           isOwner={isOwner}
         />
 
+        <LikersSheet
+          repositoryId={likersOpen ? repository.id : null}
+          appName={repository.app_name}
+          onClose={() => setLikersOpen(false)}
+        />
+
         <PublisherProfileSheet
           visible={publisherOpen}
           repository={repository}
@@ -381,7 +392,9 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
             initials={initials}
             currentEducation={publisher.currentEducation}
             college={publisherCollege}
-            onPress={() => setPublisherOpen(true)}
+            onPress={() =>
+              onOpenPublisher ? onOpenPublisher(repository) : setPublisherOpen(true)
+            }
             accessibilityLabel={`Meet the founder: view ${publisherName}'s profile`}
             testID="publisher-card"
           />
@@ -414,6 +427,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           liked={likeSummary?.likedByMe ?? false}
           pending={pendingIds[repository.id] === true}
           onToggle={toggleLike}
+          onLongPress={() => setLikersOpen(true)}
         />
         <PressableScale
           style={styles.launchButton}

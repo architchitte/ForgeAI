@@ -37,11 +37,6 @@ import { ProjectDetailView } from './src/components/detail/ProjectDetailSheet';
 import { Repository } from './src/types/repository';
 import { STITCH_COLORS } from './src/constants/theme';
 import { FONTS, FONT_ASSETS } from './src/constants/typography';
-import {
-  TargetIcon,
-  RocketIcon,
-  SlidersIcon,
-} from './src/components/navigation/NavIcons';
 import RubberSegment from './src/components/navigation/RubberSegment';
 import { FadeInView } from './src/components/animation/FadeInView';
 import { TutorialOverlay } from './src/components/onboarding/TutorialOverlay';
@@ -49,8 +44,18 @@ import { TUTORIAL_STEPS, shouldShowTutorial } from './src/constants/tutorial';
 import { useProfileSync } from './src/hooks/useProfileSync';
 import { LikesProvider } from './src/context/LikesContext';
 import { ResetPasswordScreen } from './src/screens/auth/ResetPasswordScreen';
+import { SearchScreen } from './src/screens/search/SearchScreen';
+import { ActivityScreen } from './src/screens/activity/ActivityScreen';
+import { PublisherProfileView } from './src/components/profile/PublisherProfileSheet';
+import {
+  SearchIcon,
+  BellIcon,
+  CompassIcon,
+  PlusSquareIcon,
+  UserIcon,
+} from './src/components/common/AppIcons';
 
-type AuthenticatedTab = 'discover' | 'submit' | 'account';
+type AuthenticatedTab = 'discover' | 'search' | 'submit' | 'activity' | 'account';
 
 const AuthenticatedView: React.FC = () => {
   const { user, completeTutorial } = useAuth();
@@ -58,6 +63,9 @@ const AuthenticatedView: React.FC = () => {
   useProfileSync();
   const [activeTab, setActiveTab] = useState<AuthenticatedTab>('discover');
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
+  // Founder profile shown in-app (via one of their projects); sits above the
+  // project page, so Back returns to wherever it was opened from.
+  const [profileRepo, setProfileRepo] = useState<Repository | null>(null);
 
   // First-run tutorial: null = hidden, otherwise the current step index.
   // Decided once on mount so a metadata refresh mid-tour doesn't restart it.
@@ -71,12 +79,14 @@ const AuthenticatedView: React.FC = () => {
     const step = TUTORIAL_STEPS[tutorialStep];
     if (!step) return;
     setSelectedRepo(null);
+    setProfileRepo(null);
     setActiveTab(step.tab);
   }, [tutorialStep]);
 
   const finishTutorial = useCallback(() => {
     setTutorialStep(null);
     setSelectedRepo(null);
+    setProfileRepo(null);
     setActiveTab('discover');
     // Hide locally right away; a failed save only means it may show again.
     completeTutorial().catch((err: any) => {
@@ -100,9 +110,22 @@ const AuthenticatedView: React.FC = () => {
   const handleSelectTab = (tab: AuthenticatedTab) => {
     setActiveTab(tab);
     setSelectedRepo(null);
+    setProfileRepo(null);
   };
 
-  const isFeedVisible = activeTab === 'discover' && selectedRepo === null;
+  const noOverlay = selectedRepo === null && profileRepo === null;
+  const isFeedVisible = activeTab === 'discover' && noOverlay;
+  // Search also stays mounted, so a query survives opening a project / profile.
+  const isSearchVisible = activeTab === 'search' && noOverlay;
+
+  const TAB_LABEL: Record<AuthenticatedTab, string> = {
+    discover: 'discover',
+    search: 'search',
+    submit: 'submit',
+    activity: 'activity',
+    account: 'profile',
+  };
+  const profileBackLabel = selectedRepo ? 'Back to project' : `Back to ${TAB_LABEL[activeTab]}`;
 
   const handleNavigateToSubmit = useCallback(() => {
     setSelectedRepo(null);
@@ -147,19 +170,54 @@ const AuthenticatedView: React.FC = () => {
           />
         </FadeInView>
 
+        <FadeInView
+          trigger={isSearchVisible}
+          disabled={!isSearchVisible}
+          offset={6}
+          style={[styles.screenTransition, !isSearchVisible && styles.hiddenScreen]}
+          pointerEvents={isSearchVisible ? 'auto' : 'none'}
+          accessibilityElementsHidden={!isSearchVisible}
+          importantForAccessibility={isSearchVisible ? 'auto' : 'no-hide-descendants'}
+        >
+          <SearchScreen
+            isActive={isSearchVisible}
+            onSelectRepository={setSelectedRepo}
+            onOpenProfile={setProfileRepo}
+          />
+        </FadeInView>
+
         {/* Other tabs / detail view mount on demand; keyed so each fades in */}
-        {!isFeedVisible && (
+        {!isFeedVisible && !isSearchVisible && (
           <FadeInView
-            key={selectedRepo ? `detail-${selectedRepo.id}` : activeTab}
+            key={
+              profileRepo
+                ? `profile-${profileRepo.id}`
+                : selectedRepo
+                  ? `detail-${selectedRepo.id}`
+                  : activeTab
+            }
             offset={6}
             style={styles.screenTransition}
           >
-            {selectedRepo ? (
+            {profileRepo ? (
+              <PublisherProfileView
+                repository={profileRepo}
+                backLabel={profileBackLabel}
+                onClose={() => setProfileRepo(null)}
+                onOpenProject={(repo) => {
+                  setProfileRepo(null);
+                  setSelectedRepo(repo);
+                }}
+              />
+            ) : selectedRepo ? (
               <ProjectDetailView
                 repository={selectedRepo}
                 onBack={() => setSelectedRepo(null)}
                 onOpenProject={setSelectedRepo}
+                onOpenPublisher={setProfileRepo}
               />
+            ) : activeTab === 'activity' ? (
+              <ActivityScreen isActive onSelectRepository={setSelectedRepo} />
             ) : activeTab === 'submit' ? (
               <SubmitBlueprintScreen
                 onSuccess={() => {
@@ -185,45 +243,35 @@ const AuthenticatedView: React.FC = () => {
               value: 'discover',
               label: 'Discover',
               icon: (active: boolean) => (
-                <TargetIcon
-                  size={20}
-                  color={
-                    active
-                      ? STITCH_COLORS.primaryContainer
-                      : STITCH_COLORS.outline
-                  }
-                  strokeWidth={1.8}
-                />
+                <CompassIcon size={20} color={active ? STITCH_COLORS.primaryContainer : STITCH_COLORS.outline} />
+              ),
+            },
+            {
+              value: 'search',
+              label: 'Search',
+              icon: (active: boolean) => (
+                <SearchIcon size={20} color={active ? STITCH_COLORS.primaryContainer : STITCH_COLORS.outline} />
               ),
             },
             {
               value: 'submit',
               label: 'Submit',
               icon: (active: boolean) => (
-                <RocketIcon
-                  size={20}
-                  color={
-                    active
-                      ? STITCH_COLORS.primaryContainer
-                      : STITCH_COLORS.outline
-                  }
-                  strokeWidth={1.8}
-                />
+                <PlusSquareIcon size={20} color={active ? STITCH_COLORS.primaryContainer : STITCH_COLORS.outline} />
+              ),
+            },
+            {
+              value: 'activity',
+              label: 'Activity',
+              icon: (active: boolean) => (
+                <BellIcon size={20} color={active ? STITCH_COLORS.primaryContainer : STITCH_COLORS.outline} />
               ),
             },
             {
               value: 'account',
               label: 'Profile',
               icon: (active: boolean) => (
-                <SlidersIcon
-                  size={20}
-                  color={
-                    active
-                      ? STITCH_COLORS.primaryContainer
-                      : STITCH_COLORS.outline
-                  }
-                  strokeWidth={1.8}
-                />
+                <UserIcon size={20} color={active ? STITCH_COLORS.primaryContainer : STITCH_COLORS.outline} />
               ),
             },
           ]}

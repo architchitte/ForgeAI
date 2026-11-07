@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,7 @@ import {
   FlatList,
   RefreshControl,
   ActivityIndicator,
-  TouchableOpacity,
-  TextInput,
   Platform,
-  useWindowDimensions,
 } from 'react-native';
 import { Repository } from '../../types/repository';
 import { fetchRepositories } from '../../services/repositories';
@@ -17,212 +14,35 @@ import { ProjectDetailSheet } from '../../components/detail/ProjectDetailSheet';
 import { STITCH_COLORS } from '../../constants/theme';
 import { FONTS } from '../../constants/typography';
 import {
-  GraduationCapIcon,
   ArrowRightIcon,
-  SearchIcon,
   RocketIcon,
 } from '../../components/common/AppIcons';
 import { LikeButton } from '../../components/common/LikeButton';
+import { LikersSheet } from '../../components/engagement/LikersSheet';
 import { useLikes } from '../../context/LikesContext';
 import { useLikesLiveSync } from '../../hooks/useLikesLiveSync';
-import { COMMUNITY_MEMBER_LABEL } from '../../constants/identity';
-import { DesktopFrame, PhoneFrame } from '../../components/screenshot/ScreenshotFrames';
+
+
 import {
   fetchScreenshotsForRepositories,
-  getScreenshotUrl,
 } from '../../services/screenshots';
 import { ProjectScreenshot } from '../../types/screenshot';
-import { TechnologyBadges } from '../../components/technology/TechnologyDisplay';
+
 import {
   ProjectTechnology,
   fetchTechnologiesForRepositories,
 } from '../../services/technologies';
 import { PressableScale } from '../../components/animation/PressableScale';
+import { ProjectCard } from '../../components/feed/ProjectCard';
 import { FadeInView } from '../../components/animation/FadeInView';
-import { staggerDelay } from '../../components/animation/motion';
 
-// Only the first screenful of cards gets an entrance animation.
-const ANIMATED_CARD_LIMIT = 8;
-// Phone-frame width on mobile-screenshot cards (~30% of the screen): wide
-// enough to fill the card's height beside the details, never dominating it.
-const CARD_PHONE_MIN_WIDTH = 104;
-const CARD_PHONE_MAX_WIDTH = 132;
+
 
 interface RepositoryFeedScreenProps {
   onNavigateToSubmit?: () => void;
   onSelectRepository?: (repo: Repository) => void;
   isActive?: boolean;
 }
-
-// `techId` matches structured selections; `id` still matches legacy
-// framework text, so old and new projects filter the same way.
-const FRAMEWORK_FILTERS = [
-  { id: 'all', label: 'All Projects', techId: null },
-  { id: 'langgraph', label: 'LangGraph', techId: 'langgraph' },
-  { id: 'crewai', label: 'CrewAI', techId: 'crewai' },
-  { id: 'dspy', label: 'DSPy', techId: 'dspy' },
-  { id: 'autogen', label: 'AutoGen', techId: 'microsoft-autogen' },
-];
-
-interface RepositoryCardProps {
-  item: Repository;
-  index: number;
-  onPress: (repo: Repository) => void;
-  /** Undefined until like state has loaded for this card. */
-  likeCount?: number;
-  liked: boolean;
-  likePending: boolean;
-  onToggleLike: (repositoryId: string) => void;
-  /** The project's screenshot, if it has one. */
-  screenshot?: ProjectScreenshot;
-  /** Structured technologies; undefined/empty falls back to `framework`. */
-  technologies?: ProjectTechnology[];
-}
-
-/**
- * Memoized so typing in search / toggling filters only re-renders cards
- * whose data actually changed.
- */
-const RepositoryCard = React.memo<RepositoryCardProps>(({
-  item,
-  index,
-  onPress,
-  likeCount,
-  liked,
-  likePending,
-  onToggleLike,
-  screenshot,
-  technologies,
-}) => {
-  // A screenshot that fails to load falls back to the plain card layout.
-  const [screenshotFailed, setScreenshotFailed] = useState<boolean>(false);
-  const screenshotPath = screenshot?.storage_path;
-  useEffect(() => setScreenshotFailed(false), [screenshotPath]);
-  const screenshotUri =
-    screenshotPath && !screenshotFailed ? getScreenshotUrl(screenshotPath) : null;
-  const layout: 'plain' | 'desktop' | 'mobile' = screenshotUri
-    ? screenshot!.screenshot_type
-    : 'plain';
-
-  // Never fall back to the submitter's email — it is private.
-  const studentDisplayName =
-    item.student_name && item.student_name.trim().length > 0
-      ? item.student_name.trim()
-      : COMMUNITY_MEMBER_LABEL;
-
-  const { width: windowWidth } = useWindowDimensions();
-  const phoneWidth = Math.min(
-    CARD_PHONE_MAX_WIDTH,
-    Math.max(CARD_PHONE_MIN_WIDTH, Math.round(windowWidth * 0.3))
-  );
-
-  const creatorSubtitle = item.university
-    ? `${studentDisplayName} · ${item.university}`
-    : studentDisplayName;
-
-
-  // Shared pieces, arranged differently per layout below.
-  const header = (
-    <View style={styles.cardHeader}>
-      <View style={styles.cardTitleCol}>
-        <Text style={styles.cardAppName} numberOfLines={layout === 'mobile' ? 2 : 1}>
-          {item.app_name}
-        </Text>
-        <View style={styles.authorRow}>
-          <View style={styles.authorIcon}>
-            <GraduationCapIcon size={14} color={STITCH_COLORS.primaryContainer} />
-          </View>
-          {/* Wraps onto more lines so long university names stay fully visible */}
-          <Text style={styles.cardAuthor}>{creatorSubtitle}</Text>
-        </View>
-      </View>
-    </View>
-  );
-
-  // AI technologies: first three + "+N" (legacy: framework text)
-  const techBadges = (
-    <TechnologyBadges technologies={technologies} legacyFramework={item.framework} />
-  );
-
-  // Active status & like. The whole card is the button that opens the project.
-  const footer = (
-    <View style={[styles.cardFooter, layout === 'mobile' && styles.cardFooterWrap]}>
-      <View style={styles.footerLeft}>
-        <View style={styles.activeStatusPill}>
-          <View style={styles.activeDot} />
-          <Text style={styles.activeStatusText}>Active</Text>
-        </View>
-        <LikeButton
-          repositoryId={item.id}
-          count={likeCount}
-          liked={liked}
-          pending={likePending}
-          onToggle={onToggleLike}
-        />
-      </View>
-    </View>
-  );
-
-  return (
-    <FadeInView delay={staggerDelay(index)} disabled={index >= ANIMATED_CARD_LIMIT}>
-    <PressableScale
-      style={styles.card}
-      onPress={() => onPress(item)}
-      activeOpacity={0.8}
-      pressedScale={0.98}
-      testID={`repository-card-${item.id}`}
-      accessibilityHint="Opens the project details"
-    >
-      {layout === 'mobile' ? (
-        // Mobile showcase: every detail in the left column; the phone preview
-        // fills the right side for the full height of the card.
-        <View style={styles.mobileCardRow}>
-          <View style={styles.mobileCardInfo}>
-            <View>
-              {header}
-              <Text style={styles.oneLiner} numberOfLines={4}>
-                {item.one_liner}
-              </Text>
-              {techBadges}
-            </View>
-            {footer}
-          </View>
-          <PhoneFrame
-            uri={screenshotUri!}
-            width={phoneWidth}
-            thumbnail
-            style={styles.mobileCardPhone}
-            onError={() => setScreenshotFailed(true)}
-            accessibilityLabel={`${item.app_name} mobile screenshot`}
-          />
-        </View>
-      ) : (
-        <>
-          {header}
-          {/* Description */}
-          <Text style={styles.oneLiner} numberOfLines={2}>
-            {item.one_liner}
-          </Text>
-          {layout === 'desktop' && (
-            // Desktop showcase: wide browser-window preview under the copy.
-            <DesktopFrame
-              uri={screenshotUri!}
-              compact
-              thumbnail
-              style={styles.desktopPreview}
-              onError={() => setScreenshotFailed(true)}
-              accessibilityLabel={`${item.app_name} desktop screenshot`}
-            />
-          )}
-          {techBadges}
-          {footer}
-        </>
-      )}
-    </PressableScale>
-    </FadeInView>
-  );
-});
-RepositoryCard.displayName = 'RepositoryCard';
 
 export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
   onNavigateToSubmit,
@@ -235,8 +55,8 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   // Search & Filter State
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedFramework, setSelectedFramework] = useState<string>('all');
+  // Likers sheet (hold a like button)
+  const [likersFor, setLikersFor] = useState<string | null>(null);
 
   // Selected repository for Project Detail Sheet
   const [selectedRepository, setSelectedRepository] = useState<Repository | null>(null);
@@ -321,37 +141,11 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
     setSelectedRepository(null);
   };
 
-  // Filtered repositories based on search and framework
-  const filteredRepositories = useMemo(() => {
-    return repositories.filter((repo) => {
-      const query = searchQuery.trim().toLowerCase();
-      const matchesSearch =
-        query === '' ||
-        repo.app_name.toLowerCase().includes(query) ||
-        repo.one_liner.toLowerCase().includes(query) ||
-        repo.framework.toLowerCase().includes(query) ||
-        (technologies[repo.id] ?? []).some((t) =>
-          t.technology_name.toLowerCase().includes(query)
-        ) ||
-        (repo.university && repo.university.toLowerCase().includes(query)) ||
-        (repo.student_name && repo.student_name.toLowerCase().includes(query));
-
-      const filter = FRAMEWORK_FILTERS.find((f) => f.id === selectedFramework);
-      const matchesFramework =
-        selectedFramework === 'all' ||
-        repo.framework.toLowerCase().includes(selectedFramework.toLowerCase()) ||
-        (!!filter?.techId &&
-          (technologies[repo.id] ?? []).some((t) => t.technology_id === filter.techId));
-
-      return matchesSearch && matchesFramework;
-    });
-  }, [repositories, searchQuery, selectedFramework, technologies]);
-
   const renderCard = useCallback(
     ({ item, index }: { item: Repository; index: number }) => {
       const summary = likes[item.id];
       return (
-        <RepositoryCard
+        <ProjectCard
           item={item}
           index={index}
           onPress={handleSelectRepository}
@@ -359,6 +153,7 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
           liked={summary?.likedByMe ?? false}
           likePending={pendingIds[item.id] === true}
           onToggleLike={toggleLike}
+          onShowLikers={setLikersFor}
           screenshot={screenshots[item.id]}
           technologies={technologies[item.id]}
         />
@@ -378,75 +173,6 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
         Discover AI projects built by university students.
       </Text>
 
-      {/* Modern Search Bar */}
-      <View style={styles.searchBarWrapper}>
-        <View style={styles.searchIconWrap}>
-          <SearchIcon size={16} color={STITCH_COLORS.outline} />
-        </View>
-        <TextInput
-          style={styles.searchInput}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Search projects, technologies, schools..."
-          placeholderTextColor={STITCH_COLORS.outline}
-          autoCapitalize="none"
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity
-            onPress={() => setSearchQuery('')}
-            style={styles.clearSearchBtn}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={styles.clearSearchText}>✕</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Framework Filter Chips */}
-      <View style={styles.chipsScroll}>
-        {FRAMEWORK_FILTERS.map((chip) => {
-          const isSelected = selectedFramework.toLowerCase() === chip.id.toLowerCase();
-          return (
-            <PressableScale
-              key={chip.id}
-              style={[
-                styles.filterChip,
-                isSelected && styles.filterChipActive,
-              ]}
-              onPress={() => setSelectedFramework(chip.id)}
-              activeOpacity={0.7}
-              pressedScale={0.95}
-              accessibilityState={{ selected: isSelected }}
-            >
-              <Text
-                style={[
-                  styles.chipLabel,
-                  isSelected && styles.chipLabelActive,
-                ]}
-              >
-                {chip.label}
-              </Text>
-              {chip.id === 'all' && (
-                <View
-                  style={[
-                    styles.chipCountBadge,
-                    isSelected && styles.chipCountBadgeActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.chipCountText,
-                      isSelected && styles.chipCountTextActive,
-                    ]}
-                  >
-                    {repositories.length}
-                  </Text>
-                </View>
-              )}
-            </PressableScale>
-          );
-        })}
-      </View>
     </View>
   );
 
@@ -497,7 +223,7 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
         </FadeInView>
       ) : (
         <FlatList
-          data={filteredRepositories}
+          data={repositories}
           keyExtractor={keyExtractor}
           renderItem={renderCard}
           extraData={[likes, screenshots, technologies]}
@@ -510,24 +236,12 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
           ListEmptyComponent={
             <FadeInView style={styles.emptyContainer}>
               <View style={styles.emptyIcon}>
-                <SearchIcon size={28} color={STITCH_COLORS.outline} />
+                <RocketIcon size={28} color={STITCH_COLORS.outline} />
               </View>
-              <Text style={styles.emptyTitle}>No Projects Found</Text>
+              <Text style={styles.emptyTitle}>No Projects Yet</Text>
               <Text style={styles.emptySubtitle}>
-                No student AI projects matched your search query or filter.
+                Be the first to publish a student AI project.
               </Text>
-              {(searchQuery !== '' || selectedFramework !== 'all') && (
-                <PressableScale
-                  style={styles.resetBtn}
-                  onPress={() => {
-                    setSearchQuery('');
-                    setSelectedFramework('all');
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.resetBtnText}>Reset Filters</Text>
-                </PressableScale>
-              )}
             </FadeInView>
           }
           contentContainerStyle={styles.listContent}
@@ -541,6 +255,12 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
           }
         />
       )}
+
+      <LikersSheet
+        repositoryId={likersFor}
+        appName={repositories.find((r) => r.id === likersFor)?.app_name}
+        onClose={() => setLikersFor(null)}
+      />
 
       {/* Project Detail Sheet */}
       <ProjectDetailSheet
@@ -566,30 +286,6 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 16,
   },
-  beaconBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 1,
-    borderColor: '#333333',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 9999,
-    marginBottom: 8,
-    gap: 6,
-  },
-  beaconDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#FFFFFF',
-  },
-  beaconText: {
-    fontSize: 11,
-    fontFamily: FONTS.sans.medium,
-    color: '#EDEDED',
-  },
   heroTitle: {
     fontSize: 26,
     fontFamily: FONTS.sans.semibold,
@@ -603,193 +299,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
     lineHeight: 20,
   },
-  searchBarWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#000000',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#262626',
-    height: 44,
-    marginTop: 14,
-    marginBottom: 12,
-  },
-  searchIconWrap: {
-    marginRight: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  searchInput: {
-    flex: 1,
-    color: '#EDEDED',
-    fontSize: 14,
-    fontFamily: FONTS.sans.regular,
-  },
-  clearSearchBtn: {
-    padding: 6,
-  },
-  clearSearchText: {
-    color: '#737373',
-    fontSize: 12,
-    fontFamily: FONTS.sans.regular,
-  },
-  chipsScroll: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 2,
-  },
-  filterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    backgroundColor: '#000000',
-    borderWidth: 1,
-    borderColor: '#262626',
-    gap: 6,
-  },
-  filterChipActive: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#FFFFFF',
-  },
-  chipLabel: {
-    fontSize: 12,
-    fontFamily: FONTS.sans.medium,
-    color: '#A1A1A1',
-  },
-  chipLabelActive: {
-    color: '#000000',
-    fontFamily: FONTS.sans.semibold,
-  },
-  chipCountBadge: {
-    backgroundColor: '#171717',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 4,
-  },
-  chipCountBadgeActive: {
-    backgroundColor: '#E5E5E5',
-  },
-  chipCountText: {
-    fontSize: 11,
-    fontFamily: FONTS.sans.semibold,
-    color: '#EDEDED',
-  },
-  chipCountTextActive: {
-    color: '#000000',
-  },
 
   // Project Card
-  card: {
-    backgroundColor: '#0A0A0A',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#262626',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 10,
-  },
-  cardTitleCol: {
-    flex: 1,
-    marginRight: 10,
-  },
-  cardAppName: {
-    fontSize: 18,
-    fontFamily: FONTS.sans.semibold,
-    color: '#FFFFFF',
-    letterSpacing: -0.3,
-  },
-  authorRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 4,
-    marginTop: 3,
-  },
-  authorIcon: {
-    marginTop: 1, // align with the first text line
-  },
-  schoolIcon: {
-    fontSize: 12,
-    fontFamily: FONTS.sans.regular,
-  },
-  cardAuthor: {
-    flexShrink: 1,
-    fontSize: 12,
-    lineHeight: 16,
-    fontFamily: FONTS.sans.regular,
-    color: '#A1A1A1',
-  },
-  oneLiner: {
-    fontSize: 13.5,
-    fontFamily: FONTS.sans.regular,
-    color: '#A1A1A1',
-    lineHeight: 19,
-    marginBottom: 12,
-  },
-  desktopPreview: {
-    marginBottom: 12,
-  },
-  mobileCardRow: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: 14,
-  },
-  mobileCardInfo: {
-    flex: 1,
-    minWidth: 0,
-    justifyContent: 'space-between',
-  },
-  mobileCardPhone: {
-    alignSelf: 'center',
-  },
-  cardFooterWrap: {
-    flexWrap: 'wrap',
-    rowGap: 8,
-    columnGap: 8,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#171717',
-  },
-  footerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  activeStatusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 1,
-    borderColor: '#333333',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    gap: 5,
-  },
-  activeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#FFFFFF',
-  },
-  activeStatusText: {
-    fontSize: 11,
-    fontFamily: FONTS.sans.medium,
-    color: '#EDEDED',
-  },
 
   // Call To Action Footer
   footerContainer: {
@@ -808,10 +319,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     marginBottom: 8,
-  },
-  rocketIcon: {
-    fontSize: 14,
-    fontFamily: FONTS.sans.regular,
   },
   cohortBadgeText: {
     fontSize: 11,
@@ -907,17 +414,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 6,
     lineHeight: 18,
-  },
-  resetBtn: {
-    marginTop: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: STITCH_COLORS.surfaceContainerHigh,
-  },
-  resetBtnText: {
-    fontSize: 12,
-    fontFamily: FONTS.sans.semibold,
-    color: STITCH_COLORS.primary,
   },
 });

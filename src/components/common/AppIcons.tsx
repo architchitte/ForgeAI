@@ -285,3 +285,27 @@ export const MenuIcon: React.FC<IconProps> = ({
   size = 20,
   color = STITCH_COLORS.onSurface,
 }) => <Feather name="menu" size={size} color={color} />;
+
+/**
+ * 34. Bell / Activity Icon
+ */
+export const BellIcon: React.FC<IconProps> = ({
+  size = 20,
+  color = STITCH_COLORS.outline,
+}) => <Feather name="bell" size={size} color={color} />;
+
+/**
+ * 35. Compass Icon (Discover tab)
+ */
+export const CompassIcon: React.FC<IconProps> = ({
+  size = 20,
+  color = STITCH_COLORS.outline,
+}) => <Feather name="compass" size={size} color={color} />;
+
+/**
+ * 36. Plus Square Icon (Submit tab)
+ */
+export const PlusSquareIcon: React.FC<IconProps> = ({
+  size = 20,
+  color = STITCH_COLORS.outline,
+}) => <Feather name="plus-square" size={size} color={color} />;

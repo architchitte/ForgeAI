@@ -14,6 +14,8 @@ interface LikeButtonProps {
   onToggle: (repositoryId: string) => void;
   /** `compact` = feed card pill, `large` = detail action bar button. */
   variant?: 'compact' | 'large';
+  /** Hold the button: show who liked the project. */
+  onLongPress?: (repositoryId: string) => void;
 }
 
 /**
@@ -28,6 +30,7 @@ export const LikeButton: React.FC<LikeButtonProps> = ({
   pending,
   onToggle,
   variant = 'compact',
+  onLongPress,
 }) => {
   const unknown = count === undefined;
   const large = variant === 'large';
@@ -43,6 +46,13 @@ export const LikeButton: React.FC<LikeButtonProps> = ({
         unknown && styles.unknown,
       ]}
       onPress={() => onToggle(repositoryId)}
+      onLongPress={onLongPress ? () => onLongPress(repositoryId) : undefined}
+      delayLongPress={400}
+      accessibilityHint={onLongPress ? 'Hold to see who liked this project' : undefined}
+      accessibilityActions={onLongPress ? [{ name: 'longpress', label: 'See who liked this' }] : undefined}
+      onAccessibilityAction={(e) => {
+        if (e.nativeEvent.actionName === 'longpress') onLongPress?.(repositoryId);
+      }}
       activeOpacity={0.7}
       pressedScale={large ? 0.95 : 0.9}
       hitSlop={large ? undefined : { top: 8, bottom: 8, left: 6, right: 6 }}
