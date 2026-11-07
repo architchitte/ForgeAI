@@ -25,12 +25,21 @@ import { LikeButton } from '../../components/common/LikeButton';
 import { useLikes } from '../../context/LikesContext';
 import { useLikesLiveSync } from '../../hooks/useLikesLiveSync';
 import { COMMUNITY_MEMBER_LABEL } from '../../constants/identity';
+import { DesktopFrame, PhoneFrame } from '../../components/screenshot/ScreenshotFrames';
+import {
+  fetchScreenshotsForRepositories,
+  getScreenshotUrl,
+} from '../../services/screenshots';
+import { ProjectScreenshot } from '../../types/screenshot';
 import { PressableScale } from '../../components/animation/PressableScale';
 import { FadeInView } from '../../components/animation/FadeInView';
 import { staggerDelay } from '../../components/animation/motion';
 
 // Only the first screenful of cards gets an entrance animation.
 const ANIMATED_CARD_LIMIT = 8;
+// Phone-frame width on mobile-screenshot cards: compact so the portrait
+// image never dominates the feed.
+const CARD_PHONE_WIDTH = 92;
 
 interface RepositoryFeedScreenProps {
   onNavigateToSubmit?: () => void;
@@ -63,6 +72,8 @@ interface RepositoryCardProps {
   liked: boolean;
   likePending: boolean;
   onToggleLike: (repositoryId: string) => void;
+  /** The project's screenshot, if it has one. */
+  screenshot?: ProjectScreenshot;
 }
 
 /**
@@ -77,7 +88,18 @@ const RepositoryCard = React.memo<RepositoryCardProps>(({
   liked,
   likePending,
   onToggleLike,
+  screenshot,
 }) => {
+  // A screenshot that fails to load falls back to the plain card layout.
+  const [screenshotFailed, setScreenshotFailed] = useState<boolean>(false);
+  const screenshotPath = screenshot?.storage_path;
+  useEffect(() => setScreenshotFailed(false), [screenshotPath]);
+  const screenshotUri =
+    screenshotPath && !screenshotFailed ? getScreenshotUrl(screenshotPath) : null;
+  const layout: 'plain' | 'desktop' | 'mobile' = screenshotUri
+    ? screenshot!.screenshot_type
+    : 'plain';
+
   // Never fall back to the submitter's email — it is private.
   const studentDisplayName =
     item.student_name && item.student_name.trim().length > 0
@@ -128,10 +150,44 @@ const RepositoryCard = React.memo<RepositoryCardProps>(({
         </View>
       </View>
 
-      {/* Description */}
-      <Text style={styles.oneLiner} numberOfLines={2}>
-        {item.one_liner}
-      </Text>
+      {layout === 'mobile' ? (
+        // Mobile showcase: copy on the left, compact phone preview on the right.
+        <View style={styles.mobileShowcase}>
+          <View style={styles.mobileShowcaseText}>
+            <Text style={styles.oneLiner} numberOfLines={5}>
+              {item.one_liner}
+            </Text>
+            <View style={styles.previewTag}>
+              <Text style={styles.previewTagText}>Mobile app</Text>
+            </View>
+          </View>
+          <PhoneFrame
+            uri={screenshotUri!}
+            width={CARD_PHONE_WIDTH}
+            thumbnail
+            onError={() => setScreenshotFailed(true)}
+            accessibilityLabel={`${item.app_name} mobile screenshot`}
+          />
+        </View>
+      ) : (
+        <>
+          {/* Description */}
+          <Text style={styles.oneLiner} numberOfLines={2}>
+            {item.one_liner}
+          </Text>
+          {layout === 'desktop' && (
+            // Desktop showcase: wide browser-window preview under the copy.
+            <DesktopFrame
+              uri={screenshotUri!}
+              compact
+              thumbnail
+              style={styles.desktopPreview}
+              onError={() => setScreenshotFailed(true)}
+              accessibilityLabel={`${item.app_name} desktop screenshot`}
+            />
+          )}
+        </>
+      )}
 
       {/* Card Bottom: Active Status Pill, Like & View Project Button */}
       <View style={styles.cardFooter}>
@@ -181,9 +237,11 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
   const isInitialMount = useRef(true);
 
   const { likes, pendingIds, refreshLikes, toggleLike } = useLikes();
+  const [screenshots, setScreenshots] = useState<Record<string, ProjectScreenshot>>({});
 
-  // Repositories first, then one batched like query for every loaded card.
-  // A likes failure doesn't block the feed; counts just stay unknown.
+  // Repositories first, then one batched like query and one batched
+  // screenshot query (in parallel) for every loaded card. Failures there
+  // don't block the feed: counts stay unknown / cards show no screenshot.
   const loadData = useCallback(async () => {
     setError(null);
     const result = await fetchRepositories();
@@ -192,7 +250,13 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
     } else {
       const repos = result.data || [];
       setRepositories(repos);
-      await refreshLikes(repos.map((r) => r.id));
+      const ids = repos.map((r) => r.id);
+      await Promise.all([
+        refreshLikes(ids),
+        fetchScreenshotsForRepositories(ids).then((res) => {
+          if (res.data) setScreenshots(res.data);
+        }),
+      ]);
     }
   }, [refreshLikes]);
 
@@ -277,10 +341,11 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
           liked={summary?.likedByMe ?? false}
           likePending={pendingIds[item.id] === true}
           onToggleLike={toggleLike}
+          screenshot={screenshots[item.id]}
         />
       );
     },
-    [handleSelectRepository, likes, pendingIds, toggleLike]
+    [handleSelectRepository, likes, pendingIds, toggleLike, screenshots]
   );
 
   const keyExtractor = useCallback((item: Repository) => item.id, []);
@@ -416,7 +481,7 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
           data={filteredRepositories}
           keyExtractor={keyExtractor}
           renderItem={renderCard}
-          extraData={likes}
+          extraData={[likes, screenshots]}
           initialNumToRender={8}
           maxToRenderPerBatch={8}
           windowSize={11}
@@ -654,6 +719,33 @@ const styles = StyleSheet.create({
     color: '#A1A1A1',
     lineHeight: 19,
     marginBottom: 12,
+  },
+  desktopPreview: {
+    marginBottom: 12,
+  },
+  mobileShowcase: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+    marginBottom: 12,
+  },
+  mobileShowcaseText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  previewTag: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#111111',
+    borderWidth: 1,
+    borderColor: '#262626',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  previewTagText: {
+    fontSize: 10.5,
+    fontFamily: FONTS.sans.medium,
+    color: '#A1A1A1',
   },
   cardFooter: {
     flexDirection: 'row',

@@ -30,6 +30,9 @@ import { CommentsSection } from './CommentsSection';
 import { LikeButton } from '../common/LikeButton';
 import { useLikes } from '../../context/LikesContext';
 import { useLikesLiveSync } from '../../hooks/useLikesLiveSync';
+import { useAuth } from '../../context/AuthContext';
+import { ProjectScreenshotShowcase } from '../screenshot/ProjectScreenshotShowcase';
+import { isRepositoryOwner } from '../../services/screenshots';
 import { COMMUNITY_MEMBER_LABEL } from '../../constants/identity';
 
 interface ProjectDetailViewProps {
@@ -88,6 +91,8 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   // Likes: shared with the feed via LikesContext. Re-read this project's
   // count on open, and keep it live (realtime + app foreground) while shown.
   const { likes, pendingIds, refreshLikes, toggleLike } = useLikes();
+  const { user } = useAuth();
+  const isOwner = isRepositoryOwner(repository, user?.email);
   const likeSummary = likes[repository.id];
   const refreshThisLike = useCallback(() => {
     refreshLikes([repository.id]);
@@ -260,6 +265,13 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           <Text style={styles.appName}>{repository.app_name}</Text>
           <Text style={styles.oneLinerText}>{repository.one_liner}</Text>
         </View>
+
+        {/* Project Screenshot (desktop browser frame / mobile phone frame) */}
+        <ProjectScreenshotShowcase
+          repositoryId={repository.id}
+          appName={repository.app_name}
+          isOwner={isOwner}
+        />
 
         {/* Creator Card */}
         <View style={styles.card}>

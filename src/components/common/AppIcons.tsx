@@ -181,3 +181,43 @@ export const CommentIcon: React.FC<IconProps> = ({
   size = 16,
   color = STITCH_COLORS.onSurfaceVariant,
 }) => <Feather name="message-circle" size={size} color={color} />;
+
+/**
+ * 21. Monitor / Desktop Icon
+ */
+export const MonitorIcon: React.FC<IconProps> = ({
+  size = 18,
+  color = STITCH_COLORS.onSurfaceVariant,
+}) => <Feather name="monitor" size={size} color={color} />;
+
+/**
+ * 22. Smartphone / Mobile Icon
+ */
+export const SmartphoneIcon: React.FC<IconProps> = ({
+  size = 18,
+  color = STITCH_COLORS.onSurfaceVariant,
+}) => <Feather name="smartphone" size={size} color={color} />;
+
+/**
+ * 23. Image Icon
+ */
+export const ImageIcon: React.FC<IconProps> = ({
+  size = 16,
+  color = STITCH_COLORS.onSurfaceVariant,
+}) => <Feather name="image" size={size} color={color} />;
+
+/**
+ * 24. Alert Triangle / Warning Icon
+ */
+export const AlertTriangleIcon: React.FC<IconProps> = ({
+  size = 14,
+  color = STITCH_COLORS.onSurface,
+}) => <Feather name="alert-triangle" size={size} color={color} />;
+
+/**
+ * 25. Close / X Icon
+ */
+export const CloseIcon: React.FC<IconProps> = ({
+  size = 18,
+  color = STITCH_COLORS.onSurface,
+}) => <Feather name="x" size={size} color={color} />;

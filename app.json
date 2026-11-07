@@ -34,6 +34,14 @@
       "expo-web-browser",
       "expo-font",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "ForgeAI needs access to your photos so you can choose a screenshot of your project.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#000000",

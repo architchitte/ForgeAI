@@ -17,6 +17,9 @@ import { createRepository } from '../../services/repositories';
 import { STITCH_COLORS } from '../../constants/theme';
 import { FONTS } from '../../constants/typography';
 import { RocketIcon } from '../../components/navigation/NavIcons';
+import { ScreenshotPickerSection } from '../../components/screenshot/ScreenshotPickerSection';
+import { saveScreenshot } from '../../services/screenshots';
+import { PickedScreenshot, ScreenshotType } from '../../types/screenshot';
 
 const FRAMEWORK_SUGGESTIONS = [
   'LangGraph',
@@ -54,6 +57,10 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
+
+  // Optional project screenshot, uploaded only after the project is created.
+  const [screenshotType, setScreenshotType] = useState<ScreenshotType>('desktop');
+  const [screenshot, setScreenshot] = useState<PickedScreenshot | null>(null);
 
   // Validate URL (must start with http:// or https:// and form a valid URL)
   const isValidUrl = (url: string): boolean => {
@@ -122,6 +129,8 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
       deploymentUrl: false,
     });
     setSubmitted(false);
+    setScreenshotType('desktop');
+    setScreenshot(null);
   };
 
   const handlePublish = async () => {
@@ -189,10 +198,26 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
         return;
       }
 
+      // Optional screenshot. The project is already published, so a failure
+      // here never undoes the submission — the owner can add it later.
+      let screenshotNote = '';
+      if (screenshot && result.data?.id) {
+        const shot = await saveScreenshot({
+          repositoryId: result.data.id,
+          userId: user.id,
+          picked: screenshot,
+          type: screenshotType,
+          existing: null,
+        });
+        if (shot.error) {
+          screenshotNote = `\n\nThe screenshot could not be uploaded (${shot.error}). You can add it from the project page.`;
+        }
+      }
+
       setSubmitSuccess(true);
       Alert.alert(
         'Blueprint Published! 🚀',
-        `"${formData.appName}" has been successfully published to the ForgeAI repository.`,
+        `"${formData.appName}" has been successfully published to the ForgeAI repository.${screenshotNote}`,
         [{ text: 'OK' }]
       );
 
@@ -369,6 +394,18 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
                 helperText="Must be a valid HTTP or HTTPS endpoint accessible by external clients."
                 containerStyle={styles.inputContainer}
                 testID="blueprint-deployment-url-input"
+              />
+            </View>
+
+            {/* Optional: Project Screenshot */}
+            <View style={styles.formGroup}>
+              <ScreenshotPickerSection
+                type={screenshotType}
+                onTypeChange={setScreenshotType}
+                picked={screenshot}
+                onPickedChange={setScreenshot}
+                disabled={isSubmitting}
+                optional
               />
             </View>
 
