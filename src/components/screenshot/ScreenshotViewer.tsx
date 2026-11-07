@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, View, Image, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { STITCH_COLORS } from '../../constants/theme';
 import { FONTS } from '../../constants/typography';
 import { CloseIcon } from '../common/AppIcons';
@@ -29,12 +29,15 @@ export const ScreenshotViewer: React.FC<ScreenshotViewerProps> = ({
       animationType="fade"
       transparent
       statusBarTranslucent
+      navigationBarTranslucent
       onRequestClose={onClose}
       onShow={() => {
         setLoading(true);
         setFailed(false);
       }}
     >
+      {/* Own provider: a Modal is a separate window on Android (see TechnologySelector). */}
+      <SafeAreaProvider>
       <View style={styles.backdrop}>
         <SafeAreaView style={styles.safe} edges={['top', 'bottom', 'left', 'right']}>
           <View style={styles.header}>
@@ -69,6 +72,7 @@ export const ScreenshotViewer: React.FC<ScreenshotViewerProps> = ({
           </View>
         </SafeAreaView>
       </View>
+      </SafeAreaProvider>
     </Modal>
   );
 };

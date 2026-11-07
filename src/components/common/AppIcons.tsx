@@ -237,3 +237,27 @@ export const FileTextIcon: React.FC<IconProps> = ({
   size = 15,
   color = STITCH_COLORS.onSurface,
 }) => <Feather name="file-text" size={size} color={color} />;
+
+/**
+ * 28. Check Icon (checkbox tick)
+ */
+export const CheckIcon: React.FC<IconProps> = ({
+  size = 12,
+  color = '#000000',
+}) => <Feather name="check" size={size} color={color} />;
+
+/**
+ * 29. Chevron Down Icon
+ */
+export const ChevronDownIcon: React.FC<IconProps> = ({
+  size = 16,
+  color = STITCH_COLORS.outline,
+}) => <Feather name="chevron-down" size={size} color={color} />;
+
+/**
+ * 30. Plus Icon
+ */
+export const PlusIcon: React.FC<IconProps> = ({
+  size = 14,
+  color = STITCH_COLORS.onSurface,
+}) => <Feather name="plus" size={size} color={color} />;

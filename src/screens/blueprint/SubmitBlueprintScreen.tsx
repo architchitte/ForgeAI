@@ -20,13 +20,9 @@ import { RocketIcon } from '../../components/navigation/NavIcons';
 import { ScreenshotPickerSection } from '../../components/screenshot/ScreenshotPickerSection';
 import { saveScreenshot } from '../../services/screenshots';
 import { PickedScreenshot, ScreenshotType } from '../../types/screenshot';
-
-const FRAMEWORK_SUGGESTIONS = [
-  'LangGraph',
-  'CrewAI',
-  'DSPy',
-  'AutoGen',
-];
+import { TechnologySelector } from '../../components/technology/TechnologySelector';
+import { SelectedTechnology, buildFrameworkSummary } from '../../constants/technologies';
+import { replaceProjectTechnologies } from '../../services/technologies';
 
 interface SubmitBlueprintScreenProps {
   onSuccess?: () => void;
@@ -62,6 +58,10 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
   const [screenshotType, setScreenshotType] = useState<ScreenshotType>('desktop');
   const [screenshot, setScreenshot] = useState<PickedScreenshot | null>(null);
 
+  // AI technologies (multi-select). repositories.framework receives a
+  // readable summary of these for backward compatibility.
+  const [technologies, setTechnologies] = useState<SelectedTechnology[]>([]);
+
   // Validate URL (must start with http:// or https:// and form a valid URL)
   const isValidUrl = (url: string): boolean => {
     const trimmed = url.trim();
@@ -88,12 +88,13 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
       errs.oneLiner = 'One-Liner must not exceed 140 characters.';
     }
 
-    if (!formData.orchestrationFramework.trim()) {
-      errs.orchestrationFramework = 'Orchestration Framework is required.';
+    // Still required (the MVP form requires a framework), now as >= 1 technology.
+    if (technologies.length === 0) {
+      errs.orchestrationFramework = 'Select at least one AI technology or framework.';
     }
 
     if (!formData.systemPrompt.trim()) {
-      errs.systemPrompt = 'Complete System Prompt is required.';
+      errs.systemPrompt = 'Project Description is required.';
     }
 
     if (!formData.deploymentUrl.trim()) {
@@ -103,7 +104,7 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
     }
 
     return errs;
-  }, [formData]);
+  }, [formData, technologies]);
 
   const isFormValid = Object.keys(errors).length === 0;
 
@@ -131,6 +132,7 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
     setSubmitted(false);
     setScreenshotType('desktop');
     setScreenshot(null);
+    setTechnologies([]);
   };
 
   const handlePublish = async () => {
@@ -184,7 +186,7 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
       const result = await createRepository({
         app_name: formData.appName.trim(),
         one_liner: formData.oneLiner.trim(),
-        framework: formData.orchestrationFramework.trim(),
+        framework: buildFrameworkSummary(technologies),
         system_prompt: formData.systemPrompt.trim(),
         agent_execution_url: formData.deploymentUrl.trim(),
         student_email: studentEmail,
@@ -198,9 +200,16 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
         return;
       }
 
-      // Optional screenshot. The project is already published, so a failure
-      // here never undoes the submission — the owner can add it later.
+      // Technologies + optional screenshot. The project is already published,
+      // so failures here never undo the submission — the owner can fix them
+      // from Profile → Edit / the project page.
       let screenshotNote = '';
+      if (result.data?.id) {
+        const techs = await replaceProjectTechnologies(result.data.id, technologies);
+        if (techs.error) {
+          screenshotNote += `\n\nThe technology list could not be saved (${techs.error}). You can update it from your Profile.`;
+        }
+      }
       if (screenshot && result.data?.id) {
         const shot = await saveScreenshot({
           repositoryId: result.data.id,
@@ -210,7 +219,7 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
           existing: null,
         });
         if (shot.error) {
-          screenshotNote = `\n\nThe screenshot could not be uploaded (${shot.error}). You can add it from the project page.`;
+          screenshotNote += `\n\nThe screenshot could not be uploaded (${shot.error}). You can add it from the project page.`;
         }
       }
 
@@ -316,64 +325,34 @@ export const SubmitBlueprintScreen: React.FC<SubmitBlueprintScreenProps> = ({
               />
             </View>
 
-            {/* Field 3: Orchestration Framework */}
+            {/* Field 3: AI Technologies & Frameworks (multi-select) */}
             <View style={styles.formGroup}>
-              <Text style={styles.fieldLabel}>Orchestration Framework *</Text>
-              <View style={styles.chipsContainer}>
-                {FRAMEWORK_SUGGESTIONS.map((fw) => {
-                  const isSelected =
-                    formData.orchestrationFramework.toLowerCase() ===
-                    fw.toLowerCase();
-                  return (
-                    <PressableScale
-                      key={fw}
-                      style={[
-                        styles.chip,
-                        isSelected && styles.chipActive,
-                      ]}
-                      onPress={() => {
-                        handleFieldChange(
-                          'orchestrationFramework',
-                          isSelected ? '' : fw
-                        );
-                      }}
-                      activeOpacity={0.7}
-                      pressedScale={0.95}
-                      hitSlop={{ top: 6, bottom: 6, left: 2, right: 2 }}
-                      accessibilityState={{ selected: isSelected }}
-                    >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          isSelected && styles.chipTextActive,
-                        ]}
-                      >
-                        {fw}
-                      </Text>
-                    </PressableScale>
-                  );
-                })}
-              </View>
-              {getFieldError('orchestrationFramework') ? (
-                <Text style={styles.errorText}>
-                  {getFieldError('orchestrationFramework')}
-                </Text>
-              ) : null}
+              <TechnologySelector
+                value={technologies}
+                onChange={(next) => {
+                  setTechnologies(next);
+                  setTouched((prev) => ({ ...prev, orchestrationFramework: true }));
+                  if (submitError) setSubmitError(null);
+                  if (submitSuccess) setSubmitSuccess(false);
+                }}
+                error={getFieldError('orchestrationFramework')}
+                disabled={isSubmitting}
+                required
+              />
             </View>
 
-            {/* Field 4: Complete System Prompt */}
+            {/* Field 4: Project Description (stored in system_prompt) */}
             <View style={styles.formGroup}>
-              <View style={styles.terminalLabelRow}>
-                <Text style={styles.fieldLabel}>Complete System Prompt *</Text>
-                <Text style={styles.terminalPromptTag}>prompt.yaml</Text>
-              </View>
               <Input
+                label="Project Description *"
                 value={formData.systemPrompt}
                 onChangeText={(text) => handleFieldChange('systemPrompt', text)}
-                placeholder="Paste the full, exact system prompt used by your agent..."
+                placeholder="Describe what your project does, who it's for, and how it works..."
                 multiline
                 numberOfLines={6}
+                autoCapitalize="sentences"
                 error={getFieldError('systemPrompt')}
+                helperText="Leave a blank line to start a new paragraph."
                 containerStyle={styles.inputContainer}
                 testID="blueprint-system-prompt-input"
               />
@@ -523,43 +502,6 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.sans.medium,
     color: '#EDEDED',
     marginBottom: 6,
-  },
-  terminalLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  terminalPromptTag: {
-    fontSize: 10.5,
-    color: '#737373',
-    fontFamily: FONTS.mono.regular,
-  },
-  chipsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#262626',
-  },
-  chipActive: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#FFFFFF',
-  },
-  chipText: {
-    fontSize: 12,
-    fontFamily: FONTS.sans.medium,
-    color: '#A1A1A1',
-  },
-  chipTextActive: {
-    color: '#000000',
-    fontFamily: FONTS.sans.semibold,
   },
   errorText: {
     marginTop: 6,

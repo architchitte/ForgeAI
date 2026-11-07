@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   TextInput,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { Repository } from '../../types/repository';
 import { fetchRepositories } from '../../services/repositories';
@@ -31,15 +32,21 @@ import {
   getScreenshotUrl,
 } from '../../services/screenshots';
 import { ProjectScreenshot } from '../../types/screenshot';
+import { TechnologyBadges } from '../../components/technology/TechnologyDisplay';
+import {
+  ProjectTechnology,
+  fetchTechnologiesForRepositories,
+} from '../../services/technologies';
 import { PressableScale } from '../../components/animation/PressableScale';
 import { FadeInView } from '../../components/animation/FadeInView';
 import { staggerDelay } from '../../components/animation/motion';
 
 // Only the first screenful of cards gets an entrance animation.
 const ANIMATED_CARD_LIMIT = 8;
-// Phone-frame width on mobile-screenshot cards: compact so the portrait
-// image never dominates the feed.
-const CARD_PHONE_WIDTH = 92;
+// Phone-frame width on mobile-screenshot cards (~30% of the screen): wide
+// enough to fill the card's height beside the details, never dominating it.
+const CARD_PHONE_MIN_WIDTH = 104;
+const CARD_PHONE_MAX_WIDTH = 132;
 
 interface RepositoryFeedScreenProps {
   onNavigateToSubmit?: () => void;
@@ -47,21 +54,15 @@ interface RepositoryFeedScreenProps {
   isActive?: boolean;
 }
 
+// `techId` matches structured selections; `id` still matches legacy
+// framework text, so old and new projects filter the same way.
 const FRAMEWORK_FILTERS = [
-  { id: 'all', label: 'All Projects' },
-  { id: 'langgraph', label: 'LangGraph' },
-  { id: 'crewai', label: 'CrewAI' },
-  { id: 'dspy', label: 'DSPy' },
-  { id: 'autogen', label: 'AutoGen' },
+  { id: 'all', label: 'All Projects', techId: null },
+  { id: 'langgraph', label: 'LangGraph', techId: 'langgraph' },
+  { id: 'crewai', label: 'CrewAI', techId: 'crewai' },
+  { id: 'dspy', label: 'DSPy', techId: 'dspy' },
+  { id: 'autogen', label: 'AutoGen', techId: 'microsoft-autogen' },
 ];
-
-const getFrameworkBadgeStyle = (_framework: string) => {
-  return {
-    bg: '#111111',
-    text: '#A1A1A1',
-    border: '#262626',
-  };
-};
 
 interface RepositoryCardProps {
   item: Repository;
@@ -74,6 +75,8 @@ interface RepositoryCardProps {
   onToggleLike: (repositoryId: string) => void;
   /** The project's screenshot, if it has one. */
   screenshot?: ProjectScreenshot;
+  /** Structured technologies; undefined/empty falls back to `framework`. */
+  technologies?: ProjectTechnology[];
 }
 
 /**
@@ -89,6 +92,7 @@ const RepositoryCard = React.memo<RepositoryCardProps>(({
   likePending,
   onToggleLike,
   screenshot,
+  technologies,
 }) => {
   // A screenshot that fails to load falls back to the plain card layout.
   const [screenshotFailed, setScreenshotFailed] = useState<boolean>(false);
@@ -106,11 +110,58 @@ const RepositoryCard = React.memo<RepositoryCardProps>(({
       ? item.student_name.trim()
       : COMMUNITY_MEMBER_LABEL;
 
+  const { width: windowWidth } = useWindowDimensions();
+  const phoneWidth = Math.min(
+    CARD_PHONE_MAX_WIDTH,
+    Math.max(CARD_PHONE_MIN_WIDTH, Math.round(windowWidth * 0.3))
+  );
+
   const creatorSubtitle = item.university
     ? `${studentDisplayName} · ${item.university}`
     : studentDisplayName;
 
-  const fwBadge = getFrameworkBadgeStyle(item.framework);
+
+  // Shared pieces, arranged differently per layout below.
+  const header = (
+    <View style={styles.cardHeader}>
+      <View style={styles.cardTitleCol}>
+        <Text style={styles.cardAppName} numberOfLines={layout === 'mobile' ? 2 : 1}>
+          {item.app_name}
+        </Text>
+        <View style={styles.authorRow}>
+          <View style={styles.authorIcon}>
+            <GraduationCapIcon size={14} color={STITCH_COLORS.primaryContainer} />
+          </View>
+          {/* Wraps onto more lines so long university names stay fully visible */}
+          <Text style={styles.cardAuthor}>{creatorSubtitle}</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  // AI technologies: first three + "+N" (legacy: framework text)
+  const techBadges = (
+    <TechnologyBadges technologies={technologies} legacyFramework={item.framework} />
+  );
+
+  // Active status & like. The whole card is the button that opens the project.
+  const footer = (
+    <View style={[styles.cardFooter, layout === 'mobile' && styles.cardFooterWrap]}>
+      <View style={styles.footerLeft}>
+        <View style={styles.activeStatusPill}>
+          <View style={styles.activeDot} />
+          <Text style={styles.activeStatusText}>Active</Text>
+        </View>
+        <LikeButton
+          repositoryId={item.id}
+          count={likeCount}
+          liked={liked}
+          pending={likePending}
+          onToggle={onToggleLike}
+        />
+      </View>
+    </View>
+  );
 
   return (
     <FadeInView delay={staggerDelay(index)} disabled={index >= ANIMATED_CARD_LIMIT}>
@@ -120,58 +171,34 @@ const RepositoryCard = React.memo<RepositoryCardProps>(({
       activeOpacity={0.8}
       pressedScale={0.98}
       testID={`repository-card-${item.id}`}
+      accessibilityHint="Opens the project details"
     >
-      {/* Card Header */}
-      <View style={styles.cardHeader}>
-        <View style={styles.cardTitleCol}>
-          <Text style={styles.cardAppName} numberOfLines={1}>
-            {item.app_name}
-          </Text>
-          <View style={styles.authorRow}>
-            <View style={styles.authorIcon}>
-              <GraduationCapIcon size={14} color={STITCH_COLORS.primaryContainer} />
-            </View>
-            {/* Wraps onto more lines so long university names stay fully visible */}
-            <Text style={styles.cardAuthor}>{creatorSubtitle}</Text>
-          </View>
-        </View>
-        <View
-          style={[
-            styles.frameworkBadge,
-            {
-              backgroundColor: fwBadge.bg,
-              borderColor: fwBadge.border,
-              borderWidth: 1,
-            },
-          ]}
-        >
-          <Text style={[styles.frameworkBadgeText, { color: fwBadge.text }]}>
-            {item.framework}
-          </Text>
-        </View>
-      </View>
-
       {layout === 'mobile' ? (
-        // Mobile showcase: copy on the left, compact phone preview on the right.
-        <View style={styles.mobileShowcase}>
-          <View style={styles.mobileShowcaseText}>
-            <Text style={styles.oneLiner} numberOfLines={5}>
-              {item.one_liner}
-            </Text>
-            <View style={styles.previewTag}>
-              <Text style={styles.previewTagText}>Mobile app</Text>
+        // Mobile showcase: every detail in the left column; the phone preview
+        // fills the right side for the full height of the card.
+        <View style={styles.mobileCardRow}>
+          <View style={styles.mobileCardInfo}>
+            <View>
+              {header}
+              <Text style={styles.oneLiner} numberOfLines={4}>
+                {item.one_liner}
+              </Text>
+              {techBadges}
             </View>
+            {footer}
           </View>
           <PhoneFrame
             uri={screenshotUri!}
-            width={CARD_PHONE_WIDTH}
+            width={phoneWidth}
             thumbnail
+            style={styles.mobileCardPhone}
             onError={() => setScreenshotFailed(true)}
             accessibilityLabel={`${item.app_name} mobile screenshot`}
           />
         </View>
       ) : (
         <>
+          {header}
           {/* Description */}
           <Text style={styles.oneLiner} numberOfLines={2}>
             {item.one_liner}
@@ -187,30 +214,10 @@ const RepositoryCard = React.memo<RepositoryCardProps>(({
               accessibilityLabel={`${item.app_name} desktop screenshot`}
             />
           )}
+          {techBadges}
+          {footer}
         </>
       )}
-
-      {/* Card Bottom: Active Status Pill, Like & View Project Button */}
-      <View style={styles.cardFooter}>
-        <View style={styles.footerLeft}>
-          <View style={styles.activeStatusPill}>
-            <View style={styles.activeDot} />
-            <Text style={styles.activeStatusText}>Active</Text>
-          </View>
-          <LikeButton
-            repositoryId={item.id}
-            count={likeCount}
-            liked={liked}
-            pending={likePending}
-            onToggle={onToggleLike}
-          />
-        </View>
-
-        <View style={styles.viewProjectLink}>
-          <Text style={styles.viewProjectText}>View Project</Text>
-          <ArrowRightIcon size={14} color={STITCH_COLORS.primaryContainer} />
-        </View>
-      </View>
     </PressableScale>
     </FadeInView>
   );
@@ -239,6 +246,7 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
 
   const { likes, pendingIds, refreshLikes, toggleLike } = useLikes();
   const [screenshots, setScreenshots] = useState<Record<string, ProjectScreenshot>>({});
+  const [technologies, setTechnologies] = useState<Record<string, ProjectTechnology[]>>({});
 
   // Repositories first, then one batched like query and one batched
   // screenshot query (in parallel) for every loaded card. Failures there
@@ -256,6 +264,9 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
         refreshLikes(ids),
         fetchScreenshotsForRepositories(ids).then((res) => {
           if (res.data) setScreenshots(res.data);
+        }),
+        fetchTechnologiesForRepositories(ids).then((res) => {
+          if (res.data) setTechnologies(res.data);
         }),
       ]);
     }
@@ -319,16 +330,22 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
         repo.app_name.toLowerCase().includes(query) ||
         repo.one_liner.toLowerCase().includes(query) ||
         repo.framework.toLowerCase().includes(query) ||
+        (technologies[repo.id] ?? []).some((t) =>
+          t.technology_name.toLowerCase().includes(query)
+        ) ||
         (repo.university && repo.university.toLowerCase().includes(query)) ||
         (repo.student_name && repo.student_name.toLowerCase().includes(query));
 
+      const filter = FRAMEWORK_FILTERS.find((f) => f.id === selectedFramework);
       const matchesFramework =
         selectedFramework === 'all' ||
-        repo.framework.toLowerCase().includes(selectedFramework.toLowerCase());
+        repo.framework.toLowerCase().includes(selectedFramework.toLowerCase()) ||
+        (!!filter?.techId &&
+          (technologies[repo.id] ?? []).some((t) => t.technology_id === filter.techId));
 
       return matchesSearch && matchesFramework;
     });
-  }, [repositories, searchQuery, selectedFramework]);
+  }, [repositories, searchQuery, selectedFramework, technologies]);
 
   const renderCard = useCallback(
     ({ item, index }: { item: Repository; index: number }) => {
@@ -343,10 +360,11 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
           likePending={pendingIds[item.id] === true}
           onToggleLike={toggleLike}
           screenshot={screenshots[item.id]}
+          technologies={technologies[item.id]}
         />
       );
     },
-    [handleSelectRepository, likes, pendingIds, toggleLike, screenshots]
+    [handleSelectRepository, likes, pendingIds, toggleLike, screenshots, technologies]
   );
 
   const keyExtractor = useCallback((item: Repository) => item.id, []);
@@ -369,7 +387,7 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
           style={styles.searchInput}
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholder="Search projects, frameworks, schools..."
+          placeholder="Search projects, technologies, schools..."
           placeholderTextColor={STITCH_COLORS.outline}
           autoCapitalize="none"
         />
@@ -482,7 +500,7 @@ export const RepositoryFeedScreen: React.FC<RepositoryFeedScreenProps> = ({
           data={filteredRepositories}
           keyExtractor={keyExtractor}
           renderItem={renderCard}
-          extraData={[likes, screenshots]}
+          extraData={[likes, screenshots, technologies]}
           initialNumToRender={8}
           maxToRenderPerBatch={8}
           windowSize={11}
@@ -709,16 +727,6 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.sans.regular,
     color: '#A1A1A1',
   },
-  frameworkBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-  },
-  frameworkBadgeText: {
-    fontSize: 11,
-    fontFamily: FONTS.sans.medium,
-  },
   oneLiner: {
     fontSize: 13.5,
     fontFamily: FONTS.sans.regular,
@@ -729,33 +737,27 @@ const styles = StyleSheet.create({
   desktopPreview: {
     marginBottom: 12,
   },
-  mobileShowcase: {
+  mobileCardRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'stretch',
     gap: 14,
-    marginBottom: 12,
   },
-  mobileShowcaseText: {
+  mobileCardInfo: {
     flex: 1,
     minWidth: 0,
+    justifyContent: 'space-between',
   },
-  previewTag: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#262626',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 4,
+  mobileCardPhone: {
+    alignSelf: 'center',
   },
-  previewTagText: {
-    fontSize: 10.5,
-    fontFamily: FONTS.sans.medium,
-    color: '#A1A1A1',
+  cardFooterWrap: {
+    flexWrap: 'wrap',
+    rowGap: 8,
+    columnGap: 8,
   },
   cardFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     alignItems: 'center',
     paddingTop: 10,
     borderTopWidth: 1,
@@ -787,21 +789,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: FONTS.sans.medium,
     color: '#EDEDED',
-  },
-  viewProjectLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  viewProjectText: {
-    fontSize: 13,
-    fontFamily: FONTS.sans.medium,
-    color: '#FFFFFF',
-  },
-  viewProjectIcon: {
-    fontSize: 14,
-    fontFamily: FONTS.sans.regular,
-    color: '#FFFFFF',
   },
 
   // Call To Action Footer

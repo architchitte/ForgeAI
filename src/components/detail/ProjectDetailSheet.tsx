@@ -34,6 +34,8 @@ import { useLikesLiveSync } from '../../hooks/useLikesLiveSync';
 import { useAuth } from '../../context/AuthContext';
 import { ProjectScreenshotShowcase } from '../screenshot/ProjectScreenshotShowcase';
 import { isRepositoryOwner } from '../../services/screenshots';
+import { useProjectTechnologies } from '../../hooks/useProjectTechnologies';
+import { TechnologyGroups } from '../technology/TechnologyDisplay';
 import { COMMUNITY_MEMBER_LABEL } from '../../constants/identity';
 
 interface ProjectDetailViewProps {
@@ -94,6 +96,14 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   const { likes, pendingIds, refreshLikes, toggleLike } = useLikes();
   const { user } = useAuth();
   const isOwner = isRepositoryOwner(repository, user?.email);
+  const { technologies } = useProjectTechnologies(repository.id);
+  const hasTechRows = !!technologies && technologies.length > 0;
+  // Headline tag: first technology (+N), or the legacy framework text.
+  const primaryTag = hasTechRows
+    ? `${technologies![0].technology_name}${
+        technologies!.length > 1 ? ` +${technologies!.length - 1}` : ''
+      }`
+    : repository.framework;
   const likeSummary = likes[repository.id];
   const refreshThisLike = useCallback(() => {
     refreshLikes([repository.id]);
@@ -251,7 +261,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           <View style={styles.tagsRow}>
             <View style={styles.frameworkChip}>
               <Text style={styles.frameworkChipText}>
-                {repository.framework.toUpperCase()}
+                {primaryTag.toUpperCase()}
               </Text>
             </View>
             <View style={styles.envChip}>
@@ -290,13 +300,6 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
               <Text style={styles.creatorSub}>{universityText}</Text>
             </View>
           </View>
-
-          <View style={styles.creatorMetricsRow}>
-            <View style={styles.metricWell}>
-              <Text style={styles.metricLabel}>Framework</Text>
-              <Text style={styles.metricValue}>{repository.framework}</Text>
-            </View>
-          </View>
         </View>
 
         {/* Architecture Specs Section */}
@@ -305,11 +308,14 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
 
           <View style={styles.specsGrid}>
             <View style={styles.specCard}>
-              <View style={styles.specLabelRow}>
+              <View style={[styles.specLabelRow, styles.techLabelRow]}>
                 <AccountTreeIcon size={14} color={STITCH_COLORS.outline} />
-                <Text style={styles.specLabel}>Orchestration</Text>
+                <Text style={styles.specLabel}>AI Technologies & Frameworks</Text>
               </View>
-              <Text style={styles.specValue}>{repository.framework}</Text>
+              <TechnologyGroups
+                technologies={technologies}
+                legacyFramework={repository.framework}
+              />
             </View>
           </View>
 
@@ -531,7 +537,6 @@ const styles = StyleSheet.create({
   creatorHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
   },
   avatarCircle: {
     width: 44,
@@ -581,33 +586,6 @@ const styles = StyleSheet.create({
     color: '#A1A1A1',
     marginTop: 2,
   },
-  creatorMetricsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingTop: 4,
-  },
-  metricWell: {
-    flex: 1,
-    backgroundColor: '#111111',
-    borderRadius: 6,
-    padding: 10,
-  },
-  metricLabel: {
-    fontSize: 11,
-    fontFamily: FONTS.sans.regular,
-    color: '#A1A1A1',
-    marginBottom: 2,
-  },
-  metricValue: {
-    fontSize: 14,
-    fontFamily: FONTS.sans.semibold,
-    color: '#EDEDED',
-  },
-  metricValuePrimary: {
-    fontSize: 14,
-    fontFamily: FONTS.sans.semibold,
-    color: '#FFFFFF',
-  },
   sectionBlock: {
     marginBottom: 16,
   },
@@ -641,15 +619,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: FONTS.sans.regular,
   },
+  techLabelRow: {
+    marginBottom: 12,
+  },
   specLabel: {
     fontSize: 11,
     fontFamily: FONTS.sans.regular,
     color: '#A1A1A1',
-  },
-  specValue: {
-    fontSize: 13.5,
-    fontFamily: FONTS.sans.semibold,
-    color: '#EDEDED',
   },
   endpointBox: {
     backgroundColor: '#0A0A0A',

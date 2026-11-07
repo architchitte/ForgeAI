@@ -23,6 +23,17 @@ import {
   updateRepository,
   deleteRepository,
 } from '../../services/repositories';
+import { TechnologySelector } from '../../components/technology/TechnologySelector';
+import {
+  SelectedTechnology,
+  buildFrameworkSummary,
+  selectionFromLegacyFramework,
+} from '../../constants/technologies';
+import {
+  fetchProjectTechnologies,
+  replaceProjectTechnologies,
+  rowsToSelection,
+} from '../../services/technologies';
 import { PRIVACY_POLICY_URL } from '../../constants/privacy';
 import { PressableScale } from '../../components/animation/PressableScale';
 import { FadeInView } from '../../components/animation/FadeInView';
@@ -93,7 +104,8 @@ export const AuthenticatedPlaceholderScreen: React.FC<
   const [editingProject, setEditingProject] = useState<Repository | null>(null);
   const [editAppName, setEditAppName] = useState<string>('');
   const [editOneLiner, setEditOneLiner] = useState<string>('');
-  const [editFramework, setEditFramework] = useState<string>('LangGraph');
+  // Technologies being edited; null while the saved list is loading.
+  const [editTechnologies, setEditTechnologies] = useState<SelectedTechnology[] | null>(null);
   const [editSystemPrompt, setEditSystemPrompt] = useState<string>('');
   const [editDeploymentUrl, setEditDeploymentUrl] = useState<string>('');
   const [savingProject, setSavingProject] = useState<boolean>(false);
@@ -104,7 +116,14 @@ export const AuthenticatedPlaceholderScreen: React.FC<
     setEditingProject(project);
     setEditAppName(project.app_name);
     setEditOneLiner(project.one_liner);
-    setEditFramework(project.framework || 'LangGraph');
+    // Saved selections, or (legacy project) a prefill from its framework text.
+    setEditTechnologies(null);
+    fetchProjectTechnologies(project.id).then((res) => {
+      const rows = res.data ?? [];
+      setEditTechnologies(
+        rows.length > 0 ? rowsToSelection(rows) : selectionFromLegacyFramework(project.framework)
+      );
+    });
     setEditSystemPrompt(project.system_prompt || '');
     setEditDeploymentUrl(project.agent_execution_url || '');
     setProjectEditError(null);
@@ -121,7 +140,6 @@ export const AuthenticatedPlaceholderScreen: React.FC<
 
     const trimmedName = editAppName.trim();
     const trimmedOneLiner = editOneLiner.trim();
-    const trimmedFramework = editFramework.trim();
     const trimmedPrompt = editSystemPrompt.trim();
     const trimmedUrl = editDeploymentUrl.trim();
 
@@ -135,6 +153,14 @@ export const AuthenticatedPlaceholderScreen: React.FC<
     }
     if (trimmedOneLiner.length > 140) {
       setProjectEditError('One-Liner cannot exceed 140 characters.');
+      return;
+    }
+    if (!editTechnologies) {
+      setProjectEditError('Technologies are still loading. Please wait a moment.');
+      return;
+    }
+    if (editTechnologies.length === 0) {
+      setProjectEditError('Select at least one AI technology or framework.');
       return;
     }
     if (!trimmedPrompt) {
@@ -160,10 +186,18 @@ export const AuthenticatedPlaceholderScreen: React.FC<
     setSavingProject(true);
     setProjectEditError(null);
 
+    // Technologies first: if they can't be saved, the project is left as is.
+    const techResult = await replaceProjectTechnologies(editingProject.id, editTechnologies);
+    if (techResult.error) {
+      setSavingProject(false);
+      setProjectEditError(techResult.error);
+      return;
+    }
+
     const result = await updateRepository(editingProject.id, {
       app_name: trimmedName,
       one_liner: trimmedOneLiner,
-      framework: trimmedFramework,
+      framework: buildFrameworkSummary(editTechnologies),
       system_prompt: trimmedPrompt,
       agent_execution_url: trimmedUrl,
     });
@@ -722,34 +756,19 @@ export const AuthenticatedPlaceholderScreen: React.FC<
                 />
               </View>
 
-              {/* Orchestration Framework */}
+              {/* AI Technologies & Frameworks (multi-select) */}
               <View style={styles.modalFieldGroup}>
-                <Text style={styles.modalFieldLabel}>ORCHESTRATION FRAMEWORK</Text>
-                <View style={styles.frameworkChipsRow}>
-                  {['LangGraph', 'CrewAI', 'DSPy', 'AutoGen'].map((fw) => {
-                    const isSelected = editFramework === fw;
-                    return (
-                      <PressableScale
-                        key={fw}
-                        style={[
-                          styles.modalFrameworkChip,
-                          isSelected && styles.modalFrameworkChipSelected,
-                        ]}
-                        onPress={() => setEditFramework(fw)}
-                        activeOpacity={0.7}
-                      >
-                        <Text
-                          style={[
-                            styles.modalFrameworkChipText,
-                            isSelected && styles.modalFrameworkChipTextSelected,
-                          ]}
-                        >
-                          {fw}
-                        </Text>
-                      </PressableScale>
-                    );
-                  })}
-                </View>
+                {editTechnologies === null ? (
+                  <Text style={styles.modalFieldLabel}>LOADING TECHNOLOGIES…</Text>
+                ) : (
+                  <TechnologySelector
+                    value={editTechnologies}
+                    onChange={setEditTechnologies}
+                    disabled={savingProject}
+                    required
+                    compactLabel
+                  />
+                )}
               </View>
 
               {/* System Prompt */}
@@ -1484,32 +1503,6 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.mono.regular,
     fontSize: 12,
     lineHeight: 18,
-  },
-  frameworkChipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  modalFrameworkChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 6,
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#262626',
-  },
-  modalFrameworkChipSelected: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#FFFFFF',
-  },
-  modalFrameworkChipText: {
-    fontSize: 12,
-    fontFamily: FONTS.sans.medium,
-    color: '#A1A1A1',
-  },
-  modalFrameworkChipTextSelected: {
-    color: '#000000',
-    fontFamily: FONTS.sans.semibold,
   },
   modalActionsRow: {
     flexDirection: 'row',
