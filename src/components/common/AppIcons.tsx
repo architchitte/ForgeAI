@@ -309,3 +309,43 @@ export const PlusSquareIcon: React.FC<IconProps> = ({
   size = 20,
   color = STITCH_COLORS.outline,
 }) => <Feather name="plus-square" size={size} color={color} />;
+
+/**
+ * 37. Chat / Inbox Icon (app header)
+ */
+export const ChatIcon: React.FC<IconProps> = ({
+  size = 20,
+  color = STITCH_COLORS.onSurface,
+}) => <Feather name="message-square" size={size} color={color} />;
+
+/**
+ * 38. Send Icon (message composer)
+ */
+export const SendIcon: React.FC<IconProps> = ({
+  size = 16,
+  color = '#000000',
+}) => <Feather name="arrow-up" size={size} color={color} />;
+
+/**
+ * 39. Paperclip / Attachment Icon
+ */
+export const PaperclipIcon: React.FC<IconProps> = ({
+  size = 18,
+  color = STITCH_COLORS.onSurfaceVariant,
+}) => <Feather name="paperclip" size={size} color={color} />;
+
+/**
+ * 40. Smile / Emoji Icon
+ */
+export const SmileIcon: React.FC<IconProps> = ({
+  size = 18,
+  color = STITCH_COLORS.onSurfaceVariant,
+}) => <Feather name="smile" size={size} color={color} />;
+
+/**
+ * 41. Compose / New Message Icon
+ */
+export const ComposeIcon: React.FC<IconProps> = ({
+  size = 18,
+  color = STITCH_COLORS.onSurface,
+}) => <Feather name="edit" size={size} color={color} />;

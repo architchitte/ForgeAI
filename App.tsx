@@ -54,6 +54,13 @@ import {
   PlusSquareIcon,
   UserIcon,
 } from './src/components/common/AppIcons';
+import {
+  ChatHeaderButton,
+  ChatInboxScreen,
+  ChatRoute,
+  ChatThreadScreen,
+  NewChatScreen,
+} from './src/features/chat';
 
 type AuthenticatedTab = 'discover' | 'search' | 'submit' | 'activity' | 'account';
 
@@ -81,6 +88,17 @@ const AuthenticatedView: React.FC = () => {
     setProfileUserId(null);
   }, []);
 
+  // Chats sit above whatever is open (tab, project or profile); closing the
+  // inbox returns there. Switching tabs closes chat.
+  const [chatRoute, setChatRoute] = useState<ChatRoute | null>(null);
+  const openInbox = useCallback(() => setChatRoute({ screen: 'inbox' }), []);
+  const closeChat = useCallback(() => setChatRoute(null), []);
+  const openNewChat = useCallback(() => setChatRoute({ screen: 'new' }), []);
+  const openConversation = useCallback(
+    (conversationId: string) => setChatRoute({ screen: 'thread', conversationId }),
+    []
+  );
+
   // First-run tutorial: null = hidden, otherwise the current step index.
   // Decided once on mount so a metadata refresh mid-tour doesn't restart it.
   const [tutorialStep, setTutorialStep] = useState<number | null>(() =>
@@ -95,6 +113,7 @@ const AuthenticatedView: React.FC = () => {
     setSelectedRepo(null);
     setProfileRepo(null);
     setProfileUserId(null);
+    setChatRoute(null);
     setActiveTab(step.tab);
   }, [tutorialStep]);
 
@@ -103,6 +122,7 @@ const AuthenticatedView: React.FC = () => {
     setSelectedRepo(null);
     setProfileRepo(null);
     setProfileUserId(null);
+    setChatRoute(null);
     setActiveTab('discover');
     // Hide locally right away; a failed save only means it may show again.
     completeTutorial().catch((err: any) => {
@@ -128,9 +148,13 @@ const AuthenticatedView: React.FC = () => {
     setSelectedRepo(null);
     setProfileRepo(null);
     setProfileUserId(null);
+    setChatRoute(null);
   };
 
-  const noOverlay = selectedRepo === null && profileRepo === null && profileUserId === null;
+  const noOverlay =
+    chatRoute === null && selectedRepo === null && profileRepo === null && profileUserId === null;
+  // The thread's composer takes the bottom edge, so the dock steps aside.
+  const isDockHidden = chatRoute?.screen === 'thread';
   const isFeedVisible = activeTab === 'discover' && noOverlay;
   // Search also stays mounted, so a query survives opening a project / profile.
   const isSearchVisible = activeTab === 'search' && noOverlay;
@@ -151,16 +175,19 @@ const AuthenticatedView: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.authSafeArea}>
-      {/* Centered Top Header with Forge Logo */}
-      <View style={styles.appBar}>
-        <TouchableOpacity
-          style={styles.appBarBrand}
-          onPress={() => handleSelectTab('discover')}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.appBarTitle}>Forge</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Centered Top Header with Forge Logo (chat screens have their own header) */}
+      {chatRoute === null && (
+        <View style={styles.appBar}>
+          <TouchableOpacity
+            style={styles.appBarBrand}
+            onPress={() => handleSelectTab('discover')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.appBarTitle}>Forge</Text>
+          </TouchableOpacity>
+          <ChatHeaderButton style={styles.appBarRight} onPress={openInbox} />
+        </View>
+      )}
 
       {/* Active Screen View */}
       <View style={styles.screenContainer}>
@@ -206,7 +233,9 @@ const AuthenticatedView: React.FC = () => {
         {!isFeedVisible && !isSearchVisible && (
           <FadeInView
             key={
-              profileRepo || profileUserId
+              chatRoute
+                ? `chat-${chatRoute.screen}-${chatRoute.screen === 'thread' ? chatRoute.conversationId : ''}`
+                : profileRepo || profileUserId
                 ? `profile-${profileRepo?.id ?? profileUserId}`
                 : selectedRepo
                   ? `detail-${selectedRepo.id}`
@@ -215,7 +244,17 @@ const AuthenticatedView: React.FC = () => {
             offset={6}
             style={styles.screenTransition}
           >
-            {profileRepo || profileUserId ? (
+            {chatRoute?.screen === 'inbox' ? (
+              <ChatInboxScreen
+                onBack={closeChat}
+                onOpenConversation={openConversation}
+                onNewChat={openNewChat}
+              />
+            ) : chatRoute?.screen === 'new' ? (
+              <NewChatScreen onBack={openInbox} onOpenConversation={openConversation} />
+            ) : chatRoute?.screen === 'thread' ? (
+              <ChatThreadScreen conversationId={chatRoute.conversationId} onBack={openInbox} />
+            ) : profileRepo || profileUserId ? (
               <PublisherProfileView
                 repository={profileRepo}
                 userId={profileUserId}
@@ -260,7 +299,7 @@ const AuthenticatedView: React.FC = () => {
       </View>
 
       {/* Rounded Bottom Navigation Dock (RubberSegment) */}
-      <View style={styles.bottomDockContainer}>
+      <View style={[styles.bottomDockContainer, isDockHidden && styles.hiddenScreen]}>
         <RubberSegment
           items={[
             {
@@ -427,6 +466,11 @@ const styles = StyleSheet.create({
   appBarBrand: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  appBarRight: {
+    position: 'absolute',
+    right: 8,
+    top: 7,
   },
   appBarTitle: {
     fontSize: 20,
