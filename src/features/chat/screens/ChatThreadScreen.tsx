@@ -37,7 +37,7 @@ const NEAR_LATEST_PX = 120;
 
 const ConversationIntro: React.FC<{ user: ChatUser; compact?: boolean }> = ({ user, compact }) => (
   <View style={[styles.intro, compact && styles.introCompact]}>
-    <Avatar uri={user.avatarUrl} name={user.fullName} size={compact ? 52 : 68} />
+    <Avatar uri={user.avatarUrl} name={user.isDeleted ? null : user.fullName} size={compact ? 52 : 68} />
     <Text style={styles.introName}>{user.fullName}</Text>
     {user.institution ? <Text style={styles.introMeta}>{user.institution}</Text> : null}
     <Text style={styles.introHint}>
@@ -137,7 +137,11 @@ export const ChatThreadScreen: React.FC<ChatThreadScreenProps> = ({ conversation
         backLabel="Back to chats"
         title={participant?.fullName ?? (loading ? ' ' : 'Conversation')}
         subtitle={participant?.institution}
-        avatar={participant ? { uri: participant.avatarUrl, name: participant.fullName } : null}
+        avatar={
+          participant
+            ? { uri: participant.avatarUrl, name: participant.isDeleted ? '' : participant.fullName }
+            : null
+        }
       />
 
       <View ref={keyboard.ref} collapsable={false} style={[styles.flex, { paddingBottom: keyboard.inset }]}>
@@ -197,13 +201,18 @@ export const ChatThreadScreen: React.FC<ChatThreadScreenProps> = ({ conversation
           )}
         </View>
 
-        {conversation && (
+        {conversation && participant?.isDeleted ? (
+          // History stays readable; the server also rejects replies.
+          <View style={styles.readOnly}>
+            <Text style={styles.readOnlyText}>This account was deleted. You can’t reply to this conversation.</Text>
+          </View>
+        ) : conversation ? (
           <MessageComposer
             onSend={handleSend}
             onAttachmentPress={handleAttachment}
             placeholder={`Message ${participant?.fullName.split(' ')[0] ?? ''}`.trim()}
           />
-        )}
+        ) : null}
       </View>
     </View>
   );
@@ -238,4 +247,18 @@ const styles = StyleSheet.create({
     backgroundColor: STITCH_COLORS.primary,
   },
   pillText: { fontSize: 12.5, fontFamily: FONTS.sans.semibold, color: STITCH_COLORS.onPrimary },
+  readOnly: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#171717',
+    alignItems: 'center',
+  },
+  readOnlyText: {
+    fontSize: 12.5,
+    lineHeight: 18,
+    fontFamily: FONTS.sans.regular,
+    color: STITCH_COLORS.outline,
+    textAlign: 'center',
+  },
 });

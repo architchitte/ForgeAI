@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { chatService } from '../services/chatService';
 import { Conversation } from '../types';
 
+/** Bursts of change events collapse into one re-fetch. */
+const RELOAD_DEBOUNCE_MS = 300;
+
 /** Inbox list, newest activity first; refreshes on service change events. */
 export const useConversations = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -23,12 +26,19 @@ export const useConversations = () => {
 
   useEffect(() => {
     mounted.current = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     load().finally(() => mounted.current && setLoading(false));
     const unsubscribe = chatService.subscribe((e) => {
-      if (e.type === 'conversations-changed') load();
+      if (e.type !== 'conversations-changed' && e.type !== 'resync') return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        load();
+      }, RELOAD_DEBOUNCE_MS);
     });
     return () => {
       mounted.current = false;
+      if (timer) clearTimeout(timer);
       unsubscribe();
     };
   }, [load]);

@@ -7,7 +7,7 @@ import { ChatEmptyState } from '../components/ChatEmptyState';
 import { ChatSearchBar } from '../components/ChatSearchBar';
 import { ChatTopBar } from '../components/ChatTopBar';
 import { ChatUserRow } from '../components/ChatUserRow';
-import { useChatUsers, useStartConversation } from '../hooks/useChatUsers';
+import { MIN_USER_QUERY_LENGTH, useChatUsers, useStartConversation } from '../hooks/useChatUsers';
 import { useHardwareBack } from '../hooks/useHardwareBack';
 import { ChatUser } from '../types';
 
@@ -52,9 +52,7 @@ export const NewChatScreen: React.FC<NewChatScreenProps> = ({ onBack, onOpenConv
           placeholder="Search by name or institution"
           style={styles.search}
         />
-        {!loading && users.length > 0 && (
-          <Text style={styles.sectionLabel}>{q ? 'Results' : 'People on Forge'}</Text>
-        )}
+        {!loading && users.length > 0 && <Text style={styles.sectionLabel}>Results</Text>}
       </View>
 
       {loading && users.length === 0 ? (
@@ -71,11 +69,11 @@ export const NewChatScreen: React.FC<NewChatScreenProps> = ({ onBack, onOpenConv
           ListEmptyComponent={
             error ? (
               <ChatEmptyState title="Could not load people" message={error} />
-            ) : !q ? (
+            ) : q.length < MIN_USER_QUERY_LENGTH ? (
               <ChatEmptyState
                 icon={<SearchIcon size={20} color="#EDEDED" />}
-                title="No one to message yet"
-                message="People you can chat with will appear here once messaging goes live."
+                title="Find people on Forge"
+                message="Search by name or college to start a conversation."
               />
             ) : (
               <ChatEmptyState

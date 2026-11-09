@@ -10,6 +10,8 @@ export interface ChatUser {
   avatarUrl: string | null;
   /** College / institution, shown as secondary information. */
   institution: string | null;
+  /** The account was deleted: history stays visible, replies are disabled. */
+  isDeleted?: boolean;
 }
 
 export type MessageStatus = 'sending' | 'sent' | 'failed';
@@ -17,6 +19,7 @@ export type MessageStatus = 'sending' | 'sent' | 'failed';
 export interface Message {
   id: string;
   conversationId: string;
+  /** DELETED_SENDER_ID when the sender's account was deleted. */
   senderId: string;
   body: string;
   /** ISO timestamp. */
@@ -49,11 +52,22 @@ export interface ChatResponse<T> {
   error: string | null;
 }
 
+/** senderId used for messages whose author deleted their account. */
+export const DELETED_SENDER_ID = 'deleted-user';
+
 export type ChatEvent =
   | { type: 'conversations-changed' }
-  | { type: 'message-upserted'; message: Message };
+  | { type: 'message-upserted'; message: Message }
+  /** The cached unread total changed (header badge). */
+  | { type: 'unread-changed' }
+  /** Events may have been missed (reconnect / app foreground): re-fetch. */
+  | { type: 'resync' };
 
 export interface ChatService {
+  /** Start the session for the signed-in user (opens the realtime channel). */
+  connect(userId: string): void;
+  /** End the session: closes the channel and clears all cached chat state. */
+  disconnect(): void;
   getCurrentUserId(): string;
   listConversations(): Promise<ChatResponse<Conversation[]>>;
   getConversation(conversationId: string): Promise<ChatResponse<Conversation>>;
@@ -71,6 +85,6 @@ export interface ChatService {
   searchUsers(query: string): Promise<ChatResponse<ChatUser[]>>;
   /** Existing 1:1 conversation with the user, or a new (empty) one. */
   getOrCreateConversation(userId: string): Promise<ChatResponse<Conversation>>;
-  /** Change notifications (a later Supabase version would wire Realtime here). */
+  /** Change notifications (fed by Realtime in the Supabase service). */
   subscribe(listener: (event: ChatEvent) => void): () => void;
 }

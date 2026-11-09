@@ -30,15 +30,12 @@ const ConversationRowBase: React.FC<ConversationRowProps> = ({ conversation, cur
       pressedScale={0.985}
       accessibilityLabel={`${participant.fullName}${unread ? `, ${unreadCount} unread` : ''}. ${own ? 'You: ' : ''}${preview}. ${time}`}
     >
-      <Avatar uri={participant.avatarUrl} name={participant.fullName} size={46} />
+      <Avatar uri={participant.avatarUrl} name={participant.isDeleted ? null : participant.fullName} size={46} />
       <View style={styles.body}>
         <View style={styles.line}>
           <Text style={styles.name} numberOfLines={1}>{participant.fullName}</Text>
           <Text style={[styles.time, unread && styles.timeUnread]}>{time}</Text>
         </View>
-        {participant.institution ? (
-          <Text style={styles.institution} numberOfLines={1}>{participant.institution}</Text>
-        ) : null}
         <View style={styles.line}>
           <Text style={[styles.preview, unread && styles.previewUnread]} numberOfLines={1}>
             {own ? <Text style={styles.you}>You: </Text> : null}
@@ -65,7 +62,6 @@ const styles = StyleSheet.create({
   name: { flex: 1, fontSize: 14.5, fontFamily: FONTS.sans.semibold, color: '#FFFFFF' },
   time: { fontSize: 11.5, fontFamily: FONTS.sans.regular, color: STITCH_COLORS.outline },
   timeUnread: { fontFamily: FONTS.sans.medium, color: '#EDEDED' },
-  institution: { fontSize: 12, fontFamily: FONTS.sans.regular, color: STITCH_COLORS.outline },
   preview: { flex: 1, fontSize: 13, lineHeight: 18, fontFamily: FONTS.sans.regular, color: STITCH_COLORS.onSurfaceVariant },
   previewUnread: { fontFamily: FONTS.sans.medium, color: '#EDEDED' },
   you: { color: STITCH_COLORS.outline },

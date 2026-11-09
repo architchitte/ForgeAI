@@ -60,6 +60,7 @@ import {
   ChatRoute,
   ChatThreadScreen,
   NewChatScreen,
+  useChatConnection,
 } from './src/features/chat';
 
 type AuthenticatedTab = 'discover' | 'search' | 'submit' | 'activity' | 'account';
@@ -68,6 +69,8 @@ const AuthenticatedView: React.FC = () => {
   const { user, completeTutorial } = useAuth();
   // Mirror the user's display name into public.profiles for comment labels.
   useProfileSync();
+  // Chat session (realtime channel + cached state) follows the signed-in user.
+  useChatConnection(user?.id);
   const [activeTab, setActiveTab] = useState<AuthenticatedTab>('discover');
   const [selectedRepo, setSelectedRepo] = useState<RepositorySummary | null>(null);
   // Founder profile shown in-app (via one of their projects); sits above the

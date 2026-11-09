@@ -66,6 +66,9 @@ export const createInMemoryChatService = (): ChatService => {
   };
 
   return {
+    // Nothing to open or clear: the store is empty and session-local.
+    connect: () => {},
+    disconnect: () => {},
     getCurrentUserId: () => LOCAL_USER_ID,
 
     async listConversations() {

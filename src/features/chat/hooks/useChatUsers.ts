@@ -1,27 +1,40 @@
-import { useCallback, useDeferredValue, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { chatService } from '../services/chatService';
 import { ChatResponse, ChatUser, Conversation } from '../types';
 
-/** Users matching a name / institution query (all users when empty). */
+const SEARCH_DEBOUNCE_MS = 250;
+/** Shorter queries return nothing (no browsing the whole user directory). */
+export const MIN_USER_QUERY_LENGTH = 2;
+
+/** People matching a name / institution query, debounced. */
 export const useChatUsers = (query: string) => {
-  const deferred = useDeferredValue(query.trim());
+  const q = query.trim();
   const [users, setUsers] = useState<ChatUser[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (q.length < MIN_USER_QUERY_LENGTH) {
+      setUsers([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
-    chatService.searchUsers(deferred).then((r) => {
-      if (cancelled) return;
-      setError(r.error);
-      setUsers(r.data ?? []);
-      setLoading(false);
-    });
+    const timer = setTimeout(() => {
+      chatService.searchUsers(q).then((r) => {
+        if (cancelled) return;
+        setError(r.error);
+        setUsers(r.data ?? []);
+        setLoading(false);
+      });
+    }, SEARCH_DEBOUNCE_MS);
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
-  }, [deferred]);
+  }, [q]);
 
   return { users, loading, error };
 };
